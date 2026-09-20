@@ -22,6 +22,9 @@ export type CloudField = {
   adjoining_land_notes: string | null;
   boundary_notes: string | null;
   management_notes: string | null;
+  fsa_farm_number: string | null;
+  fsa_tract_number: string | null;
+  fsa_field_number: string | null;
   created_at: string;
 };
 
@@ -66,7 +69,8 @@ export async function loadCloudFields(
     .select("*")
     .eq("farm_id", farmId)
     .eq("active", true)
-    .order("name");
+    .order("fsa_tract_number")
+    .order("fsa_field_number");
 
   if (error) throw error;
   return (data ?? []) as CloudField[];
