@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://vvcpyagznemodmwparlx.supabase.co",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_eQCZgdRRXzrSYLYkoS1vWw_lnNEB27m",
