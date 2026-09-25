@@ -57,6 +57,32 @@ export default function QuickBooksIntegrationPage() {
     load().catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
   }, []);
 
+  function downloadErrorLogs() {
+    if (!errorLogs.length) return;
+    const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const rows = [
+      ["occurred_at", "operation", "endpoint", "http_status", "intuit_tid", "error_code", "error_message"],
+      ...errorLogs.map((item) => [
+        item.occurred_at,
+        item.operation,
+        item.endpoint,
+        item.http_status,
+        item.intuit_tid,
+        item.error_code,
+        item.error_message,
+      ]),
+    ];
+    const blob = new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")], {
+      type: "text/csv",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "farmvoice-quickbooks-error-log.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function loadErrorLogs() {
     setLoadingErrors(true);
     try {
@@ -280,9 +306,14 @@ export default function QuickBooksIntegrationPage() {
                   FarmVoice stores recent QuickBooks errors and Intuit request IDs for support. Tokens and secrets are not included.
                 </p>
               </div>
-              <button className="btn secondary" onClick={loadErrorLogs} disabled={loadingErrors}>
-                {loadingErrors ? "Loading..." : "Load recent errors"}
-              </button>
+              <div className="inline">
+                <button className="btn secondary" onClick={loadErrorLogs} disabled={loadingErrors}>
+                  {loadingErrors ? "Loading..." : "Load recent errors"}
+                </button>
+                <button className="btn secondary" onClick={downloadErrorLogs} disabled={!errorLogs.length}>
+                  Download error log
+                </button>
+              </div>
             </div>
             {status?.lastApiAt && (
               <p className="muted">
