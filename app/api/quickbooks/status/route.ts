@@ -37,7 +37,7 @@ export async function GET() {
     if (farmResult.error) throw farmResult.error;
 
     let quickBooksEmployees: Array<{ Id: string; DisplayName: string; Active?: boolean }> = [];
-    if (ctx.connection) {
+    if (ctx.connection && !ctx.connection.reconnect_required) {
       quickBooksEmployees = await loadQuickBooksEmployees();
     }
 
@@ -45,6 +45,10 @@ export async function GET() {
       connected: Boolean(ctx.connection),
       companyName: ctx.connection?.company_name ?? null,
       realmId: ctx.connection?.realm_id ?? null,
+      reconnectRequired: Boolean(ctx.connection?.reconnect_required),
+      lastAuthError: ctx.connection?.last_auth_error ?? null,
+      lastIntuitTid: ctx.connection?.last_intuit_tid ?? null,
+      lastApiAt: ctx.connection?.last_api_at ?? null,
       timezone: farmResult.data.timezone ?? "UTC",
       workers: (membersResult.data ?? []).filter((m) => m.role === "worker"),
       mappings: mappingsResult.data ?? [],
