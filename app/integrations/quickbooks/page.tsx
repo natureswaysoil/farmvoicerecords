@@ -9,10 +9,26 @@ type Mapping = {
   quickbooks_employee_id: string;
   quickbooks_employee_name: string | null;
 };
+type ErrorLog = {
+  id: string;
+  occurred_at: string;
+  operation: string;
+  endpoint: string | null;
+  http_status: number | null;
+  intuit_tid: string | null;
+  error_code: string | null;
+  error_message: string;
+  reconnect_required: boolean;
+};
+
 type Status = {
   connected: boolean;
   companyName: string | null;
   timezone: string;
+  reconnectRequired: boolean;
+  lastAuthError: string | null;
+  lastIntuitTid: string | null;
+  lastApiAt: string | null;
   workers: Worker[];
   mappings: Mapping[];
   quickBooksEmployees: Employee[];
@@ -25,6 +41,8 @@ export default function QuickBooksIntegrationPage() {
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [timezone, setTimezone] = useState("");
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [loadingErrors, setLoadingErrors] = useState(false);
 
   async function load() {
     const response = await fetch("/api/quickbooks/status", { cache: "no-store" });
@@ -38,6 +56,20 @@ export default function QuickBooksIntegrationPage() {
   useEffect(() => {
     load().catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
   }, []);
+
+  async function loadErrorLogs() {
+    setLoadingErrors(true);
+    try {
+      const response = await fetch("/api/quickbooks/errors", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks error logs.");
+      setErrorLogs(body.errors ?? []);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks error logs.");
+    } finally {
+      setLoadingErrors(false);
+    }
+  }
 
   const mappingsByWorker = useMemo(
     () => new Map((status?.mappings ?? []).map((mapping) => [mapping.worker_user_id, mapping])),
@@ -101,9 +133,15 @@ export default function QuickBooksIntegrationPage() {
       const response = await fetch("/api/quickbooks/sync", { method: "POST" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "QuickBooks sync failed.");
-      setMessage(
-        `QuickBooks sync complete: ${body.synced} sent, ${body.skipped.length} skipped, ${body.failed.length} failed.`
-      );
+      if (body.reconnectRequired) {
+        setMessage("QuickBooks authorization needs attention. Reconnect QuickBooks before syncing again.");
+      } else {
+        setMessage(
+          `QuickBooks sync complete: ${body.synced} sent, ${body.skipped.length} skipped, ${body.failed.length} failed.`
+        );
+      }
+      await load();
+      await loadErrorLogs();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "QuickBooks sync failed.");
     } finally {
@@ -128,13 +166,21 @@ export default function QuickBooksIntegrationPage() {
             <h3>Connection</h3>
             <p className="muted" style={{ marginBottom: 0 }}>
               {status?.connected
-                ? `Connected to ${status.companyName ?? "QuickBooks Online"}`
+                ? status.reconnectRequired
+                  ? `Reconnect required for ${status.companyName ?? "QuickBooks Online"}`
+                  : `Connected to ${status.companyName ?? "QuickBooks Online"}`
                 : "QuickBooks is not connected yet."}
             </p>
+            {status?.reconnectRequired && (
+              <p className="notice" style={{ marginTop: 12 }}>
+                QuickBooks authorization has expired or become invalid. Reconnect QuickBooks before sending more time.
+                {status.lastIntuitTid ? <> Intuit request ID: <code>{status.lastIntuitTid}</code>.</> : null}
+              </p>
+            )}
           </div>
           <div className="inline">
             <a className="btn" href="/api/quickbooks/connect">
-              {status?.connected ? "Reconnect QuickBooks" : "Connect QuickBooks"}
+              {status?.connected || status?.reconnectRequired ? "Reconnect QuickBooks" : "Connect QuickBooks"}
             </a>
             {status?.connected && (
               <button className="btn secondary" disabled={disconnecting} onClick={disconnectQuickBooks}>
@@ -220,10 +266,57 @@ export default function QuickBooksIntegrationPage() {
               employee time, work date, job/field description and duration.
             </p>
             <div>
-              <button className="btn" disabled={syncing} onClick={syncApprovedTime}>
+              <button className="btn" disabled={syncing || Boolean(status?.reconnectRequired)} onClick={syncApprovedTime}>
                 {syncing ? "Sending..." : "Send approved time to QuickBooks"}
               </button>
             </div>
+          </section>
+
+          <section className="card stack">
+            <div className="inline" style={{ justifyContent: "space-between" }}>
+              <div>
+                <h3>QuickBooks troubleshooting</h3>
+                <p className="muted">
+                  FarmVoice stores recent QuickBooks errors and Intuit request IDs for support. Tokens and secrets are not included.
+                </p>
+              </div>
+              <button className="btn secondary" onClick={loadErrorLogs} disabled={loadingErrors}>
+                {loadingErrors ? "Loading..." : "Load recent errors"}
+              </button>
+            </div>
+            {status?.lastApiAt && (
+              <p className="muted">
+                Last QuickBooks API activity: {new Date(status.lastApiAt).toLocaleString()}
+                {status.lastIntuitTid ? <> · Intuit request ID: <code>{status.lastIntuitTid}</code></> : null}
+              </p>
+            )}
+            {errorLogs.length > 0 && (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Operation</th>
+                    <th>Status</th>
+                    <th>Intuit request ID</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {errorLogs.map((item) => (
+                    <tr key={item.id}>
+                      <td>{new Date(item.occurred_at).toLocaleString()}</td>
+                      <td>{item.operation}</td>
+                      <td>{item.http_status ?? "—"}</td>
+                      <td><code>{item.intuit_tid ?? "—"}</code></td>
+                      <td>{item.error_message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p>
+              <a href="/support">Contact FarmVoice support</a>
+            </p>
           </section>
         </>
       )}
