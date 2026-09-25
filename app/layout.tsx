@@ -29,7 +29,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <footer className="footer">
           <div className="container">
             FarmVoice Records · Review pesticide records against the product label and applicable law before relying on them for compliance.{" "}
-            <Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link>
+            <Link className="footer-link" href="/privacy">Privacy</Link> · <Link className="footer-link" href="/terms">Terms</Link>
           </div>
         </footer>
       </body>
