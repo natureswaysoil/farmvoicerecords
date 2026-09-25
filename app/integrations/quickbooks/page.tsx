@@ -23,6 +23,7 @@ export default function QuickBooksIntegrationPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [message, setMessage] = useState("Loading QuickBooks integration...");
   const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [timezone, setTimezone] = useState("");
 
   async function load() {
@@ -73,6 +74,26 @@ export default function QuickBooksIntegrationPage() {
     await load();
   }
 
+  async function disconnectQuickBooks() {
+    if (!window.confirm("Disconnect QuickBooks from this farm? Future FarmVoice syncs will stop until you reconnect.")) {
+      return;
+    }
+
+    setDisconnecting(true);
+    setMessage("Disconnecting QuickBooks...");
+    try {
+      const response = await fetch("/api/quickbooks/disconnect", { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to disconnect QuickBooks.");
+      setMessage("QuickBooks disconnected. Existing records already sent to QuickBooks are unchanged.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to disconnect QuickBooks.");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   async function syncApprovedTime() {
     setSyncing(true);
     setMessage("Sending approved time to QuickBooks...");
@@ -111,9 +132,16 @@ export default function QuickBooksIntegrationPage() {
                 : "QuickBooks is not connected yet."}
             </p>
           </div>
-          <a className="btn" href="/api/quickbooks/connect">
-            {status?.connected ? "Reconnect QuickBooks" : "Connect QuickBooks"}
-          </a>
+          <div className="inline">
+            <a className="btn" href="/api/quickbooks/connect">
+              {status?.connected ? "Reconnect QuickBooks" : "Connect QuickBooks"}
+            </a>
+            {status?.connected && (
+              <button className="btn secondary" disabled={disconnecting} onClick={disconnectQuickBooks}>
+                {disconnecting ? "Disconnecting..." : "Disconnect QuickBooks"}
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
