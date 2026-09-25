@@ -5,7 +5,7 @@ import {
   qboRequest,
   tokenExpiry,
 } from "@/src/lib/quickbooks";
-import { requireFarmOwner } from "@/src/lib/quickbooks-server";
+import { logQuickBooksError, requireFarmOwner } from "@/src/lib/quickbooks-server";
 
 export const runtime = "nodejs";
 
@@ -80,6 +80,19 @@ export async function GET(request: NextRequest) {
     response.cookies.delete("farmvoice_qbo_oauth");
     return response;
   } catch (error) {
+    try {
+      const ctx = await requireFarmOwner();
+      await logQuickBooksError({
+        supabase: ctx.supabase,
+        farmId: ctx.farmId,
+        operation: "oauth_callback",
+        endpoint: "/api/quickbooks/callback",
+        error,
+      });
+    } catch {
+      // The callback can fail before an authenticated farm context is available.
+    }
+
     destination.searchParams.set(
       "error",
       error instanceof Error ? error.message : "QuickBooks connection failed."
