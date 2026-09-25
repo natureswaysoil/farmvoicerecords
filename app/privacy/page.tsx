@@ -72,9 +72,10 @@ export default function PrivacyPage() {
 
         <h2>Payments</h2>
         <p>
-          Subscription payments may be processed by Stripe. FarmVoice does not intentionally store
-          full payment-card numbers in its application database. Payment information submitted to
-          Stripe is handled under Stripe&apos;s own terms and privacy practices.
+          If FarmVoice enables online subscription payments, they may be processed by Stripe or
+          another payment processor. FarmVoice does not intentionally store full payment-card
+          numbers in its application database. Payment information submitted to a payment
+          processor is handled under that provider&apos;s own terms and privacy practices.
         </p>
 
         <h2>Data retention</h2>
@@ -88,10 +89,10 @@ export default function PrivacyPage() {
         <h2>Your choices</h2>
         <p>
           You may choose not to grant microphone, camera, or location permission, although some
-          features may be limited. A farm owner may disconnect QuickBooks Online and can contact
-          us for assistance with account or farm-data requests. Disconnecting a third-party
-          integration stops future synchronization but may not delete information already sent to
-          that third party.
+          features may be limited. A farm owner can disconnect QuickBooks Online from the
+          FarmVoice QuickBooks integration page and can contact us for assistance with account or
+          farm-data requests. Disconnecting removes FarmVoice's stored connection and stops future
+          synchronization, but it does not delete information already sent to QuickBooks.
         </p>
 
         <h2>Security</h2>
