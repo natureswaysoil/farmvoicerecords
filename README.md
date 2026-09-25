@@ -49,3 +49,22 @@ npm start
 - Project ID: `appgprj_6aacad1d87f08191b96c0312fab01f54`
 - Source version observed: `23`
 - Projection revision observed: `47`
+
+
+## QuickBooks Online integration
+
+Farm owners can connect QuickBooks Online at `/integrations/quickbooks`, map FarmVoice worker accounts to QuickBooks employees, and send completed manager-approved time entries as QuickBooks TimeActivity records. GPS coordinates and detailed pesticide/compliance records remain in FarmVoice.
+
+Required Vercel environment variables:
+
+```text
+QBO_CLIENT_ID=
+QBO_CLIENT_SECRET=
+QBO_TOKEN_ENCRYPTION_KEY=
+QBO_REDIRECT_URI=https://farmvoicerecords.com/api/quickbooks/callback
+QBO_ENVIRONMENT=production
+```
+
+`QBO_TOKEN_ENCRYPTION_KEY` must decode from base64 to exactly 32 random bytes. Keep all QuickBooks credentials server-side; never expose them with a `NEXT_PUBLIC_` prefix.
+
+For an Intuit sandbox, set `QBO_ENVIRONMENT=sandbox` and register the corresponding callback URL in the Intuit developer app.
