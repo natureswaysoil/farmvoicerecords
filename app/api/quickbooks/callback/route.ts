@@ -57,11 +57,6 @@ export async function GET(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("quickbooks_connections").upsert(row, {
-      onConflict: "farm_id",
-    });
-    if (error) throw error;
-
     if (existingConnection && existingConnection.realm_id !== realmId) {
       const { error: mappingError } = await supabase
         .from("quickbooks_employee_mappings")
@@ -69,6 +64,11 @@ export async function GET(request: NextRequest) {
         .eq("farm_id", farmId);
       if (mappingError) throw mappingError;
     }
+
+    const { error } = await supabase.from("quickbooks_connections").upsert(row, {
+      onConflict: "farm_id",
+    });
+    if (error) throw error;
 
     destination.searchParams.set("connected", "1");
     const response = NextResponse.redirect(destination);
