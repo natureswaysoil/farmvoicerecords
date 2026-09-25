@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { qboRequest } from "@/src/lib/quickbooks";
-import { getValidQuickBooksAccessToken } from "@/src/lib/quickbooks-server";
+import { isQuickBooksApiError, qboRequest } from "@/src/lib/quickbooks";
+import {
+  getValidQuickBooksAccessToken,
+  logQuickBooksError,
+} from "@/src/lib/quickbooks-server";
 
 export const runtime = "nodejs";
 
@@ -80,9 +83,15 @@ export async function POST() {
 
     let synced = 0;
     const skipped: Array<{ id: string; reason: string }> = [];
-    const failed: Array<{ id: string; error: string }> = [];
+    const failed: Array<{ id: string; error: string; intuitTid?: string | null }> = [];
+    let reconnectRequired = false;
 
     for (const entry of entries ?? []) {
+      if (reconnectRequired) {
+        skipped.push({ id: entry.id, reason: "QuickBooks reconnection is required." });
+        continue;
+      }
+
       const employeeId = map.get(entry.worker_user_id);
       if (!employeeId) {
         skipped.push({ id: entry.id, reason: "No QuickBooks employee mapping." });
@@ -107,6 +116,8 @@ export async function POST() {
         continue;
       }
 
+      const endpoint = `/timeactivity?requestid=${encodeURIComponent(entry.id)}`;
+
       try {
         const { hours, minutes } = durationParts(entry.clock_in, entry.clock_out!);
         const txnDate = localDate(entry.clock_in, timezone);
@@ -115,7 +126,7 @@ export async function POST() {
         const response = await qboRequest<{ TimeActivity?: { Id?: string } }>(
           ctx.connection.realm_id,
           ctx.accessToken,
-          `/timeactivity?requestid=${encodeURIComponent(entry.id)}`,
+          endpoint,
           {
             method: "POST",
             body: JSON.stringify({
@@ -131,37 +142,79 @@ export async function POST() {
           }
         );
 
-        const qboId = response.TimeActivity?.Id;
+        const qboId = response.data.TimeActivity?.Id;
         if (!qboId) throw new Error("QuickBooks did not return a TimeActivity ID.");
 
+        const now = new Date().toISOString();
         const { error: updateError } = await ctx.supabase
           .from("time_entries")
           .update({
             qbo_sync_status: "synced",
             qbo_time_activity_id: qboId,
             qbo_realm_id: ctx.connection.realm_id,
-            qbo_synced_at: new Date().toISOString(),
+            qbo_synced_at: now,
             qbo_sync_started_at: null,
             qbo_sync_error: null,
+            qbo_intuit_tid: response.intuitTid,
           })
           .eq("id", entry.id)
           .eq("farm_id", ctx.farmId)
           .eq("qbo_sync_status", "syncing");
         if (updateError) throw updateError;
+
+        await ctx.supabase
+          .from("quickbooks_connections")
+          .update({
+            last_intuit_tid: response.intuitTid,
+            last_api_at: now,
+          })
+          .eq("farm_id", ctx.farmId);
+
         synced += 1;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "QuickBooks sync failed.";
+        const logged = await logQuickBooksError({
+          supabase: ctx.supabase,
+          farmId: ctx.farmId,
+          operation: "create_time_activity",
+          endpoint,
+          error,
+          context: { timeEntryId: entry.id },
+        });
+        const message = logged.message;
+
+        if (isQuickBooksApiError(error) && error.reconnectRequired) {
+          reconnectRequired = true;
+          await ctx.supabase
+            .from("quickbooks_connections")
+            .update({
+              reconnect_required: true,
+              last_auth_error: message.slice(0, 2000),
+              last_auth_error_at: new Date().toISOString(),
+              last_intuit_tid: error.intuitTid,
+              last_api_at: new Date().toISOString(),
+            })
+            .eq("farm_id", ctx.farmId);
+        }
+
         const { error: saveError } = await ctx.supabase
           .from("time_entries")
-          .update({ qbo_sync_status: "error", qbo_sync_error: message, qbo_sync_started_at: null })
+          .update({
+            qbo_sync_status: "error",
+            qbo_sync_error: message,
+            qbo_sync_started_at: null,
+            qbo_intuit_tid: logged.intuitTid,
+          })
           .eq("id", entry.id)
           .eq("farm_id", ctx.farmId)
           .eq("qbo_sync_status", "syncing");
-        if (saveError) {
-          failed.push({ id: entry.id, error: `${message}; also failed to save sync error: ${saveError.message}` });
-        } else {
-          failed.push({ id: entry.id, error: message });
-        }
+
+        failed.push({
+          id: entry.id,
+          error: saveError
+            ? `${message}; also failed to save sync error: ${saveError.message}`
+            : message,
+          intuitTid: logged.intuitTid,
+        });
       }
     }
 
@@ -169,11 +222,17 @@ export async function POST() {
       synced,
       skipped,
       failed,
+      reconnectRequired,
       totalEligible: entries?.length ?? 0,
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "QuickBooks sync failed." },
+      {
+        error: error instanceof Error ? error.message : "QuickBooks sync failed.",
+        reconnectRequired:
+          error instanceof Error &&
+          error.message.toLowerCase().includes("reconnect"),
+      },
       { status: 400 }
     );
   }
