@@ -43,6 +43,7 @@ export default function QuickBooksIntegrationPage() {
   const [timezone, setTimezone] = useState("");
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [loadingErrors, setLoadingErrors] = useState(false);
+  const [testingErrors, setTestingErrors] = useState(false);
 
   async function load() {
     const response = await fetch("/api/quickbooks/status", { cache: "no-store" });
@@ -81,6 +82,34 @@ export default function QuickBooksIntegrationPage() {
     link.download = "farmvoice-quickbooks-error-log.csv";
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function testErrorHandling() {
+    setTestingErrors(true);
+    setMessage("Running read-only QuickBooks API error tests...");
+    try {
+      const response = await fetch("/api/quickbooks/test-error-handling", { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "QuickBooks error-handling test failed.");
+
+      const detail = (body.results ?? [])
+        .map((item: { name: string; passed: boolean; intuitTid?: string | null }) =>
+          `${item.name}: ${item.passed ? "passed" : "failed"}${item.intuitTid ? ` (intuit_tid ${item.intuitTid})` : ""}`
+        )
+        .join(" · ");
+
+      setMessage(
+        body.passed
+          ? `QuickBooks API error handling passed. ${detail}`
+          : `QuickBooks API error handling did not fully pass. ${detail}`
+      );
+      await loadErrorLogs();
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "QuickBooks error-handling test failed.");
+    } finally {
+      setTestingErrors(false);
+    }
   }
 
   async function loadErrorLogs() {
@@ -304,9 +333,17 @@ export default function QuickBooksIntegrationPage() {
                 <h3>QuickBooks troubleshooting</h3>
                 <p className="muted">
                   FarmVoice stores recent QuickBooks errors and Intuit request IDs for support. Tokens and secrets are not included.
+                  The API error test is read-only and intentionally sends invalid query requests; it does not create, change, or delete QuickBooks data.
                 </p>
               </div>
               <div className="inline">
+                <button
+                  className="btn secondary"
+                  onClick={testErrorHandling}
+                  disabled={testingErrors || Boolean(status?.reconnectRequired)}
+                >
+                  {testingErrors ? "Testing..." : "Run API error test"}
+                </button>
                 <button className="btn secondary" onClick={loadErrorLogs} disabled={loadingErrors}>
                   {loadingErrors ? "Loading..." : "Load recent errors"}
                 </button>
