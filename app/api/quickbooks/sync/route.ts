@@ -42,6 +42,32 @@ export async function POST() {
     );
     const timezone = farmResult.data.timezone ?? "UTC";
 
+    const staleBefore = new Date(Date.now() - 10 * 60_000).toISOString();
+
+    const { error: staleNullError } = await ctx.supabase
+      .from("time_entries")
+      .update({
+        qbo_sync_status: "error",
+        qbo_sync_error: "Previous QuickBooks sync was interrupted and was reclaimed.",
+        qbo_sync_started_at: null,
+      })
+      .eq("farm_id", ctx.farmId)
+      .eq("qbo_sync_status", "syncing")
+      .is("qbo_sync_started_at", null);
+    if (staleNullError) throw staleNullError;
+
+    const { error: staleTimedError } = await ctx.supabase
+      .from("time_entries")
+      .update({
+        qbo_sync_status: "error",
+        qbo_sync_error: "Previous QuickBooks sync lease expired and was reclaimed.",
+        qbo_sync_started_at: null,
+      })
+      .eq("farm_id", ctx.farmId)
+      .eq("qbo_sync_status", "syncing")
+      .lt("qbo_sync_started_at", staleBefore);
+    if (staleTimedError) throw staleTimedError;
+
     const { data: entries, error: entryError } = await ctx.supabase
       .from("time_entries")
       .select("id, worker_user_id, job, field_name, clock_in, clock_out, approval_status, qbo_sync_status")
@@ -65,7 +91,11 @@ export async function POST() {
 
       const { data: claimed, error: claimError } = await ctx.supabase
         .from("time_entries")
-        .update({ qbo_sync_status: "syncing", qbo_sync_error: null })
+        .update({
+          qbo_sync_status: "syncing",
+          qbo_sync_error: null,
+          qbo_sync_started_at: new Date().toISOString(),
+        })
         .eq("id", entry.id)
         .eq("farm_id", ctx.farmId)
         .eq("qbo_sync_status", entry.qbo_sync_status)
@@ -111,6 +141,7 @@ export async function POST() {
             qbo_time_activity_id: qboId,
             qbo_realm_id: ctx.connection.realm_id,
             qbo_synced_at: new Date().toISOString(),
+            qbo_sync_started_at: null,
             qbo_sync_error: null,
           })
           .eq("id", entry.id)
@@ -122,7 +153,7 @@ export async function POST() {
         const message = error instanceof Error ? error.message : "QuickBooks sync failed.";
         const { error: saveError } = await ctx.supabase
           .from("time_entries")
-          .update({ qbo_sync_status: "error", qbo_sync_error: message })
+          .update({ qbo_sync_status: "error", qbo_sync_error: message, qbo_sync_started_at: null })
           .eq("id", entry.id)
           .eq("farm_id", ctx.farmId)
           .eq("qbo_sync_status", "syncing");

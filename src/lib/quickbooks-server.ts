@@ -68,7 +68,7 @@ export async function getValidQuickBooksAccessToken() {
   if (claimError) throw claimError;
 
   if (!claimed) {
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     const { data: reloaded, error: reloadError } = await ctx.supabase
       .from("quickbooks_connections")
       .select("*")
