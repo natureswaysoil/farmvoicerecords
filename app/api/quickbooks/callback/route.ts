@@ -27,6 +27,13 @@ export async function GET(request: NextRequest) {
     const { supabase, user, farmId } = await requireFarmOwner();
     if (farmId !== saved.farmId) throw new Error("Farm authorization changed during QuickBooks connection.");
 
+    const { data: existingConnection, error: existingError } = await supabase
+      .from("quickbooks_connections")
+      .select("realm_id")
+      .eq("farm_id", farmId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
     const tokens = await exchangeAuthorizationCode(code);
     const company = await qboRequest<{ CompanyInfo?: { CompanyName?: string } }>(
       realmId,
@@ -45,6 +52,8 @@ export async function GET(request: NextRequest) {
         ? tokenExpiry(tokens.x_refresh_token_expires_in)
         : null,
       connected_by: user.id,
+      refresh_lock_token: null,
+      refresh_lock_expires_at: null,
       updated_at: new Date().toISOString(),
     };
 
@@ -52,6 +61,14 @@ export async function GET(request: NextRequest) {
       onConflict: "farm_id",
     });
     if (error) throw error;
+
+    if (existingConnection && existingConnection.realm_id !== realmId) {
+      const { error: mappingError } = await supabase
+        .from("quickbooks_employee_mappings")
+        .delete()
+        .eq("farm_id", farmId);
+      if (mappingError) throw mappingError;
+    }
 
     destination.searchParams.set("connected", "1");
     const response = NextResponse.redirect(destination);
