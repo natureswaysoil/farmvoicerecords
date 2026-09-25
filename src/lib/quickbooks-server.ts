@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { createClient } from "@/src/lib/supabase/server";
 import {
   decryptSecret,
@@ -35,6 +36,18 @@ export async function getQuickBooksConnection() {
   return { ...ctx, connection: data };
 }
 
+async function releaseRefreshLock(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  farmId: string,
+  token: string
+) {
+  await supabase
+    .from("quickbooks_connections")
+    .update({ refresh_lock_token: null, refresh_lock_expires_at: null })
+    .eq("farm_id", farmId)
+    .eq("refresh_lock_token", token);
+}
+
 export async function getValidQuickBooksAccessToken() {
   const ctx = await getQuickBooksConnection();
   if (!ctx.connection) throw new Error("QuickBooks is not connected.");
@@ -47,34 +60,102 @@ export async function getValidQuickBooksAccessToken() {
     };
   }
 
-  const refreshed = await refreshQuickBooksToken(
-    decryptSecret(ctx.connection.refresh_token_ciphertext)
+  const lockToken = crypto.randomUUID();
+  const { data: claimed, error: claimError } = await ctx.supabase.rpc(
+    "claim_quickbooks_refresh",
+    { p_farm_id: ctx.farmId, p_token: lockToken }
   );
+  if (claimError) throw claimError;
 
-  const updates = {
-    access_token_ciphertext: encryptSecret(refreshed.access_token),
-    refresh_token_ciphertext: encryptSecret(refreshed.refresh_token),
-    access_token_expires_at: tokenExpiry(refreshed.expires_in),
-    refresh_token_expires_at: refreshed.x_refresh_token_expires_in
-      ? tokenExpiry(refreshed.x_refresh_token_expires_in)
-      : ctx.connection.refresh_token_expires_at,
-    updated_at: new Date().toISOString(),
-  };
+  if (!claimed) {
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    const { data: reloaded, error: reloadError } = await ctx.supabase
+      .from("quickbooks_connections")
+      .select("*")
+      .eq("farm_id", ctx.farmId)
+      .maybeSingle();
+    if (reloadError) throw reloadError;
+    if (
+      reloaded &&
+      new Date(reloaded.access_token_expires_at).getTime() > Date.now() + 60_000
+    ) {
+      return {
+        ...ctx,
+        connection: reloaded,
+        accessToken: decryptSecret(reloaded.access_token_ciphertext),
+      };
+    }
+    throw new Error("QuickBooks token refresh is already in progress. Please retry.");
+  }
 
-  const { error } = await ctx.supabase
-    .from("quickbooks_connections")
-    .update(updates)
-    .eq("farm_id", ctx.farmId);
-  if (error) throw error;
+  try {
+    const { data: lockedConnection, error: lockedError } = await ctx.supabase
+      .from("quickbooks_connections")
+      .select("*")
+      .eq("farm_id", ctx.farmId)
+      .eq("refresh_lock_token", lockToken)
+      .maybeSingle();
+    if (lockedError) throw lockedError;
+    if (!lockedConnection) throw new Error("QuickBooks refresh lock was lost.");
 
-  return { ...ctx, connection: { ...ctx.connection, ...updates }, accessToken: refreshed.access_token };
+    if (
+      new Date(lockedConnection.access_token_expires_at).getTime() >
+      Date.now() + 90_000
+    ) {
+      await releaseRefreshLock(ctx.supabase, ctx.farmId, lockToken);
+      return {
+        ...ctx,
+        connection: { ...lockedConnection, refresh_lock_token: null, refresh_lock_expires_at: null },
+        accessToken: decryptSecret(lockedConnection.access_token_ciphertext),
+      };
+    }
+
+    const refreshed = await refreshQuickBooksToken(
+      decryptSecret(lockedConnection.refresh_token_ciphertext)
+    );
+
+    const updates = {
+      access_token_ciphertext: encryptSecret(refreshed.access_token),
+      refresh_token_ciphertext: encryptSecret(refreshed.refresh_token),
+      access_token_expires_at: tokenExpiry(refreshed.expires_in),
+      refresh_token_expires_at: refreshed.x_refresh_token_expires_in
+        ? tokenExpiry(refreshed.x_refresh_token_expires_in)
+        : lockedConnection.refresh_token_expires_at,
+      updated_at: new Date().toISOString(),
+      refresh_lock_token: null,
+      refresh_lock_expires_at: null,
+    };
+
+    const { data: saved, error } = await ctx.supabase
+      .from("quickbooks_connections")
+      .update(updates)
+      .eq("farm_id", ctx.farmId)
+      .eq("refresh_lock_token", lockToken)
+      .select("*")
+      .maybeSingle();
+    if (error) throw error;
+    if (!saved) throw new Error("QuickBooks token refresh result could not be saved.");
+
+    return {
+      ...ctx,
+      connection: saved,
+      accessToken: refreshed.access_token,
+    };
+  } catch (error) {
+    await releaseRefreshLock(ctx.supabase, ctx.farmId, lockToken);
+    throw error;
+  }
 }
 
 export async function loadQuickBooksEmployees() {
   const ctx = await getValidQuickBooksAccessToken();
-  const query = encodeURIComponent("select Id, DisplayName, Active from Employee where Active = true");
+  const query = encodeURIComponent(
+    "select Id, DisplayName, Active from Employee where Active = true"
+  );
   const body = await qboRequest<{
-    QueryResponse?: { Employee?: Array<{ Id: string; DisplayName: string; Active?: boolean }> };
+    QueryResponse?: {
+      Employee?: Array<{ Id: string; DisplayName: string; Active?: boolean }>;
+    };
   }>(ctx.connection.realm_id, ctx.accessToken, `/query?query=${query}`);
   return body.QueryResponse?.Employee ?? [];
 }

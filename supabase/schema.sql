@@ -9,6 +9,7 @@ create table public.farms (
   state text,
   join_code text not null unique check (char_length(join_code) between 6 and 10),
   owner_user_id uuid not null references auth.users(id) on delete restrict,
+  timezone text not null default 'UTC',
   created_at timestamptz not null default now()
 );
 
@@ -76,4 +77,54 @@ create table public.field_history_events (
   created_at timestamptz not null default now()
 );
 
--- Existing shifts/time_entries schema and RLS policies remain unchanged.
+create table public.shifts (
+  id uuid primary key default gen_random_uuid(),
+  farm_id uuid not null references public.farms(id) on delete cascade,
+  worker_user_id uuid not null references auth.users(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  job text not null,
+  field_name text,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  jobsite_lat double precision,
+  jobsite_lng double precision,
+  radius_m integer check (radius_m is null or radius_m >= 25),
+  field_id uuid references public.fields(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table public.time_entries (
+  id uuid primary key default gen_random_uuid(),
+  farm_id uuid not null references public.farms(id) on delete cascade,
+  worker_user_id uuid not null references auth.users(id) on delete cascade,
+  shift_id uuid references public.shifts(id) on delete set null,
+  job text,
+  field_name text,
+  field_id uuid references public.fields(id) on delete set null,
+  clock_in timestamptz not null,
+  clock_out timestamptz,
+  clock_in_lat double precision,
+  clock_in_lng double precision,
+  clock_in_accuracy_m double precision,
+  clock_out_lat double precision,
+  clock_out_lng double precision,
+  clock_out_accuracy_m double precision,
+  photo_path text,
+  approval_status text not null default 'pending'
+    check (approval_status in ('pending','approved','rejected')),
+  reviewed_by uuid references auth.users(id) on delete set null,
+  reviewed_at timestamptz,
+  qbo_sync_status text not null default 'not_synced'
+    check (qbo_sync_status in ('not_synced','syncing','synced','error')),
+  qbo_time_activity_id text,
+  qbo_realm_id text,
+  qbo_synced_at timestamptz,
+  qbo_sync_error text,
+  created_at timestamptz not null default now()
+);
+
+create index shifts_farm_start_idx on public.shifts(farm_id, starts_at);
+create index shifts_worker_user_idx on public.shifts(worker_user_id);
+create index time_entries_farm_clock_idx on public.time_entries(farm_id, clock_in);
+create index time_entries_worker_user_idx on public.time_entries(worker_user_id);
+create index time_entries_qbo_status_idx on public.time_entries(farm_id, approval_status, qbo_sync_status, clock_in);

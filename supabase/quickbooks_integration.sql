@@ -10,6 +10,8 @@ create table if not exists public.quickbooks_connections (
   access_token_expires_at timestamptz not null,
   refresh_token_expires_at timestamptz,
   connected_by uuid not null references auth.users(id) on delete restrict,
+  refresh_lock_token uuid,
+  refresh_lock_expires_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -29,6 +31,7 @@ create table if not exists public.quickbooks_employee_mappings (
 alter table public.time_entries
   add column if not exists qbo_sync_status text not null default 'not_synced',
   add column if not exists qbo_time_activity_id text,
+  add column if not exists qbo_realm_id text,
   add column if not exists qbo_synced_at timestamptz,
   add column if not exists qbo_sync_error text;
 
@@ -81,3 +84,35 @@ with check (
       and fm.role = 'owner'
   )
 );
+
+
+alter table public.farms
+  add column if not exists timezone text not null default 'UTC';
+
+create index if not exists qbo_connections_refresh_lock_idx
+  on public.quickbooks_connections (refresh_lock_expires_at);
+
+create index if not exists time_entries_qbo_status_idx
+  on public.time_entries (farm_id, approval_status, qbo_sync_status, clock_in);
+
+create or replace function public.claim_quickbooks_refresh(p_farm_id uuid, p_token uuid)
+returns boolean
+language sql
+volatile
+security invoker
+set search_path = public
+as $$
+  with claimed as (
+    update public.quickbooks_connections
+       set refresh_lock_token = p_token,
+           refresh_lock_expires_at = now() + interval '30 seconds'
+     where farm_id = p_farm_id
+       and (refresh_lock_expires_at is null or refresh_lock_expires_at < now())
+    returning 1
+  )
+  select exists(select 1 from claimed);
+$$;
+
+revoke all on function public.claim_quickbooks_refresh(uuid,uuid) from public;
+revoke all on function public.claim_quickbooks_refresh(uuid,uuid) from anon;
+grant execute on function public.claim_quickbooks_refresh(uuid,uuid) to authenticated;

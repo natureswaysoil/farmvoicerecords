@@ -12,6 +12,7 @@ type Mapping = {
 type Status = {
   connected: boolean;
   companyName: string | null;
+  timezone: string;
   workers: Worker[];
   mappings: Mapping[];
   quickBooksEmployees: Employee[];
@@ -22,12 +23,14 @@ export default function QuickBooksIntegrationPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [message, setMessage] = useState("Loading QuickBooks integration...");
   const [syncing, setSyncing] = useState(false);
+  const [timezone, setTimezone] = useState("");
 
   async function load() {
     const response = await fetch("/api/quickbooks/status", { cache: "no-store" });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks.");
     setStatus(body);
+    setTimezone(body.timezone ?? "UTC");
     setMessage("");
   }
 
@@ -54,6 +57,19 @@ export default function QuickBooksIntegrationPage() {
     const body = await response.json();
     if (!response.ok) return setMessage(body.error ?? "Unable to save mapping.");
     setMessage("Employee mapping saved.");
+    await load();
+  }
+
+
+  async function saveTimezone() {
+    const response = await fetch("/api/quickbooks/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timezone }),
+    });
+    const body = await response.json();
+    if (!response.ok) return setMessage(body.error ?? "Unable to save payroll timezone.");
+    setMessage("Payroll timezone saved.");
     await load();
   }
 
@@ -145,6 +161,28 @@ export default function QuickBooksIntegrationPage() {
             ) : (
               <p className="muted">No worker accounts are attached to this farm yet.</p>
             )}
+          </section>
+
+          <section className="card stack">
+            <h3>Payroll timezone</h3>
+            <p className="muted">
+              QuickBooks uses this timezone to determine each work date. Use an IANA timezone such as America/New_York.
+            </p>
+            <div className="inline">
+              <input
+                value={timezone}
+                onChange={(event) => setTimezone(event.target.value)}
+                placeholder="America/New_York"
+                style={{ minWidth: 260 }}
+              />
+              <button className="btn secondary" onClick={saveTimezone}>Save timezone</button>
+              <button
+                className="btn secondary"
+                onClick={() => setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)}
+              >
+                Use this device
+              </button>
+            </div>
           </section>
 
           <section className="card stack">

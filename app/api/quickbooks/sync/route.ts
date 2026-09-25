@@ -12,17 +12,35 @@ function durationParts(clockIn: string, clockOut: string) {
   return { hours: Math.floor(minutesTotal / 60), minutes: minutesTotal % 60 };
 }
 
+function localDate(iso: string, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 export async function POST() {
   try {
     const ctx = await getValidQuickBooksAccessToken();
 
-    const { data: mappings, error: mapError } = await ctx.supabase
-      .from("quickbooks_employee_mappings")
-      .select("worker_user_id, quickbooks_employee_id")
-      .eq("farm_id", ctx.farmId);
-    if (mapError) throw mapError;
+    const [mappingsResult, farmResult] = await Promise.all([
+      ctx.supabase
+        .from("quickbooks_employee_mappings")
+        .select("worker_user_id, quickbooks_employee_id")
+        .eq("farm_id", ctx.farmId),
+      ctx.supabase.from("farms").select("timezone").eq("id", ctx.farmId).single(),
+    ]);
+    if (mappingsResult.error) throw mappingsResult.error;
+    if (farmResult.error) throw farmResult.error;
 
-    const map = new Map((mappings ?? []).map((m) => [m.worker_user_id, m.quickbooks_employee_id]));
+    const map = new Map(
+      (mappingsResult.data ?? []).map((m) => [m.worker_user_id, m.quickbooks_employee_id])
+    );
+    const timezone = farmResult.data.timezone ?? "UTC";
 
     const { data: entries, error: entryError } = await ctx.supabase
       .from("time_entries")
@@ -45,21 +63,29 @@ export async function POST() {
         continue;
       }
 
-      await ctx.supabase
+      const { data: claimed, error: claimError } = await ctx.supabase
         .from("time_entries")
         .update({ qbo_sync_status: "syncing", qbo_sync_error: null })
         .eq("id", entry.id)
-        .eq("farm_id", ctx.farmId);
+        .eq("farm_id", ctx.farmId)
+        .eq("qbo_sync_status", entry.qbo_sync_status)
+        .select("id")
+        .maybeSingle();
+      if (claimError) throw claimError;
+      if (!claimed) {
+        skipped.push({ id: entry.id, reason: "Already claimed by another sync request." });
+        continue;
+      }
 
       try {
         const { hours, minutes } = durationParts(entry.clock_in, entry.clock_out!);
-        const txnDate = new Date(entry.clock_in).toISOString().slice(0, 10);
+        const txnDate = localDate(entry.clock_in, timezone);
         const description = [entry.job, entry.field_name].filter(Boolean).join(" - ").slice(0, 4000);
 
         const response = await qboRequest<{ TimeActivity?: { Id?: string } }>(
           ctx.connection.realm_id,
           ctx.accessToken,
-          "/timeactivity",
+          `/timeactivity?requestid=${encodeURIComponent(entry.id)}`,
           {
             method: "POST",
             body: JSON.stringify({
@@ -75,27 +101,36 @@ export async function POST() {
           }
         );
 
-        const qboId = response.TimeActivity?.Id ?? null;
+        const qboId = response.TimeActivity?.Id;
+        if (!qboId) throw new Error("QuickBooks did not return a TimeActivity ID.");
+
         const { error: updateError } = await ctx.supabase
           .from("time_entries")
           .update({
             qbo_sync_status: "synced",
             qbo_time_activity_id: qboId,
+            qbo_realm_id: ctx.connection.realm_id,
             qbo_synced_at: new Date().toISOString(),
             qbo_sync_error: null,
           })
           .eq("id", entry.id)
-          .eq("farm_id", ctx.farmId);
+          .eq("farm_id", ctx.farmId)
+          .eq("qbo_sync_status", "syncing");
         if (updateError) throw updateError;
         synced += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : "QuickBooks sync failed.";
-        await ctx.supabase
+        const { error: saveError } = await ctx.supabase
           .from("time_entries")
           .update({ qbo_sync_status: "error", qbo_sync_error: message })
           .eq("id", entry.id)
-          .eq("farm_id", ctx.farmId);
-        failed.push({ id: entry.id, error: message });
+          .eq("farm_id", ctx.farmId)
+          .eq("qbo_sync_status", "syncing");
+        if (saveError) {
+          failed.push({ id: entry.id, error: `${message}; also failed to save sync error: ${saveError.message}` });
+        } else {
+          failed.push({ id: entry.id, error: message });
+        }
       }
     }
 
