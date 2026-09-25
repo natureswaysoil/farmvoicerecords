@@ -156,7 +156,7 @@ Time is captured at clock-in/out; it is not continuous GPS tracking. GPS failure
 
 Only approved, completed entries are included in the payroll export. Times are exported in UTC: convert them to your payroll timezone. Hours are elapsed time; breaks, overtime, wage rates and payroll taxes are not calculated automatically.
 
-**QuickBooks:** The current export is a general approved-time CSV, not a verified direct QuickBooks Payroll import format. Map it using a supported importer or enter approved totals manually. Automatic “Connect QuickBooks” approved-time transfer is not available yet.
+**QuickBooks:** Farm owners can connect QuickBooks Online from the QuickBooks page, match each FarmVoice worker to the correct QuickBooks employee, set the farm payroll timezone, and send completed manager-approved time entries to QuickBooks. FarmVoice retains the detailed GPS and field records. The approved-time CSV remains available as a fallback. Review the transferred entries in QuickBooks before running payroll.
 
 The current permission model has owner and worker roles. The owner performs manager tasks; a separate delegated manager role is not implemented.
 
@@ -217,7 +217,7 @@ Recording GPS is part of field records; crew GPS time features are separate. Ope
 | Offline support | Device-local record drafts and save queue, with later sync |
 | Cloud storage | Farm data online after sync; job photos in file storage |
 
-Not currently provided: native app-store installation; full offline operation; automatic QuickBooks transfer; full payroll processing; continuous employee tracking; automatic field-boundary recognition; guaranteed timed SMS/push reminders; pesticide-record photo galleries; automatic record downloads; a separate manager role; or a verified general workflow for editing/deleting saved records. Contact support for corrections to saved records.
+Not currently provided: native app-store installation; full offline operation; full payroll processing or tax calculation; continuous employee tracking; automatic field-boundary recognition; guaranteed timed SMS/push reminders; pesticide-record photo galleries; automatic record downloads; a separate manager role; or a verified general workflow for editing/deleting saved records. QuickBooks Online transfer requires the farm owner to connect and map employees first. Contact support for corrections to saved records.
 
 ## 13. Troubleshooting
 
@@ -250,6 +250,7 @@ Support: natureswaysoil@gmail.com. Include your account email, farm name, device
 - [ ] Owner creates a test shift; employee sees it and verifies the times.
 - [ ] Employee clocks in, attaches a photo and clocks out.
 - [ ] Owner approves the entry and verifies the exported hours/timezone.
+- [ ] If QuickBooks is used, owner connects a test company, maps one employee, sets the payroll timezone and verifies one approved time entry appears correctly in QuickBooks.
 - [ ] Billing plan, cancellation route and support contact are checked before onboarding paying customers.
 
 Save/export logic and location validation were checked during development. Actual microphone behavior, phone GPS permissions, email delivery and the complete customer onboarding/billing experience still need testing on the devices and accounts you intend to use. Website copy may contain older instructions; current email sign-in instructions in this guide supersede references to signing in through ChatGPT.
