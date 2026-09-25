@@ -87,6 +87,7 @@ async function tokenRequest(params: URLSearchParams): Promise<QboTokenResponse> 
     },
     body: params,
     cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
