@@ -69,12 +69,37 @@ export default function TeamPage() {
     }
     setCtx(farm);
 
+    const memberQuery = supabase
+      .from("farm_members")
+      .select("user_id, role, employee_number")
+      .eq("farm_id", farm.farmId)
+      .order("employee_number");
+
+    const shiftQuery = supabase
+      .from("shifts")
+      .select("id, worker_user_id, job, field_name, starts_at, ends_at")
+      .eq("farm_id", farm.farmId)
+      .order("starts_at");
+
+    const timeQuery = supabase
+      .from("time_entries")
+      .select("id, worker_user_id, job, field_name, clock_in, clock_out, clock_in_lat, clock_in_lng, clock_in_accuracy_m, clock_out_lat, clock_out_lng, clock_out_accuracy_m, approval_status, reviewed_at")
+      .eq("farm_id", farm.farmId)
+      .order("clock_in", { ascending: false })
+      .limit(100);
+
+    if (farm.role !== "owner") {
+      memberQuery.eq("user_id", farm.userId);
+      shiftQuery.eq("worker_user_id", farm.userId);
+      timeQuery.eq("worker_user_id", farm.userId);
+    }
+
     const [{ data: farmRow, error: farmError }, { data: memberRows, error: memberError }, { data: shiftRows, error: shiftError }, { data: timeRows, error: timeError }] =
       await Promise.all([
         supabase.from("farms").select("name, join_code").eq("id", farm.farmId).single(),
-        supabase.from("farm_members").select("user_id, role, employee_number").eq("farm_id", farm.farmId).order("employee_number"),
-        supabase.from("shifts").select("id, worker_user_id, job, field_name, starts_at, ends_at").eq("farm_id", farm.farmId).order("starts_at"),
-        supabase.from("time_entries").select("id, worker_user_id, job, field_name, clock_in, clock_out, clock_in_lat, clock_in_lng, clock_in_accuracy_m, clock_out_lat, clock_out_lng, clock_out_accuracy_m, approval_status, reviewed_at").eq("farm_id", farm.farmId).order("clock_in", { ascending: false }).limit(100),
+        memberQuery,
+        shiftQuery,
+        timeQuery,
       ]);
 
     if (farmError) throw farmError;
@@ -112,14 +137,19 @@ export default function TeamPage() {
   async function addShift() {
     if (!ctx || ctx.role !== "owner") return setMessage("Owner access is required to schedule.");
     if (!shift.workerUserId || !shift.start || !shift.end) return setMessage("Choose a worker and enter start/end times.");
+    const startsAt = new Date(shift.start);
+    const endsAt = new Date(shift.end);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+      return setMessage("Shift end must be later than shift start.");
+    }
     const { error } = await supabase.from("shifts").insert({
       farm_id: ctx.farmId,
       worker_user_id: shift.workerUserId,
       created_by: ctx.userId,
       job: shift.job.trim() || "Field work",
       field_name: shift.fieldName.trim() || null,
-      starts_at: new Date(shift.start).toISOString(),
-      ends_at: new Date(shift.end).toISOString(),
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
     });
     if (error) return setMessage(error.message);
     setMessage("Shift scheduled.");
