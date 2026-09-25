@@ -9,6 +9,48 @@ function requireEnv(name: string) {
   return value;
 }
 
+export class QuickBooksApiError extends Error {
+  status: number | null;
+  intuitTid: string | null;
+  code: string | null;
+  detail: string | null;
+  reconnectRequired: boolean;
+
+  constructor(
+    message: string,
+    options?: {
+      status?: number | null;
+      intuitTid?: string | null;
+      code?: string | null;
+      detail?: string | null;
+      reconnectRequired?: boolean;
+    }
+  ) {
+    super(message);
+    this.name = "QuickBooksApiError";
+    this.status = options?.status ?? null;
+    this.intuitTid = options?.intuitTid ?? null;
+    this.code = options?.code ?? null;
+    this.detail = options?.detail ?? null;
+    this.reconnectRequired = options?.reconnectRequired ?? false;
+  }
+}
+
+export function isQuickBooksApiError(error: unknown): error is QuickBooksApiError {
+  return error instanceof QuickBooksApiError;
+}
+
+function requiresReconnect(code: string | null, status: number | null, message: string) {
+  const normalized = `${code ?? ""} ${message}`.toLowerCase();
+  return (
+    code === "invalid_grant" ||
+    status === 401 ||
+    normalized.includes("refresh token") ||
+    normalized.includes("token revoked") ||
+    normalized.includes("authorization has expired")
+  );
+}
+
 export function getQuickBooksConfig() {
   return {
     clientId: requireEnv("QBO_CLIENT_ID"),
@@ -76,7 +118,12 @@ export type QboTokenResponse = {
   x_refresh_token_expires_in?: number;
 };
 
-async function tokenRequest(params: URLSearchParams): Promise<QboTokenResponse> {
+export type QboResponse<T> = {
+  data: T;
+  intuitTid: string | null;
+};
+
+async function tokenRequest(params: URLSearchParams): Promise<QboResponse<QboTokenResponse>> {
   const { clientId, clientSecret } = getQuickBooksConfig();
   const response = await fetch(QBO_TOKEN_URL, {
     method: "POST",
@@ -89,11 +136,27 @@ async function tokenRequest(params: URLSearchParams): Promise<QboTokenResponse> 
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   });
+
+  const intuitTid = response.headers.get("intuit_tid");
   const body = await response.json().catch(() => ({}));
+
   if (!response.ok) {
-    throw new Error(body?.error_description ?? body?.error ?? "QuickBooks token request failed.");
+    const code = typeof body?.error === "string" ? body.error : null;
+    const message =
+      body?.error_description ??
+      body?.error ??
+      `QuickBooks token request failed (${response.status}).`;
+
+    throw new QuickBooksApiError(message, {
+      status: response.status,
+      intuitTid,
+      code,
+      detail: typeof body?.error_description === "string" ? body.error_description : null,
+      reconnectRequired: requiresReconnect(code, response.status, String(message)),
+    });
   }
-  return body as QboTokenResponse;
+
+  return { data: body as QboTokenResponse, intuitTid };
 }
 
 export function exchangeAuthorizationCode(code: string) {
@@ -121,7 +184,7 @@ export async function qboRequest<T>(
   accessToken: string,
   path: string,
   init?: RequestInit
-): Promise<T> {
+): Promise<QboResponse<T>> {
   const headers = new Headers(init?.headers);
   headers.set("Accept", "application/json");
   headers.set("Content-Type", "application/json");
@@ -133,14 +196,31 @@ export async function qboRequest<T>(
       ...init,
       headers,
       cache: "no-store",
+      signal: init?.signal ?? AbortSignal.timeout(30_000),
     }
   );
+
+  const intuitTid = response.headers.get("intuit_tid");
   const body = await response.json().catch(() => ({}));
+
   if (!response.ok) {
     const fault = body?.Fault?.Error?.[0];
-    throw new Error(fault?.Detail ?? fault?.Message ?? `QuickBooks request failed (${response.status}).`);
+    const code = typeof fault?.code === "string" ? fault.code : null;
+    const message =
+      fault?.Detail ??
+      fault?.Message ??
+      `QuickBooks request failed (${response.status}).`;
+
+    throw new QuickBooksApiError(message, {
+      status: response.status,
+      intuitTid,
+      code,
+      detail: typeof fault?.Message === "string" ? fault.Message : null,
+      reconnectRequired: requiresReconnect(code, response.status, String(message)),
+    });
   }
-  return body as T;
+
+  return { data: body as T, intuitTid };
 }
 
 export function tokenExpiry(seconds: number) {
