@@ -102,9 +102,10 @@ export async function getValidQuickBooksAccessToken() {
       new Date(lockedConnection.access_token_expires_at).getTime() >
       Date.now() + 90_000
     ) {
+      await releaseRefreshLock(ctx.supabase, ctx.farmId, lockToken);
       return {
         ...ctx,
-        connection: lockedConnection,
+        connection: { ...lockedConnection, refresh_lock_token: null, refresh_lock_expires_at: null },
         accessToken: decryptSecret(lockedConnection.access_token_ciphertext),
       };
     }
