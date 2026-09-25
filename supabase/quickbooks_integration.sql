@@ -208,6 +208,7 @@ begin
      or new.qbo_synced_at is distinct from old.qbo_synced_at
      or new.qbo_sync_started_at is distinct from old.qbo_sync_started_at
      or new.qbo_sync_error is distinct from old.qbo_sync_error
+     or new.qbo_intuit_tid is distinct from old.qbo_intuit_tid
      or new.created_at is distinct from old.created_at then
     raise exception 'Workers may only complete clock-out fields';
   end if;

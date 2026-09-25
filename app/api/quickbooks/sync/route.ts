@@ -230,8 +230,10 @@ export async function POST() {
       {
         error: error instanceof Error ? error.message : "QuickBooks sync failed.",
         reconnectRequired:
-          error instanceof Error &&
-          error.message.toLowerCase().includes("reconnect"),
+          isQuickBooksApiError(error)
+            ? error.reconnectRequired
+            : error instanceof Error &&
+              error.message.toLowerCase().includes("reconnect"),
       },
       { status: 400 }
     );
