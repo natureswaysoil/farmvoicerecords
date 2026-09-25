@@ -138,3 +138,87 @@ $$;
 revoke all on function public.claim_quickbooks_refresh(uuid,uuid) from public;
 revoke all on function public.claim_quickbooks_refresh(uuid,uuid) from anon;
 grant execute on function public.claim_quickbooks_refresh(uuid,uuid) to authenticated;
+
+
+-- Re-apply the team/time security rules for existing FarmVoice databases.
+alter table public.shifts enable row level security;
+alter table public.time_entries enable row level security;
+
+drop policy if exists "members read shifts" on public.shifts;
+drop policy if exists "owners or assigned workers read shifts" on public.shifts;
+create policy "owners or assigned workers read shifts"
+on public.shifts
+for select
+to authenticated
+using (
+  worker_user_id = (select auth.uid())
+  or exists (
+    select 1 from public.farms f
+    where f.id = shifts.farm_id
+      and f.owner_user_id = (select auth.uid())
+  )
+);
+
+create or replace function public.guard_worker_time_entry_update()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if (select auth.uid()) is null then
+    return new;
+  end if;
+
+  if exists (
+    select 1 from public.farms f
+    where f.id = old.farm_id
+      and f.owner_user_id = (select auth.uid())
+  ) then
+    return new;
+  end if;
+
+  if old.worker_user_id <> (select auth.uid()) then
+    raise exception 'Workers may update only their own time entries';
+  end if;
+
+  if new.farm_id is distinct from old.farm_id
+     or new.worker_user_id is distinct from old.worker_user_id
+     or new.shift_id is distinct from old.shift_id
+     or new.job is distinct from old.job
+     or new.field_name is distinct from old.field_name
+     or new.field_id is distinct from old.field_id
+     or new.clock_in is distinct from old.clock_in
+     or new.clock_in_lat is distinct from old.clock_in_lat
+     or new.clock_in_lng is distinct from old.clock_in_lng
+     or new.clock_in_accuracy_m is distinct from old.clock_in_accuracy_m
+     or new.photo_path is distinct from old.photo_path
+     or new.approval_status is distinct from old.approval_status
+     or new.reviewed_by is distinct from old.reviewed_by
+     or new.reviewed_at is distinct from old.reviewed_at
+     or new.qbo_sync_status is distinct from old.qbo_sync_status
+     or new.qbo_time_activity_id is distinct from old.qbo_time_activity_id
+     or new.qbo_realm_id is distinct from old.qbo_realm_id
+     or new.qbo_synced_at is distinct from old.qbo_synced_at
+     or new.qbo_sync_started_at is distinct from old.qbo_sync_started_at
+     or new.qbo_sync_error is distinct from old.qbo_sync_error
+     or new.created_at is distinct from old.created_at then
+    raise exception 'Workers may only complete clock-out fields';
+  end if;
+
+  if old.clock_out is not null then
+    raise exception 'Completed time entries cannot be changed by workers';
+  end if;
+
+  if new.clock_out is null then
+    raise exception 'Clock-out time is required';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_worker_time_entry_update_trigger on public.time_entries;
+create trigger guard_worker_time_entry_update_trigger
+before update on public.time_entries
+for each row execute function public.guard_worker_time_entry_update();
