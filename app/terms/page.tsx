@@ -75,18 +75,19 @@ export default function TermsPage() {
           accounting, tax reporting, or other financial decisions.
         </p>
         <p>
-          You may disconnect the integration. Disconnecting stops future FarmVoice
-          synchronization after the connection is removed, but does not automatically delete
-          records already created in QuickBooks.
+          A farm owner can disconnect QuickBooks from the FarmVoice QuickBooks integration page.
+          Disconnecting removes FarmVoice's stored QuickBooks connection and employee mappings and
+          stops future FarmVoice synchronization until the farm reconnects. It does not
+          automatically delete records already created in QuickBooks.
         </p>
 
         <h2>Subscriptions and billing</h2>
         <p>
-          Paid features may require a subscription. Prices, included users, trial terms, taxes,
-          renewal terms, and cancellation options are shown at checkout or in the billing
-          interface. Payment processing may be provided by Stripe or another payment processor.
-          Except where required by law or expressly stated otherwise, fees already paid are not
-          refundable for partially used billing periods.
+          FarmVoice may offer paid subscription plans. Current plan descriptions and prices may be
+          displayed on the pricing page. Until an online checkout and subscription-management flow
+          is made available, any paid subscription, renewal, cancellation, tax, or refund terms
+          will be communicated to the customer before a charge is accepted. When online payment
+          processing becomes available, it may be provided by Stripe or another payment processor.
         </p>
 
         <h2>Acceptable use</h2>
