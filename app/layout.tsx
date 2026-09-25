@@ -18,6 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/records">Field records</Link>
               <Link href="/fields">Fields</Link>
               <Link href="/team">Team</Link>
+              <Link href="/integrations/quickbooks">QuickBooks</Link>
               <Link href="/join">Join farm</Link>
               <Link href="/billing">Pricing</Link>
               <Link className="btn" href="/login">Sign in</Link>
