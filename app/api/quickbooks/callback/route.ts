@@ -37,23 +37,28 @@ export async function GET(request: NextRequest) {
     const tokens = await exchangeAuthorizationCode(code);
     const company = await qboRequest<{ CompanyInfo?: { CompanyName?: string } }>(
       realmId,
-      tokens.access_token,
+      tokens.data.access_token,
       "/companyinfo/" + encodeURIComponent(realmId)
     );
 
     const row = {
       farm_id: farmId,
       realm_id: realmId,
-      company_name: company.CompanyInfo?.CompanyName ?? null,
-      access_token_ciphertext: encryptSecret(tokens.access_token),
-      refresh_token_ciphertext: encryptSecret(tokens.refresh_token),
-      access_token_expires_at: tokenExpiry(tokens.expires_in),
-      refresh_token_expires_at: tokens.x_refresh_token_expires_in
-        ? tokenExpiry(tokens.x_refresh_token_expires_in)
+      company_name: company.data.CompanyInfo?.CompanyName ?? null,
+      access_token_ciphertext: encryptSecret(tokens.data.access_token),
+      refresh_token_ciphertext: encryptSecret(tokens.data.refresh_token),
+      access_token_expires_at: tokenExpiry(tokens.data.expires_in),
+      refresh_token_expires_at: tokens.data.x_refresh_token_expires_in
+        ? tokenExpiry(tokens.data.x_refresh_token_expires_in)
         : null,
       connected_by: user.id,
       refresh_lock_token: null,
       refresh_lock_expires_at: null,
+      reconnect_required: false,
+      last_auth_error: null,
+      last_auth_error_at: null,
+      last_intuit_tid: company.intuitTid ?? tokens.intuitTid,
+      last_api_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
