@@ -121,16 +121,16 @@ export async function qboRequest<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
+  const headers = new Headers(init?.headers);
+  headers.set("Accept", "application/json");
+  headers.set("Content-Type", "application/json");
+  headers.set("Authorization", `Bearer ${accessToken}`);
+
   const response = await fetch(
     `${quickBooksApiBase()}/v3/company/${encodeURIComponent(realmId)}${path}`,
     {
       ...init,
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        ...(init?.headers ?? {}),
-      },
+      headers,
       cache: "no-store",
     }
   );
