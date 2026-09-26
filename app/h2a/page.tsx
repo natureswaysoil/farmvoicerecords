@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/src/lib/supabase/client";
-import { getFarmContext, type FarmContext } from "@/src/lib/farm-cloud";
+import { type FarmContext } from "@/src/lib/farm-cloud";
+import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
 
 type Contract = {
   id: string;
@@ -69,7 +70,8 @@ type FarmMember = {
 };
 
 function csvEscape(value: unknown) {
-  const s = value == null ? "" : String(value);
+  let s = value == null ? "" : String(value);
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -86,6 +88,7 @@ function downloadCsv(name: string, rows: unknown[][]) {
 export default function H2APage() {
   const [supabase] = useState(() => createClient());
   const [ctx, setCtx] = useState<FarmContext | null>(null);
+  const [farmChoices, setFarmChoices] = useState<H2aFarmChoice[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [daily, setDaily] = useState<DailyRecord[]>([]);
@@ -141,18 +144,28 @@ export default function H2APage() {
 
   const workerName = useMemo(() => new Map(workers.map((w) => [w.id, w.preferred_name || w.legal_name])), [workers]);
 
-  async function load() {
+  async function load(preferredFarmId?: string) {
     try {
-      const farm = await getFarmContext(supabase);
-      if (!farm) {
+      const choices = await loadH2aFarmChoices(supabase);
+      setFarmChoices(choices);
+      const farm = preferredFarmId
+        ? choices.find((choice) => choice.farmId === preferredFarmId) ?? null
+        : pickH2aFarm(choices);
+      if (!choices.length) {
         setMessage("Sign in and join a farm before using H-2A records.");
         return;
       }
+      if (!farm) {
+        setCtx(null);
+        setMessage("Choose the farm whose H-2A records you want to manage.");
+        return;
+      }
+      selectH2aFarm(farm.farmId);
       setCtx(farm);
       const [c,w,d,h,r,m] = await Promise.all([
         supabase.from("h2a_contracts").select("id,name,eta_case_number,job_order_number,start_date,end_date,crop_or_commodity,expected_hours_per_day,expected_days_per_week,hourly_wage,active").eq("farm_id",farm.farmId).order("start_date",{ascending:false}),
         supabase.from("h2a_workers").select("id,contract_id,employee_number,legal_name,preferred_name,worker_type,preferred_language,arrival_date,work_authorization_end,status").eq("farm_id",farm.farmId).order("employee_number"),
-        supabase.from("h2a_daily_records").select("id,worker_id,work_date,crew_name,worksite,field_name,job,hours_offered,hours_worked,piece_unit,piece_quantity,submitted_at,locked_at,approved_at").eq("farm_id",farm.farmId).order("work_date",{ascending:false}).limit(250),
+        supabase.from("h2a_daily_records").select("id,worker_id,work_date,crew_name,worksite,field_name,job,hours_offered,hours_worked,piece_unit,piece_quantity,submitted_at,locked_at,approved_at").eq("farm_id",farm.farmId).order("work_date",{ascending:false}),
         supabase.from("h2a_housing").select("id,name,address,max_occupancy,certificate_expires_on").eq("farm_id",farm.farmId).order("name"),
         supabase.from("h2a_user_roles").select("user_id,role").eq("farm_id",farm.farmId),
         supabase.from("farm_members").select("user_id,role,employee_number").eq("farm_id",farm.farmId),
@@ -329,7 +342,7 @@ export default function H2APage() {
 
   async function exportAudit() {
     if(!ctx) return;
-    const [contractsR,workersR,dailyR,housingR,transportR,trainingR,recruitmentR,separationsR] = await Promise.all([
+    const [contractsR,workersR,dailyR,housingR,transportR,trainingR,recruitmentR,separationsR,auditR] = await Promise.all([
       supabase.from("h2a_contracts").select("*").eq("farm_id",ctx.farmId),
       supabase.from("h2a_workers").select("*").eq("farm_id",ctx.farmId),
       supabase.from("h2a_daily_records").select("*").eq("farm_id",ctx.farmId),
@@ -338,11 +351,12 @@ export default function H2APage() {
       supabase.from("h2a_training").select("*").eq("farm_id",ctx.farmId),
       supabase.from("h2a_recruitment").select("*").eq("farm_id",ctx.farmId),
       supabase.from("h2a_separations").select("*").eq("farm_id",ctx.farmId),
+      supabase.from("h2a_audit_events").select("*").eq("farm_id",ctx.farmId).order("changed_at"),
     ]);
     const sections:[string,unknown[]][]=[
       ["contracts",contractsR.data??[]],["workers",workersR.data??[]],["daily_records",dailyR.data??[]],
       ["housing",housingR.data??[]],["transportation",transportR.data??[]],["training",trainingR.data??[]],
-      ["recruitment",recruitmentR.data??[]],["separations",separationsR.data??[]]
+      ["recruitment",recruitmentR.data??[]],["separations",separationsR.data??[]],["audit_events",auditR.data??[]]
     ];
     const rows:unknown[][]=[["FarmVoice H-2A audit export"],["Generated",new Date().toISOString()]];
     for(const [name,items] of sections){
@@ -379,6 +393,31 @@ export default function H2APage() {
       </div>
 
       {message && <div className="notice">{message}</div>}
+
+      {farmChoices.length > 1 && (
+        <section className="card form">
+          <div className="field">
+            <label>Farm</label>
+            <select
+              value={ctx?.farmId ?? ""}
+              onChange={(e) => {
+                const farmId = e.target.value;
+                if (!farmId) {
+                  setCtx(null);
+                  setMessage("Choose the farm whose H-2A records you want to manage.");
+                  return;
+                }
+                selectH2aFarm(farmId);
+                void load(farmId);
+              }}
+            >
+              <option value="">Choose a farm</option>
+              {farmChoices.map((farm) => <option key={farm.farmId} value={farm.farmId}>{farm.name}</option>)}
+            </select>
+          </div>
+        </section>
+      )}
+
 
       <section className="grid-3">
         <div className="card"><div className="kicker">Active workers</div><div className="stat">{workers.filter(w=>w.status==="active"||w.status==="expected").length}</div></div>
