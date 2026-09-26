@@ -12,7 +12,7 @@ export default function TermsPage() {
       <div>
         <div className="kicker">Legal</div>
         <h1>Terms of Use &amp; End-User License Agreement</h1>
-        <p className="muted">Effective September 25, 2026</p>
+        <p className="muted">Effective September 26, 2026</p>
       </div>
 
       <section className="card stack">
@@ -52,6 +52,24 @@ export default function TermsPage() {
           Automated organization, transcription, extraction, validation, reminders, and
           completeness checks may contain errors or omit information. Do not rely on an automated
           result without reviewing the underlying facts.
+        </p>
+
+        <h2>Accuracy of records, reports, and calculations</h2>
+        <p>
+          FarmVoice depends on information entered by users, data supplied by connected services,
+          device sensors, automated calculations, and software processing. FarmVoice does not
+          warrant or guarantee that any record, report, calculation, export, synchronization,
+          transcription, GPS reading, payroll-preparation output, pesticide record, compliance
+          record, or other information generated or displayed by the service is accurate,
+          complete, current, or suitable for submission to an employer, payroll provider,
+          accountant, insurer, regulator, or government agency.
+        </p>
+        <p>
+          You are responsible for reviewing source information and verifying all records and
+          reports before relying on, approving, exporting, filing, paying, applying, or submitting
+          them. FarmVoice is not a substitute for required professional review or for records that
+          applicable law, a pesticide label, an employer, a payroll provider, or a government
+          agency requires you to verify independently.
         </p>
 
         <h2>GPS, timekeeping, and employee use</h2>
@@ -132,10 +150,13 @@ export default function TermsPage() {
           To the maximum extent permitted by law, FarmVoice and Nature&apos;s Way Soil &amp;
           Vermicompost LLC will not be liable for indirect, incidental, special, consequential,
           exemplary, or punitive damages, or for lost profits, lost data, payroll errors,
-          compliance penalties, or business interruption arising from use of the service. Where
-          liability cannot be excluded, our aggregate liability will not exceed the amount you
-          paid to FarmVoice for the service during the twelve months before the event giving rise
-          to the claim.
+          compliance penalties, inaccurate or incomplete reports, filing or reporting errors,
+          pesticide application or recordkeeping errors, payroll discrepancies, tax or accounting
+          errors, third-party synchronization errors, or business interruption arising from use
+          of or reliance on the service. You assume responsibility for reviewing and verifying
+          information before acting on or submitting it. Where liability cannot be excluded, our
+          aggregate liability will not exceed the amount you paid to FarmVoice for the service
+          during the twelve months before the event giving rise to the claim.
         </p>
 
         <h2>Termination</h2>
