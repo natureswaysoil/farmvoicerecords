@@ -38,26 +38,45 @@ export type CloudHistoryEvent = {
   created_at: string;
 };
 
-export async function getFarmContext(
+export async function getFarmContexts(
   supabase: SupabaseClient
-): Promise<FarmContext | null> {
+): Promise<FarmContext[]> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) return null;
+  if (userError || !userData.user) return [];
 
   const { data, error } = await supabase
     .from("farm_members")
     .select("farm_id, role")
     .eq("user_id", userData.user.id)
-    .limit(1)
-    .maybeSingle();
+    .order("created_at");
 
-  if (error || !data) return null;
+  if (error || !data) return [];
 
-  return {
+  return data.map((row) => ({
     userId: userData.user.id,
-    farmId: data.farm_id,
-    role: data.role as "owner" | "worker",
-  };
+    farmId: row.farm_id as string,
+    role: row.role as "owner" | "worker",
+  }));
+}
+
+export async function getFarmContext(
+  supabase: SupabaseClient,
+  preferredFarmId?: string | null
+): Promise<FarmContext | null> {
+  const contexts = await getFarmContexts(supabase);
+  if (!contexts.length) return null;
+
+  const selected =
+    preferredFarmId ||
+    (typeof window !== "undefined" ? window.localStorage.getItem("farmvoice_selected_farm_id") : null);
+
+  return contexts.find((ctx) => ctx.farmId === selected) ?? contexts[0];
+}
+
+export function rememberFarmSelection(farmId: string) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("farmvoice_selected_farm_id", farmId);
+  }
 }
 
 export async function loadCloudFields(
