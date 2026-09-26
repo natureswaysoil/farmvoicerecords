@@ -9,12 +9,46 @@ export default function JoinPage() {
   const [code, setCode] = useState("");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [role, setRole] = useState<"owner" | "worker" | null>(null);
   const [message, setMessage] = useState("");
   const [joining, setJoining] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
+    void (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      setSignedIn(Boolean(user));
+      setEmail(user?.email ?? null);
+
+      if (!user) {
+        setRole(null);
+        return;
+      }
+
+      const { data: member } = await supabase
+        .from("farm_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      setRole((member?.role as "owner" | "worker" | undefined) ?? null);
+    })();
   }, [supabase]);
+
+  async function useDifferentAccount() {
+    setSwitching(true);
+    setMessage("");
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      setMessage("Unable to sign out this browser session. Please try again.");
+      setSwitching(false);
+      return;
+    }
+    window.location.assign("/login?next=%2Fjoin");
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -22,6 +56,11 @@ export default function JoinPage() {
 
     if (!/^[A-Z0-9]{6,10}$/.test(normalized)) {
       setMessage("Enter the complete 6- to 10-character farm join code.");
+      return;
+    }
+
+    if (role === "owner") {
+      setMessage("You are signed in as a farm owner. Use a different worker account before joining.");
       return;
     }
 
@@ -60,7 +99,7 @@ export default function JoinPage() {
         {signedIn === false && (
           <div className="notice" style={{ marginBottom: 18 }}>
             <strong>Sign in first.</strong>
-            <p className="small">Your join code will be entered after sign-in, so FarmVoice does not accidentally create a separate owner farm.</p>
+            <p className="small">Use the worker's FarmVoice account, not the farm owner's account.</p>
             <div className="inline">
               <Link className="btn" href={`/login?next=${encodeURIComponent(returnPath)}`}>Sign in</Link>
               <Link className="btn secondary" href={`/signup?next=${encodeURIComponent(returnPath)}`}>Create worker account</Link>
@@ -68,7 +107,25 @@ export default function JoinPage() {
           </div>
         )}
 
-        {signedIn !== false && (
+        {signedIn && (
+          <div className="notice" style={{ marginBottom: 18 }}>
+            <strong>Signed in as {email ?? "this account"}</strong>
+            {role === "owner" ? (
+              <>
+                <p className="small">
+                  This is a farm-owner account, so it cannot be added again as a worker. Sign out of this browser session and use the worker account.
+                </p>
+                <button className="btn secondary" type="button" onClick={useDifferentAccount} disabled={switching}>
+                  {switching ? "Signing out..." : "Use a different account"}
+                </button>
+              </>
+            ) : (
+              <p className="small">If this is not the worker account you want to add, use a different account before joining.</p>
+            )}
+          </div>
+        )}
+
+        {signedIn && role !== "owner" && (
           <form className="form" onSubmit={submit}>
             <div className="field">
               <label htmlFor="code">Farm join code</label>
