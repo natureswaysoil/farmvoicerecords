@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/src/lib/supabase/client";
-import { getFarmContext, type FarmContext } from "@/src/lib/farm-cloud";
+import { type FarmContext } from "@/src/lib/farm-cloud";
+import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
 
 type Contract={id:string;name:string;start_date:string;end_date:string;expected_hours_per_day:number|null;expected_days_per_week:number|null;hourly_wage:number|null};
 type Worker={id:string;employee_number:string;legal_name:string;preferred_name:string|null;contract_id:string|null};
@@ -11,12 +12,13 @@ type Daily={worker_id:string;contract_id:string|null;work_date:string;hours_offe
 type Pay={id:string;worker_id:string;period_start:string;period_end:string;hours_offered:number;hours_worked:number;hourly_rate:number|null;piece_earnings:number;gross_earnings:number;deductions:number;reimbursements:number;net_amount:number|null;reviewed_at:string|null};
 
 function daysInclusive(a:string,b:string){const x=new Date(a+"T00:00:00Z"),y=new Date(b+"T00:00:00Z");return Math.max(0,Math.floor((y.getTime()-x.getTime())/86400000)+1)}
-function csvEscape(v:unknown){const s=v==null?"":String(v);return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
+function csvEscape(v:unknown){let s=v==null?"":String(v);if(/^[=+\-@]/.test(s))s="'"+s;return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
 function download(name:string,rows:unknown[][]){const b=new Blob([rows.map(r=>r.map(csvEscape).join(",")).join("\n")],{type:"text/csv"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
 
 export default function H2APayrollPage(){
  const [supabase]=useState(()=>createClient());
  const [ctx,setCtx]=useState<FarmContext|null>(null);
+ const [farmChoices,setFarmChoices]=useState<H2aFarmChoice[]>([]);
  const [contracts,setContracts]=useState<Contract[]>([]);
  const [workers,setWorkers]=useState<Worker[]>([]);
  const [daily,setDaily]=useState<Daily[]>([]);
@@ -25,9 +27,13 @@ export default function H2APayrollPage(){
  const [wage,setWage]=useState({contractId:"",effective:new Date().toISOString().slice(0,10),rate:"",source:""});
  const [form,setForm]=useState({workerId:"",contractId:"",start:"",end:"",payday:"",rate:"",pieceEarnings:"0",deductions:"0",reimbursements:"0"});
 
- async function load(){
+ async function load(preferredFarmId?:string){
   try{
-   const farm=await getFarmContext(supabase); if(!farm){setMessage("Sign in first.");return} setCtx(farm);
+   const choices=await loadH2aFarmChoices(supabase);setFarmChoices(choices);
+   const farm=preferredFarmId?choices.find(c=>c.farmId===preferredFarmId)??null:pickH2aFarm(choices);
+   if(!choices.length){setMessage("Sign in first.");return}
+   if(!farm){setCtx(null);setMessage("Choose the farm whose H-2A payroll records you want to manage.");return}
+   selectH2aFarm(farm.farmId);setCtx(farm);
    const [c,w,d,p]=await Promise.all([
     supabase.from("h2a_contracts").select("id,name,start_date,end_date,expected_hours_per_day,expected_days_per_week,hourly_wage").eq("farm_id",farm.farmId),
     supabase.from("h2a_workers").select("id,employee_number,legal_name,preferred_name,contract_id").eq("farm_id",farm.farmId).order("employee_number"),
@@ -54,6 +60,7 @@ export default function H2APayrollPage(){
  return <main className="container section stack">
   <div><div className="kicker">H-2A payroll preparation</div><h1 style={{fontSize:"clamp(36px,6vw,60px)"}}>Wages, statements & guarantee review</h1><p className="lede">Prepare payroll records from crew-leader time without requiring worker phones. All calculations require employer review.</p><p><Link className="btn secondary" href="/h2a">Back to H-2A dashboard</Link></p></div>
   {message&&<div className="notice">{message}</div>}
+  {farmChoices.length>1&&<section className="card form"><div className="field"><label>Farm</label><select value={ctx?.farmId??""} onChange={e=>{const id=e.target.value;if(!id){setCtx(null);setMessage("Choose the farm whose H-2A payroll records you want to manage.");return}selectH2aFarm(id);void load(id)}}><option value="">Choose a farm</option>{farmChoices.map(f=><option key={f.farmId} value={f.farmId}>{f.name}</option>)}</select></div></section>}
   <section className="card stack"><div><div className="kicker">Three-fourths planning review</div><h2>Worker progress</h2></div><div style={{overflowX:"auto"}}><table className="table"><thead><tr><th>Worker</th><th>Contract scheduled hours</th><th>75% reference</th><th>Hours offered recorded</th><th>Hours worked</th></tr></thead><tbody>{workers.map(w=>{const c=contracts.find(x=>x.id===w.contract_id);const total=c?.expected_hours_per_day&&c?.expected_days_per_week?daysInclusive(c.start_date,c.end_date)/7*Number(c.expected_hours_per_day)*Number(c.expected_days_per_week):0;const rows=daily.filter(r=>r.worker_id===w.id);const offered=rows.reduce((s,r)=>s+Number(r.hours_offered||0),0),worked=rows.reduce((s,r)=>s+Number(r.hours_worked||0),0);return <tr key={w.id}><td>{w.employee_number} · {w.preferred_name||w.legal_name}</td><td>{total?total.toFixed(1):"—"}</td><td>{total?(total*.75).toFixed(1):"—"}</td><td>{offered.toFixed(1)}</td><td>{worked.toFixed(1)}</td></tr>})}</tbody></table></div><p className="small muted">This is a planning reference based on configured contract dates/hours, not a legal determination of the H-2A three-fourths guarantee. Review the certified job order and applicable rules.</p></section>
   <section className="grid-2">
    <form className="card form" onSubmit={saveWage}><div><div className="kicker">Wage history</div><h2>Record verified wage rate</h2></div><div className="field"><label>Contract</label><select value={wage.contractId} onChange={e=>setWage({...wage,contractId:e.target.value})}><option value="">Select</option>{contracts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="row"><div className="field"><label>Effective date</label><input type="date" value={wage.effective} onChange={e=>setWage({...wage,effective:e.target.value})}/></div><div className="field"><label>Hourly rate</label><input required inputMode="decimal" value={wage.rate} onChange={e=>setWage({...wage,rate:e.target.value})}/></div></div><div className="field"><label>Source / verification note</label><input value={wage.source} onChange={e=>setWage({...wage,source:e.target.value})}/></div><button className="btn">Save verified rate</button></form>
