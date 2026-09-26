@@ -61,6 +61,12 @@ type H2aRole = {
   role: string;
 };
 
+type FarmMember = {
+  user_id: string;
+  role: "owner" | "worker";
+  employee_number: string | null;
+};
+
 function csvEscape(value: unknown) {
   const s = value == null ? "" : String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -84,6 +90,7 @@ export default function H2APage() {
   const [daily, setDaily] = useState<DailyRecord[]>([]);
   const [housing, setHousing] = useState<Housing[]>([]);
   const [roles, setRoles] = useState<H2aRole[]>([]);
+  const [farmMembers, setFarmMembers] = useState<FarmMember[]>([]);
   const [message, setMessage] = useState("Loading H-2A records...");
   const [gps, setGps] = useState<{lat:number;lng:number;accuracy:number;capturedAt:string}|null>(null);
 
@@ -141,19 +148,21 @@ export default function H2APage() {
         return;
       }
       setCtx(farm);
-      const [c,w,d,h,r] = await Promise.all([
+      const [c,w,d,h,r,m] = await Promise.all([
         supabase.from("h2a_contracts").select("id,name,eta_case_number,job_order_number,start_date,end_date,crop_or_commodity,expected_hours_per_day,expected_days_per_week,hourly_wage,active").eq("farm_id",farm.farmId).order("start_date",{ascending:false}),
         supabase.from("h2a_workers").select("id,contract_id,employee_number,legal_name,preferred_name,worker_type,preferred_language,arrival_date,work_authorization_end,status").eq("farm_id",farm.farmId).order("employee_number"),
         supabase.from("h2a_daily_records").select("id,worker_id,work_date,crew_name,worksite,field_name,job,hours_offered,hours_worked,piece_unit,piece_quantity,submitted_at,locked_at,approved_at").eq("farm_id",farm.farmId).order("work_date",{ascending:false}).limit(250),
         supabase.from("h2a_housing").select("id,name,address,max_occupancy,certificate_expires_on").eq("farm_id",farm.farmId).order("name"),
         supabase.from("h2a_user_roles").select("user_id,role").eq("farm_id",farm.farmId),
+        supabase.from("farm_members").select("user_id,role,employee_number").eq("farm_id",farm.farmId),
       ]);
-      for (const result of [c,w,d,h,r]) if (result.error) throw result.error;
+      for (const result of [c,w,d,h,r,m]) if (result.error) throw result.error;
       setContracts((c.data ?? []) as Contract[]);
       setWorkers((w.data ?? []) as Worker[]);
       setDaily((d.data ?? []) as DailyRecord[]);
       setHousing((h.data ?? []) as Housing[]);
       setRoles((r.data ?? []) as H2aRole[]);
+      setFarmMembers((m.data ?? []) as FarmMember[]);
       setMessage("");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to load H-2A records.");
@@ -297,6 +306,17 @@ export default function H2APage() {
     setMessage(error?error.message:"Recruitment contact saved.");
   }
 
+  async function setH2aRole(userId: string, role: string) {
+    if (!ctx || !isOwner) return;
+    await supabase.from("h2a_user_roles").delete().eq("farm_id",ctx.farmId).eq("user_id",userId);
+    if (role) {
+      const { error } = await supabase.from("h2a_user_roles").insert({farm_id:ctx.farmId,user_id:userId,role});
+      if (error) return setMessage(error.message);
+    }
+    setMessage(role ? "H-2A role assigned." : "H-2A role removed.");
+    void load();
+  }
+
   async function addSeparation(e: FormEvent) {
     e.preventDefault(); if(!ctx) return;
     const {error}=await supabase.from("h2a_separations").insert({
@@ -373,6 +393,11 @@ export default function H2APage() {
         </div>
         {guarantee != null && <p className="muted">Current contract schedule baseline: {guarantee.toFixed(1)} hours per configured week; three-fourths reference: {(guarantee*0.75).toFixed(1)} hours. Verify the job order and applicable rules before relying on this calculation.</p>}
       </section>
+
+      {isOwner && <section className="card stack">
+        <div><div className="kicker">Permissions</div><h2>H-2A staff roles</h2><p className="muted">Assign existing FarmVoice users as H-2A administrators, crew leaders, payroll users, or housing managers.</p></div>
+        <div style={{overflowX:"auto"}}><table className="table"><thead><tr><th>FarmVoice user</th><th>Team role</th><th>H-2A role</th></tr></thead><tbody>{farmMembers.map(m=>{const current=roles.find(r=>r.user_id===m.user_id)?.role??"";return <tr key={m.user_id}><td>{m.employee_number??m.user_id.slice(0,8)}</td><td>{m.role}</td><td><select value={current} onChange={e=>void setH2aRole(m.user_id,e.target.value)}><option value="">None</option><option value="h2a_admin">H-2A administrator</option><option value="crew_leader">Crew leader</option><option value="payroll">Payroll</option><option value="housing_manager">Housing manager</option></select></td></tr>})}</tbody></table></div>
+      </section>}
 
       {canAdmin && <section className="grid-2">
         <form className="card form" onSubmit={createContract}>
