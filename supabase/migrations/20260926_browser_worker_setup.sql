@@ -1,6 +1,8 @@
 -- Allow an authenticated worker to join a farm using the owner's join code.
 create schema if not exists private;
 
+grant usage on schema private to authenticated;
+
 create or replace function private.join_farm_by_code(
   p_join_code text,
   p_employee_number text default null
