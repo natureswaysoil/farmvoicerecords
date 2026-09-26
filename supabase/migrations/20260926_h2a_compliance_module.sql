@@ -229,6 +229,78 @@ create table if not exists public.h2a_separations (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.h2a_wage_rates (
+  id uuid primary key default gen_random_uuid(),
+  farm_id uuid not null references public.farms(id) on delete cascade,
+  contract_id uuid references public.h2a_contracts(id) on delete cascade,
+  effective_date date not null,
+  end_date date,
+  hourly_rate numeric(12,4) not null,
+  piece_rate_description text,
+  source text,
+  verified_by uuid references auth.users(id) on delete set null,
+  verified_at timestamptz,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  check (end_date is null or end_date >= effective_date)
+);
+
+create table if not exists public.h2a_pay_statements (
+  id uuid primary key default gen_random_uuid(),
+  farm_id uuid not null references public.farms(id) on delete cascade,
+  worker_id uuid not null references public.h2a_workers(id) on delete cascade,
+  contract_id uuid references public.h2a_contracts(id) on delete set null,
+  period_start date not null,
+  period_end date not null,
+  payday date,
+  hours_offered numeric(8,2) not null default 0,
+  hours_worked numeric(8,2) not null default 0,
+  hourly_rate numeric(12,4),
+  piece_units numeric(12,3),
+  piece_earnings numeric(12,2) not null default 0,
+  gross_earnings numeric(12,2) not null default 0,
+  deductions numeric(12,2) not null default 0,
+  reimbursements numeric(12,2) not null default 0,
+  net_amount numeric(12,2),
+  reviewed_by uuid references auth.users(id) on delete set null,
+  reviewed_at timestamptz,
+  quickbooks_status text,
+  notes text,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  check (period_end >= period_start)
+);
+
+create table if not exists public.h2a_acknowledgments (
+  id uuid primary key default gen_random_uuid(),
+  farm_id uuid not null references public.farms(id) on delete cascade,
+  worker_id uuid not null references public.h2a_workers(id) on delete cascade,
+  acknowledgment_type text not null,
+  document_title text,
+  document_version text,
+  language text,
+  acknowledged_at timestamptz,
+  method text check (method is null or method in ('tablet','paper','verbal_witness','other')),
+  witness_name text,
+  notes text,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.h2a_notifications (
+  id uuid primary key default gen_random_uuid(),
+  farm_id uuid not null references public.farms(id) on delete cascade,
+  worker_id uuid references public.h2a_workers(id) on delete cascade,
+  contract_id uuid references public.h2a_contracts(id) on delete cascade,
+  notice_type text not null,
+  due_on date,
+  completed_at timestamptz,
+  reference text,
+  notes text,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.h2a_audit_events (
   id bigserial primary key,
   farm_id uuid not null references public.farms(id) on delete cascade,
@@ -261,6 +333,10 @@ alter table public.h2a_documents enable row level security;
 alter table public.h2a_recruitment enable row level security;
 alter table public.h2a_separations enable row level security;
 alter table public.h2a_audit_events enable row level security;
+alter table public.h2a_wage_rates enable row level security;
+alter table public.h2a_pay_statements enable row level security;
+alter table public.h2a_acknowledgments enable row level security;
+alter table public.h2a_notifications enable row level security;
 
 create or replace function private.h2a_is_owner(p_farm_id uuid)
 returns boolean
@@ -415,6 +491,36 @@ on public.h2a_separations for all to authenticated
 using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin']))
 with check (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin']));
 
+create policy "h2a wage rates readable"
+on public.h2a_wage_rates for select to authenticated using (private.h2a_can_read(farm_id));
+create policy "h2a wage rates managed"
+on public.h2a_wage_rates for all to authenticated
+using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','payroll']))
+with check (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','payroll']));
+
+create policy "h2a pay statements readable"
+on public.h2a_pay_statements for select to authenticated
+using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','payroll']));
+create policy "h2a pay statements managed"
+on public.h2a_pay_statements for all to authenticated
+using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','payroll']))
+with check (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','payroll']));
+
+create policy "h2a acknowledgments readable"
+on public.h2a_acknowledgments for select to authenticated using (private.h2a_can_read(farm_id));
+create policy "h2a acknowledgments managed"
+on public.h2a_acknowledgments for all to authenticated
+using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','crew_leader']))
+with check (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','crew_leader']));
+
+create policy "h2a notifications readable"
+on public.h2a_notifications for select to authenticated
+using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin','payroll']));
+create policy "h2a notifications managed"
+on public.h2a_notifications for all to authenticated
+using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin']))
+with check (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin']));
+
 create policy "h2a audit owner admin read"
 on public.h2a_audit_events for select to authenticated
 using (private.h2a_is_owner(farm_id) or private.h2a_has_role(farm_id,array['h2a_admin']));
@@ -431,6 +537,10 @@ grant select, insert, update, delete on public.h2a_documents to authenticated;
 grant select, insert, update, delete on public.h2a_recruitment to authenticated;
 grant select, insert, update, delete on public.h2a_separations to authenticated;
 grant select on public.h2a_audit_events to authenticated;
+grant select, insert, update, delete on public.h2a_wage_rates to authenticated;
+grant select, insert, update, delete on public.h2a_pay_statements to authenticated;
+grant select, insert, update, delete on public.h2a_acknowledgments to authenticated;
+grant select, insert, update, delete on public.h2a_notifications to authenticated;
 grant usage, select on sequence public.h2a_audit_events_id_seq to authenticated;
 
 create or replace function private.h2a_audit_trigger()
@@ -512,7 +622,8 @@ begin
   foreach t in array array[
     'h2a_contracts','h2a_workers','h2a_daily_records','h2a_housing',
     'h2a_housing_assignments','h2a_transportation','h2a_training',
-    'h2a_documents','h2a_recruitment','h2a_separations','h2a_user_roles'
+    'h2a_documents','h2a_recruitment','h2a_separations','h2a_user_roles',
+    'h2a_wage_rates','h2a_pay_statements','h2a_acknowledgments','h2a_notifications'
   ]
   loop
     execute format('drop trigger if exists %I on public.%I', t || '_audit', t);
