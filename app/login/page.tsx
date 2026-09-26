@@ -24,6 +24,12 @@ export default function LoginPage() {
         return;
       }
 
+      const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+      if (!farmResponse.ok) {
+        setMessage("Signed in, but FarmVoice could not finish setting up your farm account. Please try again.");
+        return;
+      }
+
       window.location.assign("/records");
     } catch {
       setMessage("FarmVoice authentication is not configured on this deployment yet.");
