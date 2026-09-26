@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 
 export default function LoginPage() {
@@ -9,6 +9,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+
+  useEffect(() => {
+    const error = new URL(window.location.href).searchParams.get("error");
+    if (error === "farm_setup_failed") {
+      setMessage("Your email was confirmed, but FarmVoice could not finish setting up the farm account. Sign in again to retry.");
+    } else if (error === "confirmation_invalid") {
+      setMessage("That confirmation link is invalid or expired. Request a new confirmation or password setup link.");
+    }
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
