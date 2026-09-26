@@ -633,3 +633,60 @@ begin
     );
   end loop;
 end $$;
+
+
+-- Private H-2A document storage. Object names start with the farm UUID.
+insert into storage.buckets (id, name, public)
+values ('h2a-documents','h2a-documents',false)
+on conflict (id) do nothing;
+
+drop policy if exists "h2a document owners read" on storage.objects;
+create policy "h2a document owners read"
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'h2a-documents'
+  and (
+    private.h2a_is_owner(((storage.foldername(name))[1])::uuid)
+    or private.h2a_has_role(((storage.foldername(name))[1])::uuid,array['h2a_admin','payroll','housing_manager'])
+  )
+);
+
+drop policy if exists "h2a document admins upload" on storage.objects;
+create policy "h2a document admins upload"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'h2a-documents'
+  and (
+    private.h2a_is_owner(((storage.foldername(name))[1])::uuid)
+    or private.h2a_has_role(((storage.foldername(name))[1])::uuid,array['h2a_admin'])
+  )
+);
+
+drop policy if exists "h2a document admins update" on storage.objects;
+create policy "h2a document admins update"
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'h2a-documents'
+  and (
+    private.h2a_is_owner(((storage.foldername(name))[1])::uuid)
+    or private.h2a_has_role(((storage.foldername(name))[1])::uuid,array['h2a_admin'])
+  )
+)
+with check (
+  bucket_id = 'h2a-documents'
+  and (
+    private.h2a_is_owner(((storage.foldername(name))[1])::uuid)
+    or private.h2a_has_role(((storage.foldername(name))[1])::uuid,array['h2a_admin'])
+  )
+);
+
+drop policy if exists "h2a document admins delete" on storage.objects;
+create policy "h2a document admins delete"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'h2a-documents'
+  and (
+    private.h2a_is_owner(((storage.foldername(name))[1])::uuid)
+    or private.h2a_has_role(((storage.foldername(name))[1])::uuid,array['h2a_admin'])
+  )
+);
