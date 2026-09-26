@@ -52,9 +52,14 @@ export default function ResetPasswordPage() {
 
     try {
       const origin = window.location.origin;
-      await supabase.auth.resetPasswordForEmail(email, {
+const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${origin}/reset-password`,
       });
+
+      if (error) {
+        setMessage("Unable to request a password setup link right now. Please try again.");
+        return;
+      }
 
       setMessage(
         "If this email belongs to a FarmVoice account, check your inbox for the newest password setup link."
