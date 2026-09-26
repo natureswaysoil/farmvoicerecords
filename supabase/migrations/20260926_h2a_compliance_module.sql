@@ -690,3 +690,269 @@ using (
     or private.h2a_has_role(((storage.foldername(name))[1])::uuid,array['h2a_admin'])
   )
 );
+
+
+-- Security hardening for multi-farm H-2A records.
+
+-- H-2A roles must belong to an actual member of the same farm.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'h2a_user_roles_member_fk') then
+    alter table public.h2a_user_roles
+      add constraint h2a_user_roles_member_fk
+      foreign key (farm_id,user_id)
+      references public.farm_members(farm_id,user_id)
+      on delete cascade;
+  end if;
+end $$;
+
+create or replace function private.h2a_has_role(p_farm_id uuid, p_roles text[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select auth.uid() is not null
+    and exists (
+      select 1
+      from public.h2a_user_roles r
+      join public.farm_members m
+        on m.farm_id = r.farm_id
+       and m.user_id = r.user_id
+      where r.farm_id = p_farm_id
+        and r.user_id = auth.uid()
+        and r.role = any(p_roles)
+    );
+$$;
+
+-- Enforce tenant-scoped references so Farm A rows cannot point to Farm B parents.
+create unique index if not exists h2a_contracts_farm_id_id_uidx on public.h2a_contracts(farm_id,id);
+create unique index if not exists h2a_workers_farm_id_id_uidx on public.h2a_workers(farm_id,id);
+create unique index if not exists h2a_housing_farm_id_id_uidx on public.h2a_housing(farm_id,id);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname='h2a_workers_contract_same_farm_fk') then
+    alter table public.h2a_workers add constraint h2a_workers_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete set null;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_daily_worker_same_farm_fk') then
+    alter table public.h2a_daily_records add constraint h2a_daily_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_daily_contract_same_farm_fk') then
+    alter table public.h2a_daily_records add constraint h2a_daily_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete set null;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_housing_assignment_worker_same_farm_fk') then
+    alter table public.h2a_housing_assignments add constraint h2a_housing_assignment_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_housing_assignment_housing_same_farm_fk') then
+    alter table public.h2a_housing_assignments add constraint h2a_housing_assignment_housing_same_farm_fk
+      foreign key (farm_id,housing_id) references public.h2a_housing(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_transport_worker_same_farm_fk') then
+    alter table public.h2a_transportation add constraint h2a_transport_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete set null;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_training_worker_same_farm_fk') then
+    alter table public.h2a_training add constraint h2a_training_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_documents_worker_same_farm_fk') then
+    alter table public.h2a_documents add constraint h2a_documents_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_documents_contract_same_farm_fk') then
+    alter table public.h2a_documents add constraint h2a_documents_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_recruitment_contract_same_farm_fk') then
+    alter table public.h2a_recruitment add constraint h2a_recruitment_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_separations_worker_same_farm_fk') then
+    alter table public.h2a_separations add constraint h2a_separations_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_wage_contract_same_farm_fk') then
+    alter table public.h2a_wage_rates add constraint h2a_wage_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_pay_worker_same_farm_fk') then
+    alter table public.h2a_pay_statements add constraint h2a_pay_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_pay_contract_same_farm_fk') then
+    alter table public.h2a_pay_statements add constraint h2a_pay_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete set null;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_ack_worker_same_farm_fk') then
+    alter table public.h2a_acknowledgments add constraint h2a_ack_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_notice_worker_same_farm_fk') then
+    alter table public.h2a_notifications add constraint h2a_notice_worker_same_farm_fk
+      foreign key (farm_id,worker_id) references public.h2a_workers(farm_id,id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='h2a_notice_contract_same_farm_fk') then
+    alter table public.h2a_notifications add constraint h2a_notice_contract_same_farm_fk
+      foreign key (farm_id,contract_id) references public.h2a_contracts(farm_id,id) on delete cascade;
+  end if;
+end $$;
+
+-- Bind record provenance to the authenticated actor.
+create or replace function private.h2a_guard_created_by()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in is required';
+  end if;
+  if tg_op = 'INSERT' then
+    new.created_by := auth.uid();
+  elsif new.created_by is distinct from old.created_by then
+    raise exception 'created_by is immutable';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.h2a_guard_created_by() from public;
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'h2a_contracts','h2a_workers','h2a_housing','h2a_housing_assignments',
+    'h2a_transportation','h2a_training','h2a_documents','h2a_recruitment',
+    'h2a_separations','h2a_wage_rates','h2a_pay_statements',
+    'h2a_acknowledgments','h2a_notifications'
+  ]
+  loop
+    execute format('drop trigger if exists %I on public.%I', t || '_provenance', t);
+    execute format(
+      'create trigger %I before insert or update on public.%I for each row execute function private.h2a_guard_created_by()',
+      t || '_provenance', t
+    );
+  end loop;
+end $$;
+
+create or replace function private.guard_h2a_daily_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth, private
+as $$
+declare
+  v_admin boolean;
+  v_crew boolean;
+  v_approval_change boolean;
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in is required';
+  end if;
+
+  v_admin := private.h2a_is_owner(old.farm_id)
+    or private.h2a_has_role(old.farm_id,array['h2a_admin']);
+  v_crew := private.h2a_has_role(old.farm_id,array['crew_leader']);
+
+  if not (v_admin or v_crew) then
+    raise exception 'H-2A daily records may be updated only by an authorized crew leader or administrator';
+  end if;
+
+  if new.submitted_by is distinct from old.submitted_by then
+    raise exception 'submitted_by is immutable';
+  end if;
+
+  v_approval_change :=
+    new.approved_at is distinct from old.approved_at
+    or new.approved_by is distinct from old.approved_by;
+
+  if v_approval_change then
+    if not v_admin then
+      raise exception 'Crew leaders cannot approve H-2A daily records';
+    end if;
+    if new.approved_at is not null and new.approved_by is distinct from auth.uid() then
+      raise exception 'approved_by must match the approving user';
+    end if;
+    return new;
+  end if;
+
+  if old.approved_at is not null then
+    raise exception 'Approved H-2A daily records are locked';
+  end if;
+
+  if old.locked_at is not null
+     and nullif(trim(coalesce(new.change_reason,'')),'') is null then
+    raise exception 'A reason is required to change a locked crew record';
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function private.h2a_guard_daily_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in is required';
+  end if;
+  new.submitted_by := auth.uid();
+  new.approved_by := null;
+  new.approved_at := null;
+  return new;
+end;
+$$;
+
+revoke all on function private.h2a_guard_daily_insert() from public;
+
+drop trigger if exists h2a_daily_insert_guard on public.h2a_daily_records;
+create trigger h2a_daily_insert_guard
+before insert on public.h2a_daily_records
+for each row execute function private.h2a_guard_daily_insert();
+
+-- Fix auditing for composite-key tables such as h2a_user_roles.
+create or replace function private.h2a_audit_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_farm_id uuid;
+  v_record_id text;
+  v_old jsonb;
+  v_new jsonb;
+begin
+  v_old := case when tg_op in ('UPDATE','DELETE') then to_jsonb(old) else null end;
+  v_new := case when tg_op in ('INSERT','UPDATE') then to_jsonb(new) else null end;
+  v_farm_id := coalesce((v_new->>'farm_id')::uuid,(v_old->>'farm_id')::uuid);
+  v_record_id := coalesce(
+    v_new->>'id',
+    v_old->>'id',
+    concat_ws(':',coalesce(v_new->>'user_id',v_old->>'user_id'),coalesce(v_new->>'role',v_old->>'role'))
+  );
+
+  insert into public.h2a_audit_events(
+    farm_id, table_name, record_id, action, changed_by, old_data, new_data
+  ) values (
+    v_farm_id, tg_table_name, v_record_id, tg_op, auth.uid(), v_old, v_new
+  );
+  return coalesce(new, old);
+end;
+$$;
+
+-- Force the sensitive document bucket to remain private even if it pre-exists.
+insert into storage.buckets (id,name,public)
+values ('h2a-documents','h2a-documents',false)
+on conflict (id) do update set public = false;
