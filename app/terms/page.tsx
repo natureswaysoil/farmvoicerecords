@@ -72,6 +72,22 @@ export default function TermsPage() {
           agency requires you to verify independently.
         </p>
 
+        <h2>H-2A and migrant-worker records</h2>
+        <p>
+          FarmVoice may provide tools for H-2A employer recordkeeping, including contract records,
+          worker rosters, crew-leader daily records, hours offered and worked, piecework, housing,
+          transportation, recruitment, training, separation reviews, calculations, alerts, and
+          audit exports. These tools do not provide immigration, employment, legal, tax, or
+          regulatory advice and do not determine whether an employer is compliant with the H-2A
+          program or any other worker program.
+        </p>
+        <p>
+          Employers remain responsible for verifying wage rates, job-order terms, hours,
+          reimbursements, deductions, notices, filings, housing requirements, recruitment records,
+          transportation obligations, worker classifications, retention periods, and all other
+          legal obligations before relying on or submitting FarmVoice-generated information.
+        </p>
+
         <h2>GPS, timekeeping, and employee use</h2>
         <p>
           GPS readings are estimates and may be unavailable or inaccurate. FarmVoice captures
