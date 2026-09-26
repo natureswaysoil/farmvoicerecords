@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/src/lib/supabase/client";
 import { getFarmContext, type FarmContext } from "@/src/lib/farm-cloud";
 
@@ -371,6 +372,10 @@ export default function H2APage() {
           training, recruitment, separation review, approvals and audit exports. FarmVoice prepares records for review;
           it does not determine legal compliance.
         </p>
+        <div className="actions">
+          <Link className="btn secondary" href="/h2a/payroll">Payroll & guarantee review</Link>
+          <Link className="btn secondary" href="/h2a/documents">Documents & acknowledgments</Link>
+        </div>
       </div>
 
       {message && <div className="notice">{message}</div>}
