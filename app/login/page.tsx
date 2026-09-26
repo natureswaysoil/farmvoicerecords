@@ -1,34 +1,34 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setSending(true);
+    setSigningIn(true);
     setMessage("");
 
     try {
       const supabase = createClient();
-      const origin = window.location.origin;
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${origin}/auth/confirm`,
-          shouldCreateUser: true,
-        },
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-      setMessage(error ? error.message : "Check your email for your FarmVoice sign-in link.");
+      if (error) {
+        setMessage("Email or password is incorrect. If you previously used email sign-in links, choose Create or reset password below.");
+        return;
+      }
+
+      window.location.assign("/records");
     } catch {
       setMessage("FarmVoice authentication is not configured on this deployment yet.");
     } finally {
-      setSending(false);
+      setSigningIn(false);
     }
   }
 
@@ -36,21 +36,44 @@ export default function LoginPage() {
     <main className="container section">
       <div className="card" style={{ maxWidth: 560, margin: "20px auto" }}>
         <div className="kicker">Sign in</div>
-        <h2>Email sign-in</h2>
+        <h2>Email and password</h2>
         <p className="muted">
-          Enter your email and FarmVoice will send a one-time passwordless sign-in link.
+          Sign in with your FarmVoice email and password. You do not need an email link each time.
         </p>
         <form className="form" onSubmit={submit}>
           <div className="field">
             <label htmlFor="email">Email address</label>
-            <input id="email" type="email" required value={email}
-              onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
           </div>
-          <button className="btn" type="submit" disabled={sending}>
-            {sending ? "Sending..." : "Email me a sign-in link"}
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <button className="btn" type="submit" disabled={signingIn}>
+            {signingIn ? "Signing in..." : "Sign in"}
           </button>
         </form>
-        {message && <p className="notice" style={{ marginTop: 14 }}>{message}</p>}
+        {message && <p className="notice warn" style={{ marginTop: 14 }}>{message}</p>}
+        <div className="inline" style={{ marginTop: 18 }}>
+          <Link className="footer-link" href="/signup">Create account</Link>
+          <span className="muted">·</span>
+          <Link className="footer-link" href="/reset-password">Create or reset password</Link>
+        </div>
       </div>
     </main>
   );
