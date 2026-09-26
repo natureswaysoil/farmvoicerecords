@@ -147,10 +147,11 @@ create policy "users create owned farms"
 on public.farms for insert to authenticated
 with check (owner_user_id = (select auth.uid()));
 
-create policy "farm members read farms"
+create policy "members or owners read farms"
 on public.farms for select to authenticated
 using (
-  exists (
+  owner_user_id = (select auth.uid())
+  or exists (
     select 1 from public.farm_members m
     where m.farm_id = farms.id
       and m.user_id = (select auth.uid())
