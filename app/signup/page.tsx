@@ -27,13 +27,9 @@ export default function SignupPage() {
     setCreating(true);
     try {
       const supabase = createClient();
-      const origin = window.location.origin;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: `${origin}/auth/confirm`,
-        },
       });
 
       if (error) {
