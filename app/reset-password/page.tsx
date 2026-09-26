@@ -50,17 +50,25 @@ export default function ResetPasswordPage() {
     setWorking(true);
     setMessage("");
 
-    const origin = window.location.origin;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/reset-password`,
-    });
+    try {
+      const origin = window.location.origin;
+const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${origin}/reset-password`,
+      });
 
-    setMessage(
-      error
-        ? error.message
-        : "Check your email for the password setup link. Open the newest email, then choose your password here."
-    );
-    setWorking(false);
+      if (error) {
+        setMessage("Unable to request a password setup link right now. Please try again.");
+        return;
+      }
+
+      setMessage(
+        "If this email belongs to a FarmVoice account, check your inbox for the newest password setup link."
+      );
+    } catch {
+      setMessage("Unable to request a password setup link right now. Please try again.");
+    } finally {
+      setWorking(false);
+    }
   }
 
   async function updatePassword(event: FormEvent) {
@@ -77,17 +85,20 @@ export default function ResetPasswordPage() {
     }
 
     setWorking(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setMessage("Unable to save the new password. Request a fresh setup link and try again.");
+        return;
+      }
 
-    if (error) {
-      setMessage(error.message);
+      setMessage("Password saved. You can now sign in without requesting an email link.");
+      setTimeout(() => window.location.assign("/login"), 1200);
+    } catch {
+      setMessage("Unable to save the new password right now. Please try again.");
+    } finally {
       setWorking(false);
-      return;
     }
-
-    setMessage("Password saved. You can now sign in without requesting an email link.");
-    setWorking(false);
-    setTimeout(() => window.location.assign("/login"), 1200);
   }
 
   return (

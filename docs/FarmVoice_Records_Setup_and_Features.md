@@ -27,7 +27,7 @@ Start with the regular browser at https://farmvoicerecords.com. Complete sign-in
 1. Open the website in Safari.
 2. Open the Share menu and choose **Add to Home Screen**; menu placement varies by software version.
 3. Name it **FarmVoice Records** and select **Add**.
-4. Use the new icon to open the site. If it opens in a separate browser context and asks you to sign in again, request a fresh link from that context. If the email opens elsewhere, use regular Safari for the sign-in flow.
+4. Use the new icon to open the site. If it opens in a separate browser context and asks you to sign in again, use your FarmVoice email and password.
 
 Apple instructions: https://support.apple.com/en-euro/guide/iphone/iph42ab2f3a7/ios
 
@@ -48,9 +48,9 @@ Open the website in your browser and bookmark it. No software installation is re
 
 1. Open https://farmvoicerecords.com/login.
 2. Enter the email you intend to keep using for the farm owner account.
-3. Select **Email me a sign-in link**.
-4. Check your inbox and spam folder. Open the newest email link in the same browser where you requested it.
-5. Select **Continue to my farm**. Links expire after 15 minutes and can be used once.
+3. Choose **Create account** and set a password, or sign in with your existing FarmVoice email and password.
+4. New accounts confirm the email address once using the confirmation email sent by FarmVoice.
+5. After confirmation, return to https://farmvoicerecords.com/login and sign in with email and password. If you previously used FarmVoice email links and do not yet have a password, choose **Create or reset password**.
 6. Open **Field records** at https://farmvoicerecords.com/records. The farm account is initialized when you enter the working app.
 7. Open **Team** at https://farmvoicerecords.com/team to find your worker join code and employee ID.
 8. Before inviting everyone, test one record and one employee account using the checklist at the end of this guide.
@@ -72,7 +72,7 @@ Newly generated codes have 10 characters. Older six-character codes are also acc
 ### Employee steps
 
 1. Open https://farmvoicerecords.com/join on your own phone or computer.
-2. Sign in with your own email, using the newest link in the same browser.
+2. Sign in with your own FarmVoice email and password. New users should create an account and confirm their email once before signing in.
 3. Enter the entire farm code supplied by your owner and select **Join farm**.
 4. Confirm that the expected farm appears on the Team page.
 5. Note your automatically assigned employee number, such as **FP-1005**. You do not enter this number to sign in.
@@ -198,7 +198,7 @@ Recording GPS is part of field records; crew GPS time features are separate. Ope
 
 | Feature | Current scope |
 | --- | --- |
-| Email sign-in | Passwordless, browser-bound, single-use emailed links |
+| Email sign-in | Email and password; new accounts confirm the email address once; password setup/reset links are used only when needed |
 | Multi-user farm | Owner and workers join one farm using a code |
 | Unique worker IDs | Assigned automatically; included in approved-time exports |
 | Voice-to-text | Browser-dependent transcription with typed-note fallback |
@@ -223,7 +223,7 @@ Not currently provided: native app-store installation; full offline operation; f
 
 | Symptom | What to do |
 | --- | --- |
-| Email link fails | Request a fresh link and open only the newest one in the same browser. Links expire after 15 minutes. Do not share sign-in links. |
+| Cannot sign in | Confirm you are using the same FarmVoice email and password. If you previously used passwordless email links or forgot the password, choose **Create or reset password** and use the newest setup link. |
 | Join code not found | Clear the input and paste the complete code copied from the owner’s Team page. Check every character. If it still fails, send support the visible error and farm name. |
 | Microphone unavailable | Allow microphone permission in browser/site settings. If unsupported, type the note. |
 | GPS denied or inaccurate | Allow location permission, check device location services, move somewhere with a clearer signal and choose Retry / capture GPS. Use the accuracy estimate and confirm the field manually. |
@@ -253,4 +253,4 @@ Support: natureswaysoil@gmail.com. Include your account email, farm name, device
 - [ ] If QuickBooks is used, owner connects a test company, maps one employee, sets the payroll timezone and verifies one approved time entry appears correctly in QuickBooks.
 - [ ] Billing plan, cancellation route and support contact are checked before onboarding paying customers.
 
-Save/export logic and location validation were checked during development. Actual microphone behavior, phone GPS permissions, email delivery and the complete customer onboarding/billing experience still need testing on the devices and accounts you intend to use. Website copy may contain older instructions; current email sign-in instructions in this guide supersede references to signing in through ChatGPT.
+Save/export logic and location validation were checked during development. Actual microphone behavior, phone GPS permissions, email delivery and the complete customer onboarding/billing experience still need testing on the devices and accounts you intend to use. Current sign-in uses FarmVoice email and password. New accounts confirm the email address once, and password setup/reset links are used only when needed.

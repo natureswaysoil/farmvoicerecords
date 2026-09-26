@@ -27,22 +27,23 @@ export default function SignupPage() {
     setCreating(true);
     try {
       const supabase = createClient();
+      const origin = window.location.origin;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${origin}/auth/confirm`,
+        },
       });
 
-      if (error) {
-        setMessage(error.message);
-        return;
-      }
-
-      if (data.session) {
+      if (!error && data.session) {
         window.location.assign("/records");
         return;
       }
 
-      setMessage("Account created. Check your email once to confirm the address, then sign in with your email and password.");
+      setMessage(
+        "If this email can be used for a FarmVoice account, check your inbox for the confirmation email. If you already have an account, use Create or reset password."
+      );
     } catch {
       setMessage("FarmVoice authentication is not configured on this deployment yet.");
     } finally {
