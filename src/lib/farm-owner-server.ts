@@ -10,6 +10,18 @@ function makeJoinCode() {
   return crypto.randomBytes(5).toString("hex").toUpperCase();
 }
 
+async function findOwnedFarm(supabase: SupabaseClient, userId: string) {
+  const { data, error } = await supabase
+    .from("farms")
+    .select("id")
+    .eq("owner_user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.id as string | undefined;
+}
+
 export async function ensureOwnerFarm(
   supabase: SupabaseClient,
   user: User
@@ -26,16 +38,7 @@ export async function ensureOwnerFarm(
     return { farmId: membership.farm_id as string, created: false };
   }
 
-  const { data: ownedFarm, error: ownedFarmError } = await supabase
-    .from("farms")
-    .select("id")
-    .eq("owner_user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (ownedFarmError) throw ownedFarmError;
-
-  let farmId = ownedFarm?.id as string | undefined;
+  let farmId = await findOwnedFarm(supabase, user.id);
   let created = false;
 
   if (!farmId) {
@@ -62,6 +65,11 @@ export async function ensureOwnerFarm(
       }
 
       if (farmError?.code !== "23505") throw farmError;
+
+      // A concurrent signup/login request may have created this owner's farm.
+      // Re-read by owner before retrying; if none exists, the collision was
+      // most likely the random join code and another attempt can safely retry.
+      farmId = await findOwnedFarm(supabase, user.id);
     }
   }
 
