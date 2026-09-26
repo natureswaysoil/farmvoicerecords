@@ -1,0 +1,89 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+import { createClient } from "@/src/lib/supabase/client";
+
+export default function SignupPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setMessage("");
+
+    if (password.length < 8) {
+      setMessage("Use a password with at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setMessage("The passwords do not match.");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+
+      if (data.session) {
+        window.location.assign("/records");
+        return;
+      }
+
+      setMessage("Account created. Check your email once to confirm the address, then sign in with your email and password.");
+    } catch {
+      setMessage("FarmVoice authentication is not configured on this deployment yet.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <main className="container section">
+      <div className="card" style={{ maxWidth: 560, margin: "20px auto" }}>
+        <div className="kicker">Create account</div>
+        <h2>Set your FarmVoice password</h2>
+        <p className="muted">
+          New accounts confirm the email address once. After that, sign in with email and password.
+        </p>
+        <form className="form" onSubmit={submit}>
+          <div className="field">
+            <label htmlFor="email">Email address</label>
+            <input id="email" type="email" autoComplete="email" required value={email}
+              onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" autoComplete="new-password" minLength={8} required
+              value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="confirm-password">Confirm password</label>
+            <input id="confirm-password" type="password" autoComplete="new-password" minLength={8} required
+              value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          </div>
+          <button className="btn" type="submit" disabled={creating}>
+            {creating ? "Creating account..." : "Create account"}
+          </button>
+        </form>
+        {message && <p className="notice" style={{ marginTop: 14 }}>{message}</p>}
+        <p className="muted" style={{ marginTop: 18 }}>
+          Already have an account? <Link className="footer-link" href="/login">Sign in</Link>.
+          If you previously used FarmVoice email links, use <Link className="footer-link" href="/reset-password">Create or reset password</Link>.
+        </p>
+      </div>
+    </main>
+  );
+}
