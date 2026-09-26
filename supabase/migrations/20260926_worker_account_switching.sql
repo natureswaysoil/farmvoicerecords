@@ -1,4 +1,6 @@
--- Prevent an already-owned farm account from silently succeeding as a worker join.
+-- Prevent farm-owner sessions from silently succeeding as worker joins.
+grant usage on schema private to authenticated;
+
 create or replace function private.join_farm_by_code(
   p_join_code text,
   p_employee_number text default null
@@ -11,24 +13,33 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_farm_id uuid;
-  v_existing_role text;
 begin
   if v_uid is null then
     raise exception 'Sign in is required.';
   end if;
 
-  select fm.farm_id, fm.role
-    into v_farm_id, v_existing_role
+  if exists (
+    select 1
+    from public.farms f
+    where f.owner_user_id = v_uid
+  ) or exists (
+    select 1
+    from public.farm_members fm
+    where fm.user_id = v_uid
+      and fm.role = 'owner'
+  ) then
+    raise exception 'You are signed in as a farm owner. Sign out and sign in with the worker account before joining.';
+  end if;
+
+  select fm.farm_id
+    into v_farm_id
   from public.farm_members fm
   where fm.user_id = v_uid
+    and fm.role = 'worker'
   order by fm.created_at
   limit 1;
 
   if v_farm_id is not null then
-    if v_existing_role = 'owner' then
-      raise exception 'You are signed in as a farm owner. Sign out and sign in with the worker account before joining.';
-    end if;
-
     if p_employee_number is not null and nullif(trim(p_employee_number), '') is not null then
       update public.farm_members
       set employee_number = nullif(trim(p_employee_number), '')
@@ -40,7 +51,8 @@ begin
     return v_farm_id;
   end if;
 
-  select f.id into v_farm_id
+  select f.id
+    into v_farm_id
   from public.farms f
   where upper(f.join_code) = upper(trim(p_join_code))
   limit 1;
