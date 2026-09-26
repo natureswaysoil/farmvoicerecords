@@ -37,6 +37,11 @@ export default function SignupPage() {
       });
 
       if (!error && data.session) {
+        const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+        if (!farmResponse.ok) {
+          setMessage("Account created, but FarmVoice could not finish setting up your farm account. Sign in and try again.");
+          return;
+        }
         window.location.assign("/records");
         return;
       }
@@ -57,7 +62,7 @@ export default function SignupPage() {
         <div className="kicker">Create account</div>
         <h2>Set your FarmVoice password</h2>
         <p className="muted">
-          New accounts confirm the email address once. After that, sign in with email and password.
+          New farm owners confirm the email address once. FarmVoice then creates the farm account automatically.
         </p>
         <form className="form" onSubmit={submit}>
           <div className="field">
