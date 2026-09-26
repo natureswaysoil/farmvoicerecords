@@ -28,21 +28,32 @@ export default function SignupPage() {
     try {
       const supabase = createClient();
       const origin = window.location.origin;
+      const params = new URL(window.location.href).searchParams;
+      const requestedNext = params.get("next");
+      const next =
+        requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+          ? requestedNext
+          : "/records";
+      const confirmUrl = new URL("/auth/confirm", origin);
+      confirmUrl.searchParams.set("next", next);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${origin}/auth/confirm`,
+          emailRedirectTo: confirmUrl.toString(),
         },
       });
 
       if (!error && data.session) {
-        const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
-        if (!farmResponse.ok) {
-          setMessage("Account created, but FarmVoice could not finish setting up your farm account. Sign in and try again.");
-          return;
+        if (!next.startsWith("/join")) {
+          const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+          if (!farmResponse.ok) {
+            setMessage("Account created, but FarmVoice could not finish setting up your farm account. Sign in and try again.");
+            return;
+          }
         }
-        window.location.assign("/records");
+        window.location.assign(next);
         return;
       }
 

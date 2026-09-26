@@ -33,13 +33,22 @@ export default function LoginPage() {
         return;
       }
 
-      const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
-      if (!farmResponse.ok) {
-        setMessage("Signed in, but FarmVoice could not finish setting up your farm account. Please try again.");
-        return;
+      const params = new URL(window.location.href).searchParams;
+      const requestedNext = params.get("next");
+      const next =
+        requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+          ? requestedNext
+          : "/records";
+
+      if (!next.startsWith("/join")) {
+        const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+        if (!farmResponse.ok) {
+          setMessage("Signed in, but FarmVoice could not finish setting up your farm account. Please try again.");
+          return;
+        }
       }
 
-      window.location.assign("/records");
+      window.location.assign(next);
     } catch {
       setMessage("FarmVoice authentication is not configured on this deployment yet.");
     } finally {
