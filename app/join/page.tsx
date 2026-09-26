@@ -27,14 +27,36 @@ export default function JoinPage() {
         return;
       }
 
-      const { data: member } = await supabase
+      const [{ data: ownedFarm }, { data: ownerMembership }] = await Promise.all([
+        supabase
+          .from("farms")
+          .select("id")
+          .eq("owner_user_id", user.id)
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("farm_members")
+          .select("farm_id")
+          .eq("user_id", user.id)
+          .eq("role", "owner")
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (ownedFarm || ownerMembership) {
+        setRole("owner");
+        return;
+      }
+
+      const { data: workerMembership } = await supabase
         .from("farm_members")
-        .select("role")
+        .select("farm_id")
         .eq("user_id", user.id)
+        .eq("role", "worker")
         .limit(1)
         .maybeSingle();
 
-      setRole((member?.role as "owner" | "worker" | undefined) ?? null);
+      setRole(workerMembership ? "worker" : null);
     })();
   }, [supabase]);
 
