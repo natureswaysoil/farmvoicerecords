@@ -13,6 +13,9 @@ create table public.farms (
   created_at timestamptz not null default now()
 );
 
+create unique index farms_owner_user_id_unique_idx
+  on public.farms(owner_user_id);
+
 create table public.farm_members (
   farm_id uuid not null references public.farms(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
