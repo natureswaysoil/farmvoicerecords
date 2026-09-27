@@ -43,9 +43,20 @@ export default function ImportUsdaFieldsPage() {
     <div>
       <div className="kicker">USDA / FSA field boundaries</div>
       <h2>Import fields from farmers.gov</h2>
-      <p className="muted">Download your field boundaries from farmers.gov as an ESRI shapefile ZIP or GeoJSON. On supported Android phones, install FarmVoice to your Home Screen and use Share → FarmVoice after the download.</p>
+      <p className="muted">Download your field boundaries from farmers.gov as an ESRI shapefile ZIP or GeoJSON. You can send the file to FarmVoice two ways: share it directly when your phone supports Share → FarmVoice, or upload the downloaded file here.</p>
     </div>
+    <section className="card">
+      <h3>Option 1: Share the USDA download to FarmVoice</h3>
+      <ol className="list">
+        <li>Download the USDA/FSA field-boundary ZIP or GeoJSON file from farmers.gov.</li>
+        <li>Open the phone&apos;s Share menu for the downloaded file.</li>
+        <li>If <strong>FarmVoice</strong> appears, choose it. FarmVoice will open the USDA importer automatically.</li>
+      </ol>
+      <p className="small muted">Share → FarmVoice is a convenience feature. Some phones and browsers do not expose installed web apps as file-sharing destinations. If FarmVoice is not listed, use Option 2 below.</p>
+    </section>
     <section className="card form">
+      <h3>Option 2: Upload the downloaded file</h3>
+      <p className="muted">This is the reliable fallback on phones, tablets and computers. Do not unzip the USDA shapefile ZIP before uploading it.</p>
       <div className="field">
         <label>USDA boundary file</label>
         <input type="file" accept=".zip,.geojson,.json,application/zip,application/geo+json,application/json" onChange={e=>setFile(e.target.files?.[0]??null)} />
