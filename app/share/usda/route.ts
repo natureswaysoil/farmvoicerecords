@@ -4,16 +4,16 @@ import { createClient } from "@/src/lib/supabase/server";
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
-  const form = await request.formData();
-  const file = form.get("usdaFile");
-
-  if (!(file instanceof File)) {
-    return NextResponse.redirect(new URL("/fields/import?shared=no-file", request.url), 303);
-  }
 
   if (!userData.user) {
     const next = encodeURIComponent("/fields/import?shared=signin-required");
     return NextResponse.redirect(new URL(`/login?next=${next}`, request.url), 303);
+  }
+
+  const form = await request.formData();
+  const file = form.get("usdaFile");
+  if (!(file instanceof File)) {
+    return NextResponse.redirect(new URL("/fields/import?shared=no-file", request.url), 303);
   }
 
   const { data: ownedFarm, error: ownerError } = await supabase
