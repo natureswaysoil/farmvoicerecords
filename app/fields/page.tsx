@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect,useMemo,useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { getFarmContext,loadCloudFields,loadCloudFieldHistory,type CloudField,type CloudHistoryEvent,type FarmContext } from "@/src/lib/farm-cloud";
@@ -46,7 +47,7 @@ export default function FieldsPage(){
  const fsaLabel=(f:CloudField)=>`Farm ${f.fsa_farm_number??"—"} · Tract ${f.fsa_tract_number??"—"} · Field ${f.fsa_field_number??"—"}`;
 
  return <main className="container section stack"><div><div className="kicker">USDA/FSA fields</div><h2>Fields & history</h2><p className="muted">FarmVoice identifies production areas using the USDA/FSA Farm Number, Tract Number, and Field Number. The internal database ID stays hidden.</p></div>
- <div className="grid-2"><section className="card form"><h3>Add USDA/FSA field</h3>
+ <section className="card"><h3>Import USDA field boundaries</h3><p className="muted">Download your USDA/FSA field boundaries from farmers.gov, then upload the ZIP/GeoJSON here or share the downloaded file directly to the installed FarmVoice app on supported phones.</p><Link className="btn" href="/fields/import">Import USDA fields</Link></section><div className="grid-2"><section className="card form"><h3>Add USDA/FSA field manually</h3>
  <div className="row"><div className="field"><label>FSA Farm Number</label><input value={form.fsaFarmNumber} onChange={e=>set("fsaFarmNumber",e.target.value)}/></div><div className="field"><label>FSA Tract Number</label><input value={form.fsaTractNumber} onChange={e=>set("fsaTractNumber",e.target.value)}/></div></div>
  <div className="row"><div className="field"><label>FSA Field Number</label><input value={form.fsaFieldNumber} onChange={e=>set("fsaFieldNumber",e.target.value)}/></div><div className="field"><label>Optional field name</label><input value={form.name} onChange={e=>set("name",e.target.value)} placeholder="North Field"/></div></div>
  <div className="row"><div className="field"><label>Type</label><select value={form.areaType} onChange={e=>set("areaType",e.target.value)}><option>field</option><option>bed</option><option>greenhouse</option><option>pasture</option><option>orchard</option><option>block</option><option>other</option></select></div><div className="field"><label>Size</label><input inputMode="decimal" value={form.sizeValue} onChange={e=>set("sizeValue",e.target.value)}/></div></div>
