@@ -44,7 +44,32 @@ Google instructions: https://support.google.com/chrome/answer/15085120?co=GENIE.
 
 Open the website in your browser and bookmark it. No software installation is required. You can also bookmark the Records and Team links below.
 
-## 3. Owner setup and the free trial
+## 3. Import USDA/FSA field boundaries
+
+Farm owners can import USDA/FSA field boundaries from farmers.gov as an ESRI shapefile ZIP or GeoJSON file. FarmVoice stores the Farm, Tract, Field and CLU identifiers together with the polygon boundary so the same field can later be used for geofencing, worker location records, pesticide records and field history.
+
+### Method A: Share the downloaded USDA file to FarmVoice
+
+1. Download the field-boundary ZIP or GeoJSON file from farmers.gov.
+2. Open the file's **Share** menu on the phone.
+3. If **FarmVoice** appears as a destination, select it.
+4. FarmVoice opens the USDA field importer and processes the shared file.
+5. Review the imported fields under **Fields**.
+
+Share-to-FarmVoice depends on the phone and browser supporting installed web apps as file-share targets. If FarmVoice is not shown in the Share menu, nothing is wrong with the USDA importer; use the upload method below.
+
+### Method B: Upload the downloaded USDA file
+
+1. Download the USDA/FSA field-boundary file from farmers.gov.
+2. Leave an ESRI shapefile download as the original `.zip` file; do **not** unzip it.
+3. In FarmVoice, open **Fields** → **Import USDA fields**.
+4. Select **Choose File** and locate the downloaded ZIP or GeoJSON file.
+5. Select **Import USDA fields**.
+6. Review the results and open **Fields** to confirm the imported Farm / Tract / Field records.
+
+The upload method is the standard fallback and works even when FarmVoice does not appear in the phone's Share menu.
+
+## 4. Owner setup and the free trial
 
 1. Open https://farmvoicerecords.com/login.
 2. Enter the email you intend to keep using for the farm owner account.
@@ -57,7 +82,7 @@ Open the website in your browser and bookmark it. No software installation is re
 
 The advertised trial lasts 14 days and needs no credit card. A paid subscription is created only when you choose a plan and complete checkout. Reuse the same email each time to avoid creating an unrelated account. If existing records do not appear, contact support before starting another farm.
 
-## 4. Add employees to the same farm
+## 5. Add employees to the same farm
 
 ### Owner steps
 
@@ -80,7 +105,7 @@ Newly generated codes have 10 characters. Older six-character codes are also acc
 
 Do not share the owner’s login. Employees do not individually purchase a plan to join an existing farm; their membership uses a seat in the farm’s plan. The owner counts toward the user limit. Switching away from a farm that already has records, team members or billing may require support so data is preserved.
 
-## 5. Record pesticide applications by voice
+## 6. Record pesticide applications by voice
 
 1. Open **Field records** and select **Pesticide application**.
 2. Tap **Start recording** and allow microphone access.
@@ -108,7 +133,7 @@ Use the actual product label and your actual application details. Completeness c
 - GPS identifies where you made the note, not necessarily where pesticide was applied. It does not map field boundaries, prove treatment coverage or continuously track movement.
 - Waiting for the GPS result before saving ensures the location can be attached. A record saved before capture finishes may have no GPS.
 
-## 6. Record input purchases and costs
+## 7. Record input purchases and costs
 
 1. Select **Input purchase** on the Records page.
 2. Speak or type the product, quantity, unit, cost per unit and any additional cost information.
@@ -120,7 +145,7 @@ Example: “Bought twenty bags of fertilizer for eighteen dollars and fifty cent
 
 The app also displays cost per acre when acres are present. It does not currently provide a full accounting ledger, inventory system or purchase-order workflow.
 
-## 7. Schedule workers and set a jobsite radius
+## 8. Schedule workers and set a jobsite radius
 
 Owner access is required for scheduling.
 
@@ -134,7 +159,7 @@ Owner access is required for scheduling.
 
 The owner sees the current week’s calendar; workers see their own upcoming assigned shifts. Creating a shift triggers an email notification attempt. The Team page shows an upcoming-shift reminder. These are not a guaranteed timed SMS, push-notification or recurring email reminder service. Confirm critical assignments directly if an email does not arrive. Check displayed times carefully; emailed times may differ from the device’s local display.
 
-## 8. Employee time clock and photos
+## 9. Employee time clock and photos
 
 1. Open https://farmvoicerecords.com/team.
 2. Choose the assigned shift. If working outside a scheduled shift, use **Unscheduled work** and enter the job or field.
@@ -146,7 +171,7 @@ The owner sees the current week’s calendar; workers see their own upcoming ass
 
 Time is captured at clock-in/out; it is not continuous GPS tracking. GPS failure can still allow a time entry with location unavailable. A jobsite radius provides an inside/outside comparison, not an automatic prohibition on working outside the radius. The current table shows the clock-in location indicator. Photos are attached to time entries; pesticide-record photo attachments are not currently a separate feature. A time entry has one stored photo reference, rather than a multi-photo gallery.
 
-## 9. Owner review and payroll preparation
+## 10. Owner review and payroll preparation
 
 1. Open the Team page and find **Manager review / Scheduled versus actual hours**.
 2. Review completed entries, worker IDs, jobs, scheduled hours, actual elapsed hours, GPS indicators and photos.
@@ -160,7 +185,7 @@ Only approved, completed entries are included in the payroll export. Times are e
 
 The current permission model has owner and worker roles. The owner performs manager tasks; a separate delegated manager role is not implemented.
 
-## 10. Saving, syncing and downloading records
+## 11. Saving, syncing and downloading records
 
 Successfully synced records are stored online and available after signing into the same farm. Unfinished notes and queued saves are stored in the browser on the device where they were created.
 
@@ -182,7 +207,7 @@ Voice recognition may need internet. Sign-in, team joining, scheduling, the time
 
 Exports include all matching synced records, not just the five displayed in the recent-records panel. Columns include application/purchase details, costs, original transcript, status, owner identifier, creation time and recording GPS/time/accuracy when available. Device-only queued records must sync first. Downloads are initiated by the user; automatic downloading after every voice note is not currently implemented.
 
-## 11. Plans and billing
+## 12. Plans and billing
 
 Listed website prices as reviewed September 19, 2026; checkout controls the final amount and any applicable tax.
 
@@ -194,7 +219,7 @@ Listed website prices as reviewed September 19, 2026; checkout controls the fina
 
 Recording GPS is part of field records; crew GPS time features are separate. Open https://farmvoicerecords.com/billing to review plan options. Billing should identify Nature’s Way Soil & Vermicompost LLC. If subscription management does not open, contact support rather than starting a second subscription. Trial cutoff enforcement and billing-portal readiness require an owner launch review; do not assume every billing workflow has been verified end to end.
 
-## 12. Feature inventory
+## 13. Feature inventory
 
 | Feature | Current scope |
 | --- | --- |
@@ -216,10 +241,12 @@ Recording GPS is part of field records; crew GPS time features are separate. Ope
 | Time export | Approved, completed time CSV; UTC timestamps |
 | Offline support | Device-local record drafts and save queue, with later sync |
 | Cloud storage | Farm data online after sync; job photos in file storage |
+| USDA/FSA field import | Owner can upload farmers.gov shapefile ZIP/GeoJSON; supported installed PWAs can also receive the downloaded file through Share → FarmVoice |
+| Field boundary geofences | Imported USDA/FSA polygons are stored with Farm / Tract / Field / CLU identifiers for reuse by field-location features |
 
-Not currently provided: native app-store installation; full offline operation; full payroll processing or tax calculation; continuous employee tracking; automatic field-boundary recognition; guaranteed timed SMS/push reminders; pesticide-record photo galleries; automatic record downloads; a separate manager role; or a verified general workflow for editing/deleting saved records. QuickBooks Online transfer requires the farm owner to connect and map employees first. Contact support for corrections to saved records.
+Not currently provided: native app-store installation; full offline operation; full payroll processing or tax calculation; continuous employee tracking; guaranteed timed SMS/push reminders; pesticide-record photo galleries; automatic record downloads; a separate manager role; or a verified general workflow for editing/deleting saved records. QuickBooks Online transfer requires the farm owner to connect and map employees first. Contact support for corrections to saved records.
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 | Symptom | What to do |
 | --- | --- |
@@ -237,7 +264,7 @@ Not currently provided: native app-store installation; full offline operation; f
 
 Support: natureswaysoil@gmail.com. Include your account email, farm name, device/browser, page address and the error text. Never include a sign-in token or payment-card details.
 
-## 14. First-day acceptance checklist
+## 15. First-day acceptance checklist
 
 - [ ] Owner signs in using email and sees the expected farm.
 - [ ] One employee joins using their own email and the complete code.
