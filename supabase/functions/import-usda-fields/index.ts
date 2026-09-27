@@ -114,11 +114,18 @@ Deno.serve(async (req: Request) => {
   }
 
   const features = groups.flatMap((group) => group.features || []);
-  let inserted = 0;
-  let updated = 0;
   let skipped = 0;
-  const imported: Array<Record<string, unknown>> = [];
   const problems: string[] = [];
+  const valid = new Map<string, {
+    farmNumber: string;
+    tractNumber: string;
+    fieldNumber: string;
+    cluId: string | null;
+    stateCode: string | null;
+    countyCode: string | null;
+    acres: number | null;
+    boundary: Record<string, unknown>;
+  }>();
 
   for (const feature of features) {
     const props = feature.properties || {};
@@ -143,66 +150,104 @@ Deno.serve(async (req: Request) => {
     const boundary = {
       type: "Feature",
       geometry: feature.geometry,
-      properties: {
-        farmNumber,
-        tractNumber,
-        fieldNumber,
-        cluId,
-        stateCode,
-        countyCode,
-      },
+      properties: { farmNumber, tractNumber, fieldNumber, cluId, stateCode, countyCode },
     };
+    const key = `${farmNumber}\u001f${tractNumber}\u001f${fieldNumber}`;
 
-    const { data: existing, error: findError } = await supabase
-      .from("fields")
-      .select("id,name")
-      .eq("farm_id", farmId)
-      .eq("fsa_farm_number", farmNumber)
-      .eq("fsa_tract_number", tractNumber)
-      .eq("fsa_field_number", fieldNumber)
-      .maybeSingle();
+    if (valid.has(key)) {
+      skipped++;
+      if (problems.length < 10) problems.push(`Skipped duplicate USDA field ${farmNumber}/${tractNumber}/${fieldNumber}.`);
+      continue;
+    }
 
-    if (findError) return json({ error: findError.message }, 400);
+    valid.set(key, { farmNumber, tractNumber, fieldNumber, cluId, stateCode, countyCode, acres, boundary });
+  }
 
-    const common = {
-      fsa_state_code: stateCode,
-      fsa_county_code: countyCode,
-      fsa_farm_number: farmNumber,
-      fsa_tract_number: tractNumber,
-      fsa_field_number: fieldNumber,
-      clu_id: cluId,
-      size_value: acres,
-      size_unit: acres === null ? null : "acres",
-      boundary_geojson: boundary,
+  if (!valid.size) {
+    return json({
+      ok: true,
+      filename: file.name,
+      totalPolygons: features.length,
+      inserted: 0,
+      updated: 0,
+      skipped,
+      imported: [],
+      problems,
+    });
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("fields")
+    .select("id,name,area_type,organic_status,created_by,fsa_farm_number,fsa_tract_number,fsa_field_number")
+    .eq("farm_id", farmId);
+
+  if (existingError) return json({ error: existingError.message }, 400);
+
+  const existingByKey = new Map(
+    (existingRows ?? []).map((row) => [
+      `${row.fsa_farm_number}\u001f${row.fsa_tract_number}\u001f${row.fsa_field_number}`,
+      row,
+    ])
+  );
+
+  let inserted = 0;
+  let updated = 0;
+  const imported: Array<Record<string, unknown>> = [];
+  const now = new Date().toISOString();
+  const rows = Array.from(valid.entries()).map(([key, item]) => {
+    const existing = existingByKey.get(key);
+    if (existing) updated++;
+    else inserted++;
+
+    imported.push({
+      id: existing?.id ?? null,
+      name: existing?.name ?? `FSA Farm ${item.farmNumber} Tract ${item.tractNumber} Field ${item.fieldNumber}`,
+      farmNumber: item.farmNumber,
+      tractNumber: item.tractNumber,
+      fieldNumber: item.fieldNumber,
+      action: existing ? "updated" : "created",
+    });
+
+    return {
+      farm_id: farmId,
+      name: existing?.name ?? `FSA Farm ${item.farmNumber} Tract ${item.tractNumber} Field ${item.fieldNumber}`,
+      area_type: existing?.area_type ?? "field",
+      organic_status: existing?.organic_status ?? "unknown",
+      created_by: existing?.created_by ?? userData.user.id,
+      fsa_state_code: item.stateCode,
+      fsa_county_code: item.countyCode,
+      fsa_farm_number: item.farmNumber,
+      fsa_tract_number: item.tractNumber,
+      fsa_field_number: item.fieldNumber,
+      clu_id: item.cluId,
+      size_value: item.acres,
+      size_unit: item.acres === null ? null : "acres",
+      boundary_geojson: item.boundary,
       boundary_source: "USDA/FSA farmers.gov",
       boundary_source_filename: file.name,
-      boundary_imported_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      boundary_imported_at: now,
+      updated_at: now,
     };
+  });
 
-    if (existing) {
-      const { error } = await supabase.from("fields").update(common).eq("id", existing.id);
-      if (error) return json({ error: error.message }, 400);
-      updated++;
-      imported.push({ id: existing.id, name: existing.name, farmNumber, tractNumber, fieldNumber, action: "updated" });
-    } else {
-      const name = `FSA Farm ${farmNumber} Tract ${tractNumber} Field ${fieldNumber}`;
-      const { data, error } = await supabase
-        .from("fields")
-        .insert({
-          farm_id: farmId,
-          name,
-          area_type: "field",
-          organic_status: "unknown",
-          created_by: userData.user.id,
-          ...common,
-        })
-        .select("id,name")
-        .single();
-      if (error) return json({ error: error.message }, 400);
-      inserted++;
-      imported.push({ id: data.id, name: data.name, farmNumber, tractNumber, fieldNumber, action: "created" });
-    }
+  const { data: upserted, error: upsertError } = await supabase
+    .from("fields")
+    .upsert(rows, {
+      onConflict: "farm_id,fsa_farm_number,fsa_tract_number,fsa_field_number",
+    })
+    .select("id,name,fsa_farm_number,fsa_tract_number,fsa_field_number");
+
+  if (upsertError) return json({ error: upsertError.message }, 400);
+
+  const idByKey = new Map(
+    (upserted ?? []).map((row) => [
+      `${row.fsa_farm_number}\u001f${row.fsa_tract_number}\u001f${row.fsa_field_number}`,
+      row.id,
+    ])
+  );
+  for (const item of imported) {
+    const key = `${item.farmNumber}\u001f${item.tractNumber}\u001f${item.fieldNumber}`;
+    item.id = idByKey.get(key) ?? item.id;
   }
 
   return json({
