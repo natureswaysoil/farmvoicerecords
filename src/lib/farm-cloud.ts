@@ -22,9 +22,13 @@ export type CloudField = {
   adjoining_land_notes: string | null;
   boundary_notes: string | null;
   management_notes: string | null;
+  fsa_state_code: string | null;
+  fsa_county_code: string | null;
   fsa_farm_number: string | null;
   fsa_tract_number: string | null;
   fsa_field_number: string | null;
+  clu_id: string | null;
+  boundary_geojson: unknown | null;
   created_at: string;
 };
 
@@ -44,19 +48,45 @@ export async function getFarmContexts(
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) return [];
 
-  const { data, error } = await supabase
-    .from("farm_members")
-    .select("farm_id, role")
-    .eq("user_id", userData.user.id)
-    .order("created_at");
+  const userId = userData.user.id;
+  const [{ data: memberships, error: memberError }, { data: ownedFarms, error: ownerError }] =
+    await Promise.all([
+      supabase
+        .from("farm_members")
+        .select("farm_id, role")
+        .eq("user_id", userId)
+        .order("created_at"),
+      supabase
+        .from("farms")
+        .select("id")
+        .eq("owner_user_id", userId)
+        .order("created_at"),
+    ]);
 
-  if (error || !data) return [];
+  if (memberError || ownerError) return [];
 
-  return data.map((row) => ({
-    userId: userData.user.id,
-    farmId: row.farm_id as string,
-    role: row.role as "owner" | "worker",
-  }));
+  const contexts = new Map<string, FarmContext>();
+
+  for (const farm of ownedFarms ?? []) {
+    contexts.set(farm.id as string, {
+      userId,
+      farmId: farm.id as string,
+      role: "owner",
+    });
+  }
+
+  for (const row of memberships ?? []) {
+    const farmId = row.farm_id as string;
+    if (!contexts.has(farmId)) {
+      contexts.set(farmId, {
+        userId,
+        farmId,
+        role: row.role as "owner" | "worker",
+      });
+    }
+  }
+
+  return Array.from(contexts.values());
 }
 
 export async function getFarmContext(
