@@ -23,19 +23,19 @@ export default function H2AHousingPage(){
  const [ctx,setCtx]=useState<FarmContext|null>(null);
  const [farms,setFarms]=useState<H2aFarmChoice[]>([]);
  const [housing,setHousing]=useState<Housing[]>([]);
- const [workers,setWorkers]=useState<Worker[]>([]);
+ const [workers,setWorkers]=useState<Worker[]>([]);\n const [contracts,setContracts]=useState<Contract[]>([]);
  const [assignments,setAssignments]=useState<Assignment[]>([]);
  const [inspections,setInspections]=useState<Inspection[]>([]);
  const [items,setItems]=useState<Item[]>([]);
  const [templates,setTemplates]=useState<Template[]>([]);
  const [message,setMessage]=useState("Loading housing records...");
  const [gps,setGps]=useState<Gps|null>(null);
- const [housingForm,setHousingForm]=useState({name:"",address:"",maxOccupancy:"",authority:"",inspectionDate:"",certificate:"",expires:"",type:"employer_provided",basis:"osha_1910_142",jurisdiction:""});
+ const [housingForm,setHousingForm]=useState({name:"",address:"",maxOccupancy:"",authority:"",inspectionDate:"",certificate:"",certificateIssued:"",expires:"",certifiedCapacity:"",sleepingSqft:"",combinedSqft:"",selfCheckFrequency:"monthly",type:"employer_provided",basis:"osha_1910_142",jurisdiction:""});
  const [assignmentForm,setAssignmentForm]=useState({workerId:"",housingId:"",bed:"",checkIn:new Date().toISOString().slice(0,10),checkOut:""});
  const [inspectionForm,setInspectionForm]=useState({housingId:"",type:"routine_maintenance",date:new Date().toISOString().slice(0,10),authority:"",occupancy:"",summary:""});
  const [activeInspection,setActiveInspection]=useState<string>("");
  const [draft,setDraft]=useState<Record<string,{result:Item["result"];notes:string;action:string;due:string;evidence:string}>>({});
- const [uploadingItem,setUploadingItem]=useState<string>("");
+ const [uploadingItem,setUploadingItem]=useState<string>("");\n const [uploadingCertificate,setUploadingCertificate]=useState<string>("");
 
 
  async function load(preferred?:string){
@@ -45,15 +45,15 @@ export default function H2AHousingPage(){
    if(!choices.length){setMessage("Sign in and join a farm before using H-2A housing records.");return}
    if(!farm){setCtx(null);setMessage("Choose a farm.");return}
    selectH2aFarm(farm.farmId);setCtx(farm);
-   const [h,w,a,i,it,tv]=await Promise.all([
-    supabase.from("h2a_housing").select("id,name,address,max_occupancy,inspection_authority,inspection_date,certificate_number,certificate_expires_on,housing_type,standard_basis,jurisdiction,last_self_check_at").eq("farm_id",farm.farmId).eq("active",true).order("name"),
-    supabase.from("h2a_workers").select("id,employee_number,legal_name,preferred_name,status").eq("farm_id",farm.farmId).neq("status","separated").order("employee_number"),
-    supabase.from("h2a_housing_assignments").select("id,worker_id,housing_id,unit_or_bed,check_in_date,check_out_date").eq("farm_id",farm.farmId),
+   const [h,w,a,i,it,tv,ct]=await Promise.all([
+    supabase.from("h2a_housing").select("id,name,address,max_occupancy,inspection_authority,inspection_date,certificate_number,certificate_issued_on,certificate_expires_on,certified_capacity,certificate_document_reference,housing_type,standard_basis,jurisdiction,sleeping_floor_sqft,cooking_living_sleeping_sqft,last_self_check_at,self_check_frequency,next_self_check_on").eq("farm_id",farm.farmId).eq("active",true).order("name"),
+    supabase.from("h2a_workers").select("id,contract_id,employee_number,legal_name,preferred_name,status").eq("farm_id",farm.farmId).neq("status","separated").order("employee_number"),
+    supabase.from("h2a_housing_assignments").select("id,worker_id,housing_id,contract_id,unit_or_bed,check_in_date,check_out_date").eq("farm_id",farm.farmId),
     supabase.from("h2a_housing_inspections").select("id,housing_id,inspection_type,inspection_date,status,standard_basis,template_version_id,authority_or_inspector,occupancy_observed,gps_lat,gps_lng,summary,created_at").eq("farm_id",farm.farmId).order("inspection_date",{ascending:false}),
-    supabase.from("h2a_housing_inspection_items").select("id,inspection_id,requirement_code,category,requirement_label,legal_basis,requirement_kind,result,notes,corrective_action,corrective_due_on,resolved_at,evidence_reference,sort_order").eq("farm_id",farm.farmId).order("sort_order"),
+    supabase.from("h2a_housing_inspection_items").select("id,inspection_id,requirement_code,category,requirement_label,legal_basis,requirement_kind,result,notes,corrective_action,corrective_due_on,assigned_to,resolved_at,evidence_reference,repair_evidence_reference,verified_by,verified_at,sort_order").eq("farm_id",farm.farmId).order("sort_order"),
     supabase.from("compliance_template_versions").select("id,housing_type,standard_basis,version,source_authority,source_reference,effective_from,effective_to").eq("module","h2a_housing").eq("status","active")
    ]);
-   for(const r of [h,w,a,i,it,tv])if(r.error)throw r.error;
+   for(const r of [h,w,a,i,it,tv,ct])if(r.error)throw r.error;
    setHousing((h.data??[]) as Housing[]);setWorkers((w.data??[]) as Worker[]);setAssignments((a.data??[]) as Assignment[]);setInspections((i.data??[]) as Inspection[]);setItems((it.data??[]) as Item[]);setTemplates((tv.data??[]) as Template[]);
    setMessage("");
   }catch(e){setMessage(e instanceof Error?e.message:"Unable to load housing records.")}
