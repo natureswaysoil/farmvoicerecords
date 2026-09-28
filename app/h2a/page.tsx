@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/src/lib/supabase/client";
 import { type FarmContext } from "@/src/lib/farm-cloud";
 import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
+import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
 
 type Contract = {
   id: string;
@@ -63,6 +64,8 @@ type H2aRole = {
   role: string;
 };
 
+type EvidenceRecord = { id: string; label: string; detail: string | null };
+
 type FarmMember = {
   user_id: string;
   role: "owner" | "worker";
@@ -95,6 +98,10 @@ export default function H2APage() {
   const [housing, setHousing] = useState<Housing[]>([]);
   const [roles, setRoles] = useState<H2aRole[]>([]);
   const [farmMembers, setFarmMembers] = useState<FarmMember[]>([]);
+  const [transportEvidence, setTransportEvidence] = useState<EvidenceRecord[]>([]);
+  const [trainingEvidence, setTrainingEvidence] = useState<EvidenceRecord[]>([]);
+  const [recruitmentEvidence, setRecruitmentEvidence] = useState<EvidenceRecord[]>([]);
+  const [separationEvidence, setSeparationEvidence] = useState<EvidenceRecord[]>([]);
   const [message, setMessage] = useState("Loading H-2A records...");
   const [gps, setGps] = useState<{lat:number;lng:number;accuracy:number;capturedAt:string}|null>(null);
 
@@ -177,6 +184,19 @@ export default function H2APage() {
       setHousing((h.data ?? []) as Housing[]);
       setRoles((r.data ?? []) as H2aRole[]);
       setFarmMembers((m.data ?? []) as FarmMember[]);
+      const [transportRows, trainingRows, recruitmentRows, separationRows] = await Promise.all([
+        supabase.from("h2a_transportation").select("id,travel_date,transport_type").eq("farm_id", farm.farmId).order("travel_date", { ascending: false }).limit(20),
+        supabase.from("h2a_training").select("id,training_date,training_type").eq("farm_id", farm.farmId).order("training_date", { ascending: false }).limit(20),
+        supabase.from("h2a_recruitment").select("id,applicant_name,contact_date").eq("farm_id", farm.farmId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("h2a_separations").select("id,separation_date,separation_type").eq("farm_id", farm.farmId).order("separation_date", { ascending: false }).limit(20),
+      ]);
+      for (const result of [transportRows, trainingRows, recruitmentRows, separationRows]) {
+        if (result.error) throw result.error;
+      }
+      setTransportEvidence((transportRows.data ?? []).map((x) => ({ id: x.id, label: `${x.travel_date} · ${x.transport_type}`, detail: null })));
+      setTrainingEvidence((trainingRows.data ?? []).map((x) => ({ id: x.id, label: `${x.training_date} · ${x.training_type}`, detail: null })));
+      setRecruitmentEvidence((recruitmentRows.data ?? []).map((x) => ({ id: x.id, label: x.applicant_name || "Recruitment contact", detail: x.contact_date })));
+      setSeparationEvidence((separationRows.data ?? []).map((x) => ({ id: x.id, label: `${x.separation_date} · ${x.separation_type}`, detail: null })));
       setMessage("");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to load H-2A records.");
@@ -498,9 +518,11 @@ export default function H2APage() {
         <form className="card form" onSubmit={addSeparation}><div><div className="kicker">Separation</div><h2>End-of-employment review</h2></div><div className="field"><label>Worker</label><select required value={separationForm.workerId} onChange={e=>setSeparationForm({...separationForm,workerId:e.target.value})}><option value="">Select worker</option>{workers.map(w=><option key={w.id} value={w.id}>{w.employee_number} · {w.legal_name}</option>)}</select></div><div className="row"><div className="field"><label>Date</label><input type="date" value={separationForm.date} onChange={e=>setSeparationForm({...separationForm,date:e.target.value})}/></div><div className="field"><label>Type</label><select value={separationForm.type} onChange={e=>setSeparationForm({...separationForm,type:e.target.value})}><option value="completed">Contract completed</option><option value="voluntary">Voluntary</option><option value="terminated">Terminated</option><option value="abandonment">Abandonment</option><option value="other">Other</option></select></div></div><div className="field"><label>Reason / facts</label><textarea value={separationForm.reason} onChange={e=>setSeparationForm({...separationForm,reason:e.target.value})}/></div><button className="btn">Save separation review</button></form>
       </section>}
 
+      {ctx&&canAdmin&&<section className="card stack"><div><div className="kicker">Smart Photo Evidence</div><h2>Operational H-2A evidence</h2><p className="muted">Attach receipts, vehicle photos, training proof, recruitment records, and separation documentation directly to the saved record.</p></div><div className="grid-2"><div className="stack"><h3>Transportation</h3>{transportEvidence.map(x=><div className="card" key={x.id}><strong>{x.label}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="transportation" recordId={x.id} category="transportation_evidence" onMessage={setMessage}/></div>)}<h3>Training</h3>{trainingEvidence.map(x=><div className="card" key={x.id}><strong>{x.label}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="training" recordId={x.id} category="training_evidence" onMessage={setMessage}/></div>)}</div><div className="stack"><h3>Recruitment</h3>{recruitmentEvidence.map(x=><div className="card" key={x.id}><strong>{x.label}</strong>{x.detail&&<p className="small muted">{x.detail}</p>}<SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="recruitment" recordId={x.id} category="recruitment_evidence" onMessage={setMessage}/></div>)}<h3>Separations</h3>{separationEvidence.map(x=><div className="card" key={x.id}><strong>{x.label}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="separation" recordId={x.id} category="separation_evidence" onMessage={setMessage}/></div>)}</div></div></section>}
+
       <section className="notice">
         <strong>Important:</strong> FarmVoice Records provides recordkeeping, workflow, calculation and document-management tools. It does not provide immigration, employment, legal, tax or regulatory advice and does not determine whether an employer is compliant with the H-2A program. Verify wage rates, hours, reimbursements, notices, filings, housing requirements and other obligations against the applicable job order, law and agency guidance before relying on or submitting FarmVoice-generated information.
       </section>
-    </main>
+    <section className="card stack"><div><div className="kicker">Smart Photo Evidence</div><h2>Attach evidence to H-2A records</h2><p className="muted">Take a photo or choose an existing image/PDF. FarmVoice files it to the selected H-2A record automatically.</p></div>{ctx&&<div className="grid-2"><div className="stack"><h3>Workers</h3>{workers.slice(0,12).map(w=><div className="card" key={w.id}><strong>{w.employee_number} · {w.preferred_name||w.legal_name}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="worker" recordId={w.id} category="worker_evidence" metadata={{employee_number:w.employee_number}} onMessage={setMessage}/></div>)}</div><div className="stack"><h3>Contracts</h3>{contracts.map(x=><div className="card" key={x.id}><strong>{x.name}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="contract" recordId={x.id} category="contract_evidence" metadata={{contract_name:x.name}} onMessage={setMessage}/></div>)}<h3>Daily work records</h3>{daily.slice(0,12).map(x=><div className="card" key={x.id}><strong>{x.work_date} · {workerName.get(x.worker_id)||x.worker_id.slice(0,8)}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="daily_record" recordId={x.id} category="work_evidence" gps={gps} metadata={{work_date:x.work_date,worker_id:x.worker_id}} onMessage={setMessage}/></div>)}</div></div>}</section></main>
   );
 }
