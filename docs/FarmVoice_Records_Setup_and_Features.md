@@ -209,15 +209,11 @@ Exports include all matching synced records, not just the five displayed in the 
 
 ## 12. Plans and billing
 
-Listed website prices as reviewed September 19, 2026; checkout controls the final amount and any applicable tax.
+FarmVoice is offered as one farm plan: **$49 per month per farm with unlimited workers**, following a **14-day free trial** with no credit card required. The plan includes the FarmVoice recordkeeping, scheduling, GPS time, Smart Photo Evidence, pesticide, USDA/FSA field, H-2A, housing, payroll-preparation and QuickBooks integration features available in the application.
 
-| Plan | Listed monthly price | Total users | Main purpose |
-| --- | ---: | ---: | --- |
-| Essential | $19 | 1 | Voice pesticide/input records, review and record CSV exports |
-| Farm Team | $49 | Up to 10 | Essential features plus scheduling, GPS time, job photos, approvals and time CSV |
-| Farm Pro | $89 | Up to 30 | Farm Team features for a larger crew; advertised priority onboarding/support |
+The plan includes **100 GB of farm photo and document storage**, designed to cover most farms including thousands of job photos and years of workforce and field records. Usage beyond the included storage may require an additional storage plan.
 
-Recording GPS is part of field records; crew GPS time features are separate. Open https://farmvoicerecords.com/billing to review plan options. Billing should identify Nature’s Way Soil & Vermicompost LLC. If subscription management does not open, contact support rather than starting a second subscription. Trial cutoff enforcement and billing-portal readiness require an owner launch review; do not assume every billing workflow has been verified end to end.
+Open https://farmvoicerecords.com/billing to review the current offer. Billing should identify Nature’s Way Soil & Vermicompost LLC. If subscription management does not open, contact support rather than starting a second subscription. Trial cutoff enforcement and billing-portal readiness require an owner launch review; do not assume every billing workflow has been verified end to end.
 
 ## 13. Feature inventory
 
