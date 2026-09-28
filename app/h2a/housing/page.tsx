@@ -54,10 +54,11 @@ export default function H2AHousingPage(){
     supabase.from("h2a_housing_assignments").select("id,worker_id,housing_id,contract_id,unit_or_bed,check_in_date,check_out_date").eq("farm_id",farm.farmId),
     supabase.from("h2a_housing_inspections").select("id,housing_id,inspection_type,inspection_date,status,standard_basis,template_version_id,authority_or_inspector,occupancy_observed,gps_lat,gps_lng,summary,created_at").eq("farm_id",farm.farmId).order("inspection_date",{ascending:false}),
     supabase.from("h2a_housing_inspection_items").select("id,inspection_id,requirement_code,category,requirement_label,legal_basis,requirement_kind,result,notes,corrective_action,corrective_due_on,assigned_to,resolved_at,evidence_reference,repair_evidence_reference,verified_by,verified_at,sort_order").eq("farm_id",farm.farmId).order("sort_order"),
-    supabase.from("compliance_template_versions").select("id,housing_type,standard_basis,version,source_authority,source_reference,effective_from,effective_to").eq("module","h2a_housing").eq("status","active")
+    supabase.from("compliance_template_versions").select("id,housing_type,standard_basis,version,source_authority,source_reference,effective_from,effective_to").eq("module","h2a_housing").eq("status","active"),
+    supabase.from("h2a_contracts").select("id,name,eta_case_number,job_order_number,start_date,end_date,active").eq("farm_id",farm.farmId).eq("active",true).order("start_date",{ascending:false})
    ]);
    for(const r of [h,w,a,i,it,tv,ct])if(r.error)throw r.error;
-   setHousing((h.data??[]) as Housing[]);setWorkers((w.data??[]) as Worker[]);setAssignments((a.data??[]) as Assignment[]);setInspections((i.data??[]) as Inspection[]);setItems((it.data??[]) as Item[]);setTemplates((tv.data??[]) as Template[]);
+   setHousing((h.data??[]) as Housing[]);setWorkers((w.data??[]) as Worker[]);setAssignments((a.data??[]) as Assignment[]);setInspections((i.data??[]) as Inspection[]);setItems((it.data??[]) as Item[]);setTemplates((tv.data??[]) as Template[]);setContracts((ct.data??[]) as Contract[]);
    setMessage("");
   }catch(e){setMessage(e instanceof Error?e.message:"Unable to load housing records.")}
  }
