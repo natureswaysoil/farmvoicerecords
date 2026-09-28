@@ -31,17 +31,31 @@ export const helpItems: HelpItem[] = [
   { id:"support", category:"Support", question:"How do I contact FarmVoice support?", answer:"Email james@farmvoicerecords.com. Include your farm name, the page you were using, your device/browser, and the visible error message. Never send passwords, access tokens, QuickBooks secrets, or payment-card details.", keywords:["support","help","contact","email","error"] }
 ];
 
-export function findHelpItems(query: string, limit = 4) {
+export function findHelpItems(query: string, limit = 4, minScore = 2) {
   const normalized = query.toLowerCase().trim();
   if (!normalized) return helpItems.slice(0, limit);
-  const terms = normalized.split(/[^a-z0-9-]+/).filter((term) => term.length > 1);
+
+  const stopWords = new Set(["a","an","and","are","can","do","does","for","how","i","in","is","it","me","my","of","on","or","the","to","what","with"]);
+  const terms = normalized
+    .split(/[^a-z0-9-]+/)
+    .filter((term) => term.length > 1 && !stopWords.has(term));
+
   return helpItems
     .map((item) => {
-      const haystack = [item.question, item.answer, item.category, ...item.keywords].join(" ").toLowerCase();
-      const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 2 : 0) + (item.keywords.includes(term) ? 3 : 0), 0);
+      const keywords = new Set(item.keywords.map((keyword) => keyword.toLowerCase()));
+      const questionTokens = new Set(item.question.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean));
+      const categoryTokens = new Set(item.category.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean));
+      const answerTokens = new Set(item.answer.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean));
+      const score = terms.reduce((total, term) => {
+        if (keywords.has(term)) return total + 5;
+        if (questionTokens.has(term)) return total + 3;
+        if (categoryTokens.has(term)) return total + 2;
+        if (answerTokens.has(term)) return total + 1;
+        return total;
+      }, 0);
       return { item, score };
     })
-    .filter(({ score }) => score > 0)
+    .filter(({ score }) => score >= minScore)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ item }) => item);
