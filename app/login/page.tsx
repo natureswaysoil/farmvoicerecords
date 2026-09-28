@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
+import { safeNextPath } from "@/src/lib/safe-next";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -47,18 +48,13 @@ export default function LoginPage() {
 
       if (mustUseMfa && aal.data.currentLevel !== "aal2") {
         const currentParams = new URL(window.location.href).searchParams;
-        const requested = currentParams.get("next");
-        const destination = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : "/records";
+        const destination = safeNextPath(currentParams.get("next"), window.location.origin);
         window.location.assign("/mfa?next=" + encodeURIComponent(destination));
         return;
       }
 
       const params = new URL(window.location.href).searchParams;
-      const requestedNext = params.get("next");
-      const next =
-        requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
-          ? requestedNext
-          : "/records";
+      const next = safeNextPath(params.get("next"), window.location.origin);
 
       if (!next.startsWith("/join")) {
         const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
