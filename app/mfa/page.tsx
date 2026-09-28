@@ -64,7 +64,9 @@ export default function MfaPage() {
 
       // Supabase creates an unverified factor as soon as enrollment starts. If
       // setup was abandoned, remove those stale factors before starting over.
-      for (const factor of factors.totp.filter((item) => item.status === "unverified")) {
+      for (const factor of factors.all.filter(
+        (item) => item.factor_type === "totp" && item.status === "unverified",
+      )) {
         const { error: cleanupError } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
         if (cleanupError) {
           setMessage("FarmVoice could not restart two-factor setup. Please try again.");
