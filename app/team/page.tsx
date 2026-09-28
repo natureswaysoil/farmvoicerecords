@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { getFarmContext, type FarmContext } from "@/src/lib/farm-cloud";
+import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
 
 type Member = {
   user_id: string;
