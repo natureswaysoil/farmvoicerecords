@@ -389,6 +389,7 @@ export default function H2APage() {
         <div className="actions">
           <Link className="btn secondary" href="/h2a/payroll">Payroll & guarantee review</Link>
           <Link className="btn secondary" href="/h2a/documents">Documents & acknowledgments</Link>
+          <Link className="btn secondary" href="/h2a/housing">Housing compliance</Link>
         </div>
       </div>
 
