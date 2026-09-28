@@ -9,26 +9,10 @@ import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } fr
 type Housing={id:string;name:string;address:string;max_occupancy:number|null;inspection_authority:string|null;inspection_date:string|null;certificate_number:string|null;certificate_expires_on:string|null;housing_type:string|null;standard_basis:string|null;jurisdiction:string|null;last_self_check_at:string|null};
 type Assignment={id:string;worker_id:string;housing_id:string;unit_or_bed:string|null;check_in_date:string;check_out_date:string|null};
 type Worker={id:string;employee_number:string;legal_name:string;preferred_name:string|null;status:string};
-type Inspection={id:string;housing_id:string;inspection_type:string;inspection_date:string;status:string;standard_basis:string;authority_or_inspector:string|null;occupancy_observed:number|null;gps_lat:number|null;gps_lng:number|null;summary:string|null;created_at:string};
+type Inspection={id:string;housing_id:string;inspection_type:string;inspection_date:string;status:string;standard_basis:string;template_version_id:string|null;authority_or_inspector:string|null;occupancy_observed:number|null;gps_lat:number|null;gps_lng:number|null;summary:string|null;created_at:string};
+type Template={id:string;housing_type:string|null;standard_basis:string;version:string;source_authority:string;source_reference:string|null;effective_from:string;effective_to:string|null};
 type Item={id:string;inspection_id:string;requirement_code:string;category:string;requirement_label:string;legal_basis:string|null;requirement_kind:"legal"|"best_practice";result:"not_checked"|"pass"|"fail"|"not_applicable";notes:string|null;corrective_action:string|null;corrective_due_on:string|null;resolved_at:string|null;evidence_reference:string|null;sort_order:number};
 type Gps={lat:number;lng:number;accuracy:number;capturedAt:string};
-
-const CHECKLIST=[
- {code:"SITE_DRAINAGE",category:"Site",label:"Site is adequately drained and free from depressions where water can stagnate.",basis:"29 CFR 1910.142(a)(1)",kind:"legal"},
- {code:"SITE_REFUSE",category:"Site",label:"Site is free from debris, refuse, uncontrolled weeds/brush and other sanitary nuisances.",basis:"29 CFR 1910.142(a)(3)",kind:"legal"},
- {code:"STRUCTURE_PROTECTION",category:"Shelter",label:"Shelter provides protection against the elements.",basis:"29 CFR 1910.142(b)(1)",kind:"legal"},
- {code:"FLOOR_SPACE",category:"Shelter",label:"Sleeping and combined-use floor space has been reviewed against the applicable per-person minimum.",basis:"29 CFR 1910.142(b)(2)",kind:"legal"},
- {code:"WINDOWS_VENTILATION",category:"Shelter",label:"Windows/ventilation and required window or door screening are maintained.",basis:"29 CFR 1910.142(b)(8)",kind:"legal"},
- {code:"HEATING",category:"Shelter",label:"Required heating equipment is provided and maintained where applicable.",basis:"29 CFR 1910.142(b)(11)",kind:"legal"},
- {code:"WATER",category:"Water",label:"Adequate potable water is available for drinking, cooking, bathing and laundry.",basis:"29 CFR 1910.142(c)",kind:"legal"},
- {code:"TOILETS",category:"Sanitation",label:"Toilet facilities are adequate, accessible, lighted/ventilated as applicable, and sanitary.",basis:"29 CFR 1910.142(d)",kind:"legal"},
- {code:"BATHING_LAUNDRY",category:"Sanitation",label:"Bathing and laundry facilities, hot/cold water and drainage are maintained.",basis:"29 CFR 1910.142(f)",kind:"legal"},
- {code:"COOKING_FOOD",category:"Food",label:"Cooking, refrigeration and food-storage facilities are adequate and maintained.",basis:"29 CFR 1910.142(i)",kind:"legal"},
- {code:"REFUSE",category:"Waste",label:"Covered refuse containers and regular collection/disposal are maintained.",basis:"29 CFR 1910.142(h)",kind:"legal"},
- {code:"PEST_CONTROL",category:"Pests",label:"Effective measures are maintained to control insects and rodents.",basis:"29 CFR 1910.142(j)",kind:"legal"},
- {code:"FIRST_AID",category:"Safety",label:"Adequate first-aid facilities are available and accessible.",basis:"29 CFR 1910.142(k)",kind:"legal"},
- {code:"FIRE_SAFETY",category:"Safety",label:"Smoke/CO alarms, extinguishers and clear exits were checked.",basis:"Best practice; verify state/local fire code",kind:"best_practice"},
-] as const;
 
 function csvEscape(v:unknown){let s=v==null?"":String(v);if(/^[=+\-@]/.test(s))s="'"+s;return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
 function downloadCsv(name:string,rows:unknown[][]){const blob=new Blob([rows.map(r=>r.map(csvEscape).join(",")).join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
@@ -43,6 +27,7 @@ export default function H2AHousingPage(){
  const [assignments,setAssignments]=useState<Assignment[]>([]);
  const [inspections,setInspections]=useState<Inspection[]>([]);
  const [items,setItems]=useState<Item[]>([]);
+ const [templates,setTemplates]=useState<Template[]>([]);
  const [message,setMessage]=useState("Loading housing records...");
  const [gps,setGps]=useState<Gps|null>(null);
  const [housingForm,setHousingForm]=useState({name:"",address:"",maxOccupancy:"",authority:"",inspectionDate:"",certificate:"",expires:"",type:"employer_provided",basis:"osha_1910_142",jurisdiction:""});
@@ -60,15 +45,16 @@ export default function H2AHousingPage(){
    if(!choices.length){setMessage("Sign in and join a farm before using H-2A housing records.");return}
    if(!farm){setCtx(null);setMessage("Choose a farm.");return}
    selectH2aFarm(farm.farmId);setCtx(farm);
-   const [h,w,a,i,it]=await Promise.all([
+   const [h,w,a,i,it,tv]=await Promise.all([
     supabase.from("h2a_housing").select("id,name,address,max_occupancy,inspection_authority,inspection_date,certificate_number,certificate_expires_on,housing_type,standard_basis,jurisdiction,last_self_check_at").eq("farm_id",farm.farmId).eq("active",true).order("name"),
     supabase.from("h2a_workers").select("id,employee_number,legal_name,preferred_name,status").eq("farm_id",farm.farmId).neq("status","separated").order("employee_number"),
     supabase.from("h2a_housing_assignments").select("id,worker_id,housing_id,unit_or_bed,check_in_date,check_out_date").eq("farm_id",farm.farmId),
-    supabase.from("h2a_housing_inspections").select("id,housing_id,inspection_type,inspection_date,status,standard_basis,authority_or_inspector,occupancy_observed,gps_lat,gps_lng,summary,created_at").eq("farm_id",farm.farmId).order("inspection_date",{ascending:false}),
-    supabase.from("h2a_housing_inspection_items").select("id,inspection_id,requirement_code,category,requirement_label,legal_basis,requirement_kind,result,notes,corrective_action,corrective_due_on,resolved_at,evidence_reference,sort_order").eq("farm_id",farm.farmId).order("sort_order")
+    supabase.from("h2a_housing_inspections").select("id,housing_id,inspection_type,inspection_date,status,standard_basis,template_version_id,authority_or_inspector,occupancy_observed,gps_lat,gps_lng,summary,created_at").eq("farm_id",farm.farmId).order("inspection_date",{ascending:false}),
+    supabase.from("h2a_housing_inspection_items").select("id,inspection_id,requirement_code,category,requirement_label,legal_basis,requirement_kind,result,notes,corrective_action,corrective_due_on,resolved_at,evidence_reference,sort_order").eq("farm_id",farm.farmId).order("sort_order"),
+    supabase.from("compliance_template_versions").select("id,housing_type,standard_basis,version,source_authority,source_reference,effective_from,effective_to").eq("module","h2a_housing").eq("status","active")
    ]);
-   for(const r of [h,w,a,i,it])if(r.error)throw r.error;
-   setHousing((h.data??[]) as Housing[]);setWorkers((w.data??[]) as Worker[]);setAssignments((a.data??[]) as Assignment[]);setInspections((i.data??[]) as Inspection[]);setItems((it.data??[]) as Item[]);
+   for(const r of [h,w,a,i,it,tv])if(r.error)throw r.error;
+   setHousing((h.data??[]) as Housing[]);setWorkers((w.data??[]) as Worker[]);setAssignments((a.data??[]) as Assignment[]);setInspections((i.data??[]) as Inspection[]);setItems((it.data??[]) as Item[]);setTemplates((tv.data??[]) as Template[]);
    setMessage("");
   }catch(e){setMessage(e instanceof Error?e.message:"Unable to load housing records.")}
  }
@@ -96,9 +82,9 @@ export default function H2AHousingPage(){
  }
  function captureGps(){if(!navigator.geolocation)return setMessage("GPS is unavailable on this device.");navigator.geolocation.getCurrentPosition(p=>setGps({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy,capturedAt:new Date().toISOString()}),e=>setMessage("GPS unavailable: "+e.message),{enableHighAccuracy:true,timeout:15000,maximumAge:0})}
  async function startInspection(e:FormEvent){e.preventDefault();if(!ctx)return;const home=housing.find(h=>h.id===inspectionForm.housingId);if(!home)return;
-  if(home.standard_basis!=="osha_1910_142"){setMessage("This built-in checklist is currently mapped to OSHA 1910.142. Choose an OSHA 1910.142 housing profile or use a jurisdiction-specific checklist after it is configured.");return}
-  const checklist=CHECKLIST.map((x,n)=>({code:x.code,category:x.category,label:x.label,basis:x.basis,kind:x.kind,sort_order:n+1}));
-  const {data,error}=await supabase.rpc("h2a_create_housing_inspection",{p_farm_id:ctx.farmId,p_housing_id:home.id,p_inspection_type:inspectionForm.type,p_inspection_date:inspectionForm.date,p_standard_basis:home.standard_basis,p_authority_or_inspector:inspectionForm.authority||null,p_occupancy_observed:inspectionForm.occupancy?Number(inspectionForm.occupancy):occupancy.get(home.id)||0,p_gps_lat:gps?.lat??null,p_gps_lng:gps?.lng??null,p_gps_accuracy_m:gps?.accuracy??null,p_gps_captured_at:gps?.capturedAt??null,p_summary:inspectionForm.summary||null,p_checklist:checklist});
+  const template=templates.find(t=>t.standard_basis===home.standard_basis&&(!t.housing_type||t.housing_type===home.housing_type)&&inspectionForm.date>=t.effective_from&&(!t.effective_to||inspectionForm.date<=t.effective_to));
+  if(!template){setMessage("No reviewed FarmVoice compliance template is active for this housing type, standard, and inspection date. The inspection was not created.");return}
+  const {data,error}=await supabase.rpc("h2a_create_housing_inspection_v2",{p_farm_id:ctx.farmId,p_housing_id:home.id,p_inspection_type:inspectionForm.type,p_inspection_date:inspectionForm.date,p_template_version_id:template.id,p_authority_or_inspector:inspectionForm.authority||null,p_occupancy_observed:inspectionForm.occupancy?Number(inspectionForm.occupancy):occupancy.get(home.id)||0,p_gps_lat:gps?.lat??null,p_gps_lng:gps?.lng??null,p_gps_accuracy_m:gps?.accuracy??null,p_gps_captured_at:gps?.capturedAt??null,p_summary:inspectionForm.summary||null});
   if(error||!data){setMessage(error?.message||"Unable to create inspection.");return}
   setMessage("Inspection checklist started. Review each item against the applicable standard and local requirements.");setActiveInspection(data as string);void load();
  }
