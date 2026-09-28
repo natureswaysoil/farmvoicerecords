@@ -33,6 +33,15 @@ export default function LoginPage() {
         return;
       }
 
+      const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (!aal.error && aal.data.nextLevel === "aal2" && aal.data.currentLevel !== "aal2") {
+        const currentParams = new URL(window.location.href).searchParams;
+        const requested = currentParams.get("next");
+        const destination = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : "/records";
+        window.location.assign("/mfa?next=" + encodeURIComponent(destination));
+        return;
+      }
+
       const params = new URL(window.location.href).searchParams;
       const requestedNext = params.get("next");
       const next =
