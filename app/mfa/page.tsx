@@ -93,6 +93,18 @@ export default function MfaPage() {
     void prepare();
   }, []);
 
+  async function restartEnrollment() {
+    setMessage("");
+    if (!factorId) return;
+    const supabase = createClient();
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    if (error) {
+      setMessage("FarmVoice could not replace this authenticator setup. Please try again.");
+      return;
+    }
+    window.location.reload();
+  }
+
   async function verify(event: FormEvent) {
     event.preventDefault();
     setMessage("");
@@ -142,15 +154,29 @@ export default function MfaPage() {
 
         {ready && enrolling && (
           <>
-            <p className="muted">
-              Scan this QR code with your authenticator app, then enter the current 6-digit code.
-            </p>
+            <div className="notice">
+              <strong>Choose either setup method</strong>
+              <p><strong>Option 1 — Scan:</strong> Open Google Authenticator, Microsoft Authenticator, Authy, 1Password, or another TOTP authenticator. Tap <strong>+ / Add account → Scan QR code</strong>, then scan the FarmVoice QR below.</p>
+              <p><strong>Option 2 — Enter the setup key:</strong> In the authenticator app choose <strong>Enter setup key / Enter code manually</strong>, then enter the FarmVoice setup key shown under the QR.</p>
+              <p style={{ marginBottom: 0 }}>After either method, your authenticator will show a new <strong>FarmVoice Records</strong> rotating 6-digit number. Type that 6-digit number into the box below.</p>
+            </div>
             {qr && <Image src={qr} alt="FarmVoice authenticator QR code" width={260} height={260} unoptimized />}
             {secret && (
-              <p className="muted">
-                Can&apos;t scan the code? Enter this setup key manually: <code>{secret}</code>
-              </p>
+              <details className="notice" style={{ marginTop: 12 }}>
+                <summary><strong>Use setup key instead of scanning</strong></summary>
+                <p className="small" style={{ marginTop: 10 }}>
+                  Enter this key into your authenticator app. Keep it private: this is a permanent security secret, not the rotating 6-digit login code.
+                </p>
+                <code style={{ overflowWrap: "anywhere" }}>{secret}</code>
+              </details>
             )}
+            <div className="notice warn" style={{ marginTop: 12 }}>
+              <strong>If this QR code or setup key was exposed, replace it before continuing.</strong>
+              <p>This creates a fresh FarmVoice authenticator secret.</p>
+              <button className="btn secondary" type="button" onClick={() => void restartEnrollment()}>
+                Generate a new QR code
+              </button>
+            </div>
           </>
         )}
 
@@ -161,7 +187,7 @@ export default function MfaPage() {
         {ready && (
           <form className="form" onSubmit={verify}>
             <div className="field">
-              <label htmlFor="mfa-code">6-digit code</label>
+              <label htmlFor="mfa-code">{enrolling ? "Enter the 6-digit number now shown for FarmVoice Records" : "Enter the current FarmVoice Records 6-digit number"}</label>
               <input
                 id="mfa-code"
                 inputMode="numeric"
