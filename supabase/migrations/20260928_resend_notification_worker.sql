@@ -14,7 +14,7 @@ begin
     where o.status in ('pending','retry')
       and o.not_before <= now()
       and (o.locked_at is null or o.locked_at < now() - interval '10 minutes')
-    order by o.severity desc, o.not_before, o.created_at
+    order by case o.severity when 'urgent' then 1 when 'high' then 2 when 'normal' then 3 else 4 end, o.not_before, o.created_at
     for update skip locked
     limit greatest(1,least(coalesce(p_limit,25),100))
   )
@@ -64,3 +64,49 @@ begin
 end;
 $$;
 revoke all on function private.release_stale_notification_locks() from public,anon,authenticated;
+
+
+create or replace function private.complete_notification_outbox(p_outbox_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.notification_outbox
+  set status = 'delivered', processed_at = now(), locked_at = null, last_error = null
+  where id = p_outbox_id and status = 'processing';
+end;
+$$;
+revoke all on function private.complete_notification_outbox(uuid) from public, anon, authenticated;
+
+create or replace function private.retry_notification_outbox(p_outbox_id uuid, p_error text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_attempt integer;
+begin
+  select attempt_count into v_attempt
+  from public.notification_outbox
+  where id = p_outbox_id
+  for update;
+
+  if not found then
+    return;
+  end if;
+
+  update public.notification_outbox
+  set status = case when v_attempt >= 5 then 'dead_letter' else 'retry' end,
+      last_error = left(coalesce(p_error, 'Unknown notification error'), 2000),
+      locked_at = null,
+      not_before = case
+        when v_attempt >= 5 then not_before
+        else now() + make_interval(mins => least(60, greatest(2, power(2, greatest(v_attempt - 1, 0))::integer)))
+      end
+  where id = p_outbox_id;
+end;
+$$;
+revoke all on function private.retry_notification_outbox(uuid, text) from public, anon, authenticated;
