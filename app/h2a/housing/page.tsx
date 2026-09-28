@@ -76,7 +76,8 @@ export default function H2AHousingPage(){
 
  const workerName=useMemo(()=>new Map(workers.map(w=>[w.id,w.preferred_name||w.legal_name])),[workers]);
  const housingName=useMemo(()=>new Map(housing.map(h=>[h.id,h.name])),[housing]);
- const today=new Date().toISOString().slice(0,10);\n const openAssignments=assignments.filter(a=>a.check_in_date<=today&&(!a.check_out_date||a.check_out_date>=today));
+ const today=new Date().toISOString().slice(0,10);
+ const openAssignments=assignments.filter(a=>a.check_in_date<=today&&(!a.check_out_date||a.check_out_date>=today));
  const occupancy=useMemo(()=>{const m=new Map<string,number>();for(const a of openAssignments)m.set(a.housing_id,(m.get(a.housing_id)||0)+1);return m},[openAssignments]);
  const openFailures=items.filter(x=>x.result==="fail"&&!x.resolved_at);
  const currentItems=items.filter(x=>x.inspection_id===activeInspection);
