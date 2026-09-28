@@ -6,12 +6,12 @@ import { createClient } from "@/src/lib/supabase/client";
 import { type FarmContext } from "@/src/lib/farm-cloud";
 import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
 
-type Housing={id:string;name:string;address:string;max_occupancy:number|null;inspection_authority:string|null;inspection_date:string|null;certificate_number:string|null;certificate_expires_on:string|null;housing_type:string|null;standard_basis:string|null;jurisdiction:string|null;last_self_check_at:string|null};
-type Assignment={id:string;worker_id:string;housing_id:string;unit_or_bed:string|null;check_in_date:string;check_out_date:string|null};
-type Worker={id:string;employee_number:string;legal_name:string;preferred_name:string|null;status:string};
+type Housing={id:string;name:string;address:string;max_occupancy:number|null;inspection_authority:string|null;inspection_date:string|null;certificate_number:string|null;certificate_issued_on:string|null;certificate_expires_on:string|null;certified_capacity:number|null;certificate_document_reference:string|null;housing_type:string|null;standard_basis:string|null;jurisdiction:string|null;sleeping_floor_sqft:number|null;cooking_living_sleeping_sqft:number|null;last_self_check_at:string|null;self_check_frequency:"weekly"|"monthly"|"none";next_self_check_on:string|null};
+type Assignment={id:string;worker_id:string;housing_id:string;contract_id:string|null;unit_or_bed:string|null;check_in_date:string;check_out_date:string|null};
+type Worker={id:string;contract_id:string|null;employee_number:string;legal_name:string;preferred_name:string|null;status:string};\ntype Contract={id:string;name:string;eta_case_number:string|null;job_order_number:string|null;start_date:string;end_date:string;active:boolean};
 type Inspection={id:string;housing_id:string;inspection_type:string;inspection_date:string;status:string;standard_basis:string;template_version_id:string|null;authority_or_inspector:string|null;occupancy_observed:number|null;gps_lat:number|null;gps_lng:number|null;summary:string|null;created_at:string};
 type Template={id:string;housing_type:string|null;standard_basis:string;version:string;source_authority:string;source_reference:string|null;effective_from:string;effective_to:string|null};
-type Item={id:string;inspection_id:string;requirement_code:string;category:string;requirement_label:string;legal_basis:string|null;requirement_kind:"legal"|"best_practice";result:"not_checked"|"pass"|"fail"|"not_applicable";notes:string|null;corrective_action:string|null;corrective_due_on:string|null;resolved_at:string|null;evidence_reference:string|null;sort_order:number};
+type Item={id:string;inspection_id:string;requirement_code:string;category:string;requirement_label:string;legal_basis:string|null;requirement_kind:"legal"|"best_practice";result:"not_checked"|"pass"|"fail"|"not_applicable";notes:string|null;corrective_action:string|null;corrective_due_on:string|null;assigned_to:string|null;resolved_at:string|null;evidence_reference:string|null;repair_evidence_reference:string|null;verified_by:string|null;verified_at:string|null;sort_order:number};
 type Gps={lat:number;lng:number;accuracy:number;capturedAt:string};
 
 function csvEscape(v:unknown){let s=v==null?"":String(v);if(/^[=+\-@]/.test(s))s="'"+s;return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
