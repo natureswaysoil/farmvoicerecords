@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/src/lib/supabase/client";
 import { type FarmContext } from "@/src/lib/farm-cloud";
 import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
+import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
 
 type Contract = {
   id: string;
@@ -501,6 +502,6 @@ export default function H2APage() {
       <section className="notice">
         <strong>Important:</strong> FarmVoice Records provides recordkeeping, workflow, calculation and document-management tools. It does not provide immigration, employment, legal, tax or regulatory advice and does not determine whether an employer is compliant with the H-2A program. Verify wage rates, hours, reimbursements, notices, filings, housing requirements and other obligations against the applicable job order, law and agency guidance before relying on or submitting FarmVoice-generated information.
       </section>
-    </main>
+    <section className="card stack"><div><div className="kicker">Smart Photo Evidence</div><h2>Attach evidence to H-2A records</h2><p className="muted">Take a photo or choose an existing image/PDF. FarmVoice files it to the selected H-2A record automatically.</p></div>{ctx&&<div className="grid-2"><div className="stack"><h3>Workers</h3>{workers.slice(0,12).map(w=><div className="card" key={w.id}><strong>{w.employee_number} · {w.preferred_name||w.legal_name}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="worker" recordId={w.id} category="worker_evidence" metadata={{employee_number:w.employee_number}} onMessage={setMessage}/></div>)}</div><div className="stack"><h3>Contracts</h3>{contracts.map(x=><div className="card" key={x.id}><strong>{x.name}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="contract" recordId={x.id} category="contract_evidence" metadata={{contract_name:x.name}} onMessage={setMessage}/></div>)}<h3>Daily work records</h3>{daily.slice(0,12).map(x=><div className="card" key={x.id}><strong>{x.work_date} · {workerName.get(x.worker_id)||x.worker_id.slice(0,8)}</strong><SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="h2a" recordType="daily_record" recordId={x.id} category="work_evidence" gps={gps} metadata={{work_date:x.work_date,worker_id:x.worker_id}} onMessage={setMessage}/></div>)}</div></div>}</section></main>
   );
 }
