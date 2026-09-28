@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
+import { safeNextPath } from "@/src/lib/safe-next";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,21 +34,27 @@ export default function LoginPage() {
         return;
       }
 
+      const { data: mustUseMfa, error: requirementError } = await supabase.rpc("requires_mfa_for_current_user");
+      if (requirementError) {
+        setMessage("Signed in, but FarmVoice could not verify your account security requirements. Please try again.");
+        return;
+      }
+
       const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (!aal.error && aal.data.nextLevel === "aal2" && aal.data.currentLevel !== "aal2") {
+      if (aal.error) {
+        setMessage("Signed in, but FarmVoice could not verify your two-factor authentication status. Please try again.");
+        return;
+      }
+
+      if (mustUseMfa && aal.data.currentLevel !== "aal2") {
         const currentParams = new URL(window.location.href).searchParams;
-        const requested = currentParams.get("next");
-        const destination = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : "/records";
+        const destination = safeNextPath(currentParams.get("next"), window.location.origin);
         window.location.assign("/mfa?next=" + encodeURIComponent(destination));
         return;
       }
 
       const params = new URL(window.location.href).searchParams;
-      const requestedNext = params.get("next");
-      const next =
-        requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
-          ? requestedNext
-          : "/records";
+      const next = safeNextPath(params.get("next"), window.location.origin);
 
       if (!next.startsWith("/join")) {
         const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });

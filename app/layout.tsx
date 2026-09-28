@@ -21,6 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/fields">Fields</Link>
               <Link href="/team">Team</Link>
               <Link href="/h2a">H-2A</Link>
+              <Link href="/h2a/housing">Housing</Link>
               <Link href="/integrations/quickbooks">QuickBooks</Link>
               <Link href="/join">Join farm</Link>
               <Link href="/billing">Pricing</Link>

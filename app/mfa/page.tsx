@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
+import { safeNextPath } from "@/src/lib/safe-next";
 
 export default function MfaPage() {
   const [factorId, setFactorId] = useState("");
@@ -17,8 +18,7 @@ export default function MfaPage() {
     async function prepare() {
       const supabase = createClient();
       const params = new URL(window.location.href).searchParams;
-      const requested = params.get("next");
-      const next = requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/records";
+      const next = safeNextPath(params.get("next"), window.location.origin);
 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
@@ -38,6 +38,13 @@ export default function MfaPage() {
 
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal?.currentLevel === "aal2") {
+        if (!next.startsWith("/join")) {
+          const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+          if (!farmResponse.ok) {
+            setMessage("Two-factor authentication is active, but FarmVoice could not finish setting up your farm account. Please try again.");
+            return;
+          }
+        }
         window.location.assign(next);
         return;
       }
@@ -53,6 +60,18 @@ export default function MfaPage() {
         setFactorId(verified.id);
         setReady(true);
         return;
+      }
+
+      // Supabase creates an unverified factor as soon as enrollment starts. If
+      // setup was abandoned, remove those stale factors before starting over.
+      for (const factor of factors.all.filter(
+        (item) => item.factor_type === "totp" && item.status === "unverified",
+      )) {
+        const { error: cleanupError } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        if (cleanupError) {
+          setMessage("FarmVoice could not restart two-factor setup. Please try again.");
+          return;
+        }
       }
 
       const { data: enrollment, error: enrollError } = await supabase.auth.mfa.enroll({
@@ -95,8 +114,17 @@ export default function MfaPage() {
     }
 
     const params = new URL(window.location.href).searchParams;
-    const requested = params.get("next");
-    window.location.assign(requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/records");
+    const next = safeNextPath(params.get("next"), window.location.origin);
+
+    if (!next.startsWith("/join")) {
+      const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+      if (!farmResponse.ok) {
+        setMessage("Two-factor authentication succeeded, but FarmVoice could not finish setting up your farm account. Please try again.");
+        return;
+      }
+    }
+
+    window.location.assign(next);
   }
 
   return (
