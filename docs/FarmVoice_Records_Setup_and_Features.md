@@ -4,7 +4,7 @@
 Nature’s Way Soil & Vermicompost LLC • September 19, 2026
 
 Website: https://farmvoicerecords.com  
-Setup and support: natureswaysoil@gmail.com
+Setup and support: james@farmvoicerecords.com
 
 This guide describes the current application. It separates working features from integrations that are not yet available. FarmVoice Records is a browser-based service: customers do not need ChatGPT, Supabase, a server, or an app-store download.
 
@@ -262,7 +262,7 @@ Not currently provided: native app-store installation; full offline operation; f
 | Billing management fails | Email support. Avoid creating another paid subscription as a workaround. |
 | Page looks outdated | Sync outstanding work first, then refresh or reopen the current website link. Do not clear browser data while unsynced records remain. |
 
-Support: natureswaysoil@gmail.com. Include your account email, farm name, device/browser, page address and the error text. Never include a sign-in token or payment-card details.
+Support: james@farmvoicerecords.com. Include your account email, farm name, device/browser, page address and the error text. Never include a sign-in token or payment-card details.
 
 ## 15. First-day acceptance checklist
 
