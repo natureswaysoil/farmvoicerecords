@@ -38,6 +38,13 @@ export default function MfaPage() {
 
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal?.currentLevel === "aal2") {
+        if (!next.startsWith("/join")) {
+          const farmResponse = await fetch("/api/farm/ensure-owner", { method: "POST" });
+          if (!farmResponse.ok) {
+            setMessage("Two-factor authentication is active, but FarmVoice could not finish setting up your farm account. Please try again.");
+            return;
+          }
+        }
         window.location.assign(next);
         return;
       }
