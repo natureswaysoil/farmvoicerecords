@@ -113,6 +113,12 @@ export default function MfaPage() {
       return;
     }
 
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError || aal.currentLevel !== "aal2") {
+      setMessage("Two-factor authentication was verified, but FarmVoice could not confirm your secure session. Please try again.");
+      return;
+    }
+
     const params = new URL(window.location.href).searchParams;
     const next = safeNextPath(params.get("next"), window.location.origin);
 
