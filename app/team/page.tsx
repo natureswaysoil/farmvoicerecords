@@ -298,8 +298,8 @@ export default function TeamPage() {
           <button className="btn" onClick={addShift}>Schedule shift</button>
           {shifts.length > 0 && (
             <table className="table">
-              <thead><tr><th>Worker</th><th>Job / Field</th><th>Start</th><th>End</th></tr></thead>
-              <tbody>{shifts.map((s) => <tr key={s.id}><td>{workerMap.get(s.worker_user_id)}</td><td>{s.job}{s.field_name ? ` · ${s.field_name}` : ""}</td><td>{new Date(s.starts_at).toLocaleString()}</td><td>{new Date(s.ends_at).toLocaleString()}</td></tr>)}</tbody>
+              <thead><tr><th>Worker</th><th>Job / Field</th><th>Start</th><th>End</th><th>Evidence</th></tr></thead>
+              <tbody>{shifts.map((s) => <tr key={s.id}><td>{workerMap.get(s.worker_user_id)}</td><td>{s.job}{s.field_name ? ` · ${s.field_name}` : ""}</td><td>{new Date(s.starts_at).toLocaleString()}</td><td>{new Date(s.ends_at).toLocaleString()}</td><td>{ctx&&<SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="team" recordType="shift" recordId={s.id} category="shift_evidence" metadata={{job:s.job,field_name:s.field_name}} onMessage={setMessage}/>}</td></tr>)}</tbody>
             </table>
           )}
         </section>
@@ -312,7 +312,7 @@ export default function TeamPage() {
         </div>
         {times.length ? (
           <table className="table">
-            <thead><tr><th>Worker</th><th>Job / Field</th><th>Clock in</th><th>Clock out</th><th>Status</th>{ctx?.role === "owner" && <th>Review</th>}</tr></thead>
+            <thead><tr><th>Worker</th><th>Job / Field</th><th>Clock in</th><th>Clock out</th><th>Status</th><th>Evidence</th>{ctx?.role === "owner" && <th>Review</th>}</tr></thead>
             <tbody>
               {times.map((t) => (
                 <tr key={t.id}>
