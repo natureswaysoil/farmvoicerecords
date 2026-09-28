@@ -321,6 +321,7 @@ export default function TeamPage() {
                   <td>{new Date(t.clock_in).toLocaleString()}</td>
                   <td>{t.clock_out ? new Date(t.clock_out).toLocaleString() : "Active"}</td>
                   <td>{t.approval_status}</td>
+                  <td>{ctx && <SmartPhotoEvidence farmId={ctx.farmId} userId={ctx.userId} module="team" recordType="time_entry" recordId={t.id} category="time_entry_evidence" metadata={{ job: t.job, field_name: t.field_name }} onMessage={setMessage} />}</td>
                   {ctx?.role === "owner" && (
                     <td>{t.clock_out ? <span className="inline"><button className="btn secondary" onClick={() => review(t.id, "approved")}>Approve</button><button className="btn secondary" onClick={() => review(t.id, "rejected")}>Reject</button></span> : "—"}</td>
                   )}
