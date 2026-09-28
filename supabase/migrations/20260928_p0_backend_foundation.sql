@@ -416,7 +416,8 @@ language plpgsql
 security definer
 set search_path = public, private
 as $$
-declare v_count integer := 0;\n        v_inserted integer := 0;
+declare v_count integer := 0;
+        v_inserted integer := 0;
 begin
   insert into public.notification_outbox(
     farm_id,event_type,entity_type,entity_id,severity,dedupe_key,payload,not_before
@@ -449,7 +450,8 @@ begin
   where i.result='fail' and i.resolved_at is null
     and (i.corrective_due_on is null or i.corrective_due_on <= current_date)
   on conflict (farm_id,dedupe_key) do nothing;
-  get diagnostics v_inserted = row_count;\n  v_count := v_count + v_inserted;
+  get diagnostics v_inserted = row_count;
+  v_count := v_count + v_inserted;
 
   return v_count;
 end;
