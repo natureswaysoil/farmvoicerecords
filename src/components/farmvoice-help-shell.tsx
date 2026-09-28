@@ -7,6 +7,11 @@ import { createClient } from "@/src/lib/supabase/client";
 import { findHelpItems, SUPPORT_EMAIL, type HelpItem } from "@/src/lib/help-content";
 
 const PUBLIC_PATHS = new Set(["/","/login","/signup","/reset-password","/privacy","/terms","/billing","/support","/help"]);
+const SETUP_PATH_PREFIXES = ["/mfa", "/auth", "/confirm", "/update-password"];
+
+function isSetupPath(pathname: string) {
+  return SETUP_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"));
+}
 
 export default function FarmVoiceHelpShell() {
   const pathname = usePathname();
@@ -24,7 +29,7 @@ export default function FarmVoiceHelpShell() {
       if (!active) return;
       const id = data.user?.id ?? null;
       setUserId(id);
-      if (id && !PUBLIC_PATHS.has(pathname)) {
+      if (id && !PUBLIC_PATHS.has(pathname) && !isSetupPath(pathname)) {
         const key = "farmvoice:onboarding:v1:" + id;
         if (window.localStorage.getItem(key) !== "complete") setShowOnboarding(true);
       }
@@ -47,7 +52,7 @@ export default function FarmVoiceHelpShell() {
 
   function ask(event: FormEvent) {
     event.preventDefault();
-    const matches = findHelpItems(question, 1);
+    const matches = findHelpItems(question, 1, 5);
     if (matches.length) {
       setAnswer(matches[0]);
       setNoMatch(false);
@@ -57,7 +62,7 @@ export default function FarmVoiceHelpShell() {
     }
   }
 
-  if (!userId) return null;
+  if (!userId || isSetupPath(pathname)) return null;
 
   return (
     <>
