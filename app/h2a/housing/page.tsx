@@ -8,7 +8,8 @@ import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } fr
 
 type Housing={id:string;name:string;address:string;max_occupancy:number|null;inspection_authority:string|null;inspection_date:string|null;certificate_number:string|null;certificate_issued_on:string|null;certificate_expires_on:string|null;certified_capacity:number|null;certificate_document_reference:string|null;housing_type:string|null;standard_basis:string|null;jurisdiction:string|null;sleeping_floor_sqft:number|null;cooking_living_sleeping_sqft:number|null;last_self_check_at:string|null;self_check_frequency:"weekly"|"monthly"|"none";next_self_check_on:string|null};
 type Assignment={id:string;worker_id:string;housing_id:string;contract_id:string|null;unit_or_bed:string|null;check_in_date:string;check_out_date:string|null};
-type Worker={id:string;contract_id:string|null;employee_number:string;legal_name:string;preferred_name:string|null;status:string};\ntype Contract={id:string;name:string;eta_case_number:string|null;job_order_number:string|null;start_date:string;end_date:string;active:boolean};
+type Worker={id:string;contract_id:string|null;employee_number:string;legal_name:string;preferred_name:string|null;status:string};
+type Contract={id:string;name:string;eta_case_number:string|null;job_order_number:string|null;start_date:string;end_date:string;active:boolean};
 type Inspection={id:string;housing_id:string;inspection_type:string;inspection_date:string;status:string;standard_basis:string;template_version_id:string|null;authority_or_inspector:string|null;occupancy_observed:number|null;gps_lat:number|null;gps_lng:number|null;summary:string|null;created_at:string};
 type Template={id:string;housing_type:string|null;standard_basis:string;version:string;source_authority:string;source_reference:string|null;effective_from:string;effective_to:string|null};
 type Item={id:string;inspection_id:string;requirement_code:string;category:string;requirement_label:string;legal_basis:string|null;requirement_kind:"legal"|"best_practice";result:"not_checked"|"pass"|"fail"|"not_applicable";notes:string|null;corrective_action:string|null;corrective_due_on:string|null;assigned_to:string|null;resolved_at:string|null;evidence_reference:string|null;repair_evidence_reference:string|null;verified_by:string|null;verified_at:string|null;sort_order:number};
@@ -23,7 +24,8 @@ export default function H2AHousingPage(){
  const [ctx,setCtx]=useState<FarmContext|null>(null);
  const [farms,setFarms]=useState<H2aFarmChoice[]>([]);
  const [housing,setHousing]=useState<Housing[]>([]);
- const [workers,setWorkers]=useState<Worker[]>([]);\n const [contracts,setContracts]=useState<Contract[]>([]);
+ const [workers,setWorkers]=useState<Worker[]>([]);
+ const [contracts,setContracts]=useState<Contract[]>([]);
  const [assignments,setAssignments]=useState<Assignment[]>([]);
  const [inspections,setInspections]=useState<Inspection[]>([]);
  const [items,setItems]=useState<Item[]>([]);
@@ -35,7 +37,8 @@ export default function H2AHousingPage(){
  const [inspectionForm,setInspectionForm]=useState({housingId:"",type:"routine_maintenance",date:new Date().toISOString().slice(0,10),authority:"",occupancy:"",summary:""});
  const [activeInspection,setActiveInspection]=useState<string>("");
  const [draft,setDraft]=useState<Record<string,{result:Item["result"];notes:string;action:string;due:string;evidence:string}>>({});
- const [uploadingItem,setUploadingItem]=useState<string>("");\n const [uploadingCertificate,setUploadingCertificate]=useState<string>("");
+ const [uploadingItem,setUploadingItem]=useState<string>("");
+ const [uploadingCertificate,setUploadingCertificate]=useState<string>("");
 
 
  async function load(preferred?:string){
@@ -61,15 +64,19 @@ export default function H2AHousingPage(){
  useEffect(()=>{void load()},[supabase]);
 
  const workerName=useMemo(()=>new Map(workers.map(w=>[w.id,w.preferred_name||w.legal_name])),[workers]);
- const housingName=useMemo(()=>new Map(housing.map(h=>[h.id,h.name])),[housing]);\n const contractName=useMemo(()=>new Map(contracts.map(x=>[x.id,`${x.name}${x.eta_case_number?` · ${x.eta_case_number}`:""}`])),[contracts]);
+ const housingName=useMemo(()=>new Map(housing.map(h=>[h.id,h.name])),[housing]);
+ const contractName=useMemo(()=>new Map(contracts.map(x=>[x.id,`${x.name}${x.eta_case_number?` · ${x.eta_case_number}`:""}`])),[contracts]);
  const today=new Date().toISOString().slice(0,10);
  const openAssignments=assignments.filter(a=>a.check_in_date<=today&&(!a.check_out_date||a.check_out_date>=today));
- const occupancy=useMemo(()=>{const m=new Map<string,number>();for(const a of openAssignments)m.set(a.housing_id,(m.get(a.housing_id)||0)+1);return m},[openAssignments]);\n const effectiveCapacity=(h:Housing)=>{const values=[h.max_occupancy,h.certified_capacity];if(h.standard_basis==="osha_1910_142"&&h.sleeping_floor_sqft!=null)values.push(Math.floor(h.sleeping_floor_sqft/50));if(h.standard_basis==="osha_1910_142"&&h.cooking_living_sleeping_sqft!=null)values.push(Math.floor(h.cooking_living_sleeping_sqft/100));const valid=values.filter((v):v is number=>v!=null&&Number.isFinite(v));return valid.length?Math.min(...valid):null};\n const certificateReady=(h:Housing)=>Boolean(h.certificate_number&&h.certificate_issued_on&&h.certificate_expires_on&&h.certificate_expires_on>=today&&h.certificate_document_reference);
+ const occupancy=useMemo(()=>{const m=new Map<string,number>();for(const a of openAssignments)m.set(a.housing_id,(m.get(a.housing_id)||0)+1);return m},[openAssignments]);
+ const effectiveCapacity=(h:Housing)=>{const values=[h.max_occupancy,h.certified_capacity];if(h.standard_basis==="osha_1910_142"&&h.sleeping_floor_sqft!=null)values.push(Math.floor(h.sleeping_floor_sqft/50));if(h.standard_basis==="osha_1910_142"&&h.cooking_living_sleeping_sqft!=null)values.push(Math.floor(h.cooking_living_sleeping_sqft/100));const valid=values.filter((v):v is number=>v!=null&&Number.isFinite(v));return valid.length?Math.min(...valid):null};
+ const certificateReady=(h:Housing)=>Boolean(h.certificate_number&&h.certificate_issued_on&&h.certificate_expires_on&&h.certificate_expires_on>=today&&h.certificate_document_reference);
  const openFailures=items.filter(x=>x.result==="fail"&&!x.resolved_at);
  const currentItems=items.filter(x=>x.inspection_id===activeInspection);
  const reminders=[
   ...housing.flatMap(h=>{const d=daysUntil(h.certificate_expires_on);return d!==null&&d<=30?[{key:"cert-"+h.id,label:d<0?`${h.name}: inspection certificate expired ${Math.abs(d)} day(s) ago`:`${h.name}: inspection certificate expires in ${d} day(s)`,urgent:d<=7}]:[]}),
-  ...housing.flatMap(h=>h.next_self_check_on&&h.next_self_check_on<=today?[{key:"self-"+h.id,label:`${h.name}: ${h.self_check_frequency} self-check is due`,urgent:true}]:[]),\n  ...openFailures.map(x=>{const inspection=inspections.find(i=>i.id===x.inspection_id);const due=daysUntil(x.corrective_due_on);return {key:"finding-"+x.id,label:`${housingName.get(inspection?.housing_id||"")||"Housing"}: ${x.requirement_label}${x.corrective_due_on?` · due ${x.corrective_due_on}`:" · corrective action open"}`,urgent:due!==null&&due<=0}})
+  ...housing.flatMap(h=>h.next_self_check_on&&h.next_self_check_on<=today?[{key:"self-"+h.id,label:`${h.name}: ${h.self_check_frequency} self-check is due`,urgent:true}]:[]),
+  ...openFailures.map(x=>{const inspection=inspections.find(i=>i.id===x.inspection_id);const due=daysUntil(x.corrective_due_on);return {key:"finding-"+x.id,label:`${housingName.get(inspection?.housing_id||"")||"Housing"}: ${x.requirement_label}${x.corrective_due_on?` · due ${x.corrective_due_on}`:" · corrective action open"}`,urgent:due!==null&&due<=0}})
  ];
 
  async function saveHousing(e:FormEvent){e.preventDefault();if(!ctx)return;
