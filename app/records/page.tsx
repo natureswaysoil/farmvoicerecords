@@ -434,7 +434,7 @@ export default function RecordsPage() {
     );
   if (!ctx)
     return (
-      <main className="container section stack">
+      <main className="container section stack" lang={language?"es":"en"}>
         <h1>Farm records</h1>
         <p>
           Sign in and create or join a farm to save records under your account.
@@ -447,7 +447,7 @@ export default function RecordsPage() {
       </main>
     );
   return (
-    <main className="container section stack">
+    <main className="container section stack" lang={language?"es":"en"}>
       <div className="inline">
         <h1>{t("Speak, review and save", "Hable, revise y guarde")}</h1>
         <button
