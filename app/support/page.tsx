@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Support | FarmVoice Records",
@@ -20,13 +21,19 @@ export default function SupportPage() {
       <section className="card stack">
         <h2>Email support</h2>
         <p>
-          Email <a href="mailto:natureswaysoil@gmail.com">natureswaysoil@gmail.com</a>.
+          Email <a href="mailto:james@farmvoicerecords.com">james@farmvoicerecords.com</a>.
         </p>
         <p className="muted">
           For QuickBooks issues, include the approximate time of the problem and any Intuit
           request ID shown in FarmVoice. Never send your QuickBooks password, Client Secret,
           access token, or refresh token.
         </p>
+      </section>
+
+      <section className="card stack">
+        <h2>Help Center</h2>
+        <p className="muted">Search FarmVoice FAQs, review the getting-started tour, or use Ask FarmVoice inside the signed-in app.</p>
+        <p><Link className="btn secondary" href="/help">Open Help & FAQ</Link></p>
       </section>
 
       <section className="card stack">

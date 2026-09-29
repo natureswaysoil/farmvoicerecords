@@ -117,7 +117,7 @@ export default function PrivacyPage() {
         <h2>Contact</h2>
         <p>
           Questions about this policy or privacy requests may be sent to{" "}
-          <a href="mailto:natureswaysoil@gmail.com">natureswaysoil@gmail.com</a>.
+          <a href="mailto:james@farmvoicerecords.com">james@farmvoicerecords.com</a>.
         </p>
 
         <p className="muted">

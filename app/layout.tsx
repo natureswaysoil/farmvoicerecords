@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import PwaRegister from "./pwa-register";
+import FarmVoiceHelpShell from "@/src/components/farmvoice-help-shell";
 
 export const metadata: Metadata = {
   title: "FarmVoice Records",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <PwaRegister />
+        <FarmVoiceHelpShell />
         <header className="nav">
           <div className="container nav-inner">
             <Link className="brand" href="/">FarmVoice Records</Link>
@@ -25,6 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/integrations/quickbooks">QuickBooks</Link>
               <Link href="/join">Join farm</Link>
               <Link href="/billing">Pricing</Link>
+              <Link href="/help">Help & FAQ</Link>
               <Link href="/support">Support</Link>
               <Link className="btn" href="/login">Sign in</Link>
             </nav>
@@ -34,7 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <footer className="footer">
           <div className="container">
             FarmVoice Records does not guarantee the accuracy or completeness of records, reports, calculations, payroll information, or compliance data. Users are responsible for reviewing and verifying all information before relying on it. Always verify pesticide records against the product label and applicable law.{" "}
-            <Link className="footer-link" href="/privacy">Privacy</Link> · <Link className="footer-link" href="/terms">Terms</Link> · <Link className="footer-link" href="/support">Support</Link>
+            <Link className="footer-link" href="/privacy">Privacy</Link> · <Link className="footer-link" href="/terms">Terms</Link> · <Link className="footer-link" href="/help">Help & FAQ</Link> · <Link className="footer-link" href="/support">Support</Link>
           </div>
         </footer>
       </body>
