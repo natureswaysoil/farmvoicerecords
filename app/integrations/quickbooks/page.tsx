@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Worker = { user_id: string; employee_number: string | null; role: string };
 type Employee = { Id: string; DisplayName: string };
@@ -49,8 +49,8 @@ export default function QuickBooksIntegrationPage() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [loadingErrors, setLoadingErrors] = useState(false);
   const [testingErrors, setTestingErrors] = useState(false);
-
-  const farmQuery = farmId ? "?farmId=" + encodeURIComponent(farmId) : "";
+  const loadSequence = useRef(0);
+  const errorLoadSequence = useRef(0);
 
   async function loadFarms() {
     const response = await fetch("/api/farms/owned", { cache: "no-store" });
@@ -62,9 +62,12 @@ export default function QuickBooksIntegrationPage() {
     return owned;
   }
 
-  async function load() {
-    const response = await fetch("/api/quickbooks/status" + farmQuery, { cache: "no-store" });
+  async function load(targetFarmId = farmId) {
+    const requestId = ++loadSequence.current;
+    const query = targetFarmId ? "?farmId=" + encodeURIComponent(targetFarmId) : "";
+    const response = await fetch("/api/quickbooks/status" + query, { cache: "no-store" });
     const body = await response.json();
+    if (requestId !== loadSequence.current) return;
     if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks.");
     setStatus(body);
     setTimezone(body.timezone ?? "UTC");
@@ -74,11 +77,9 @@ export default function QuickBooksIntegrationPage() {
   useEffect(() => {
     loadFarms()
       .then((owned) => {
-        if (owned.length > 1 && !farmId) {
+        if (owned.length > 1) {
           setMessage("Select the farm whose QuickBooks company you want to manage.");
-          return;
         }
-        return load();
       })
       .catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
     // Initial farm discovery only.
@@ -86,9 +87,12 @@ export default function QuickBooksIntegrationPage() {
   }, []);
 
   useEffect(() => {
-    if (!farmId) return;
+    loadSequence.current += 1;
+    errorLoadSequence.current += 1;
     setStatus(null);
-    load().catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
+    setErrorLogs([]);
+    if (!farmId) return;
+    load(farmId).catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
     // Reload whenever the explicit farm context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [farmId]);
@@ -147,17 +151,22 @@ export default function QuickBooksIntegrationPage() {
     }
   }
 
-  async function loadErrorLogs() {
+  async function loadErrorLogs(targetFarmId = farmId) {
+    const requestId = ++errorLoadSequence.current;
     setLoadingErrors(true);
     try {
-      const response = await fetch("/api/quickbooks/errors" + farmQuery, { cache: "no-store" });
+      const query = targetFarmId ? "?farmId=" + encodeURIComponent(targetFarmId) : "";
+      const response = await fetch("/api/quickbooks/errors" + query, { cache: "no-store" });
       const body = await response.json();
+      if (requestId !== errorLoadSequence.current) return;
       if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks error logs.");
       setErrorLogs(body.errors ?? []);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks error logs.");
+      if (requestId === errorLoadSequence.current) {
+        setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks error logs.");
+      }
     } finally {
-      setLoadingErrors(false);
+      if (requestId === errorLoadSequence.current) setLoadingErrors(false);
     }
   }
 
