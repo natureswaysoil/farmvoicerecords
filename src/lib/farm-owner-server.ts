@@ -1,44 +1,96 @@
 import crypto from "node:crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { selectAuthorizedFarmId } from "@/src/lib/farm-selection";
 
 type EnsureOwnerFarmResult = {
   farmId: string;
   created: boolean;
 };
 
+export type OwnerFarm = {
+  id: string;
+  name: string;
+};
+
 function makeJoinCode() {
   return crypto.randomBytes(5).toString("hex").toUpperCase();
 }
 
-async function findOwnedFarm(supabase: SupabaseClient, userId: string) {
+export async function listOwnerFarms(supabase: SupabaseClient, userId: string): Promise<OwnerFarm[]> {
+  const { data: memberships, error } = await supabase
+    .from("farm_members")
+    .select("farm_id")
+    .eq("user_id", userId)
+    .eq("role", "owner");
+
+  if (error) throw error;
+  if (!memberships?.length) return [];
+
+  const ids = [...new Set(memberships.map((membership) => membership.farm_id as string))];
+  const { data: farms, error: farmError } = await supabase
+    .from("farms")
+    .select("id, name")
+    .in("id", ids)
+    .order("name");
+
+  if (farmError) throw farmError;
+  return (farms ?? []) as OwnerFarm[];
+}
+
+export async function requireOwnerFarmId(
+  supabase: SupabaseClient,
+  userId: string,
+  requestedFarmId?: string | null
+) {
+  const { data: memberships, error } = await supabase
+    .from("farm_members")
+    .select("farm_id")
+    .eq("user_id", userId)
+    .eq("role", "owner");
+
+  if (error) throw error;
+  return selectAuthorizedFarmId(
+    (memberships ?? []).map((membership) => ({ farm_id: membership.farm_id as string })),
+    requestedFarmId
+  );
+}
+
+async function findOwnedFarms(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("farms")
     .select("id")
-    .eq("owner_user_id", userId)
-    .limit(1)
-    .maybeSingle();
+    .eq("owner_user_id", userId);
 
   if (error) throw error;
-  return data?.id as string | undefined;
+  return (data ?? []).map((farm) => farm.id as string);
 }
 
 export async function ensureOwnerFarm(
   supabase: SupabaseClient,
   user: User
 ): Promise<EnsureOwnerFarmResult> {
-  const { data: membership, error: membershipError } = await supabase
+  const { data: ownerMemberships, error: membershipError } = await supabase
     .from("farm_members")
-    .select("farm_id, role")
+    .select("farm_id")
     .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
+    .eq("role", "owner");
 
   if (membershipError) throw membershipError;
-  if (membership) {
-    return { farmId: membership.farm_id as string, created: false };
+  if (ownerMemberships?.length) {
+    return {
+      farmId: selectAuthorizedFarmId(
+        ownerMemberships.map((membership) => ({ farm_id: membership.farm_id as string }))
+      ),
+      created: false,
+    };
   }
 
-  let farmId = await findOwnedFarm(supabase, user.id);
+  const ownedFarmIds = await findOwnedFarms(supabase, user.id);
+  if (ownedFarmIds.length > 1) {
+    throw new Error("Multiple owner farms exist without matching owner memberships. Contact FarmVoice support.");
+  }
+
+  let farmId = ownedFarmIds[0];
   let created = false;
 
   if (!farmId) {
@@ -66,16 +118,15 @@ export async function ensureOwnerFarm(
 
       if (farmError?.code !== "23505") throw farmError;
 
-      // A concurrent signup/login request may have created this owner's farm.
-      // Re-read by owner before retrying; if none exists, the collision was
-      // most likely the random join code and another attempt can safely retry.
-      farmId = await findOwnedFarm(supabase, user.id);
+      const reread = await findOwnedFarms(supabase, user.id);
+      if (reread.length > 1) {
+        throw new Error("Multiple owner farms were created concurrently. Contact FarmVoice support.");
+      }
+      farmId = reread[0];
     }
   }
 
-  if (!farmId) {
-    throw new Error("Unable to create the farm account.");
-  }
+  if (!farmId) throw new Error("Unable to create the farm account.");
 
   const { error: memberError } = await supabase.from("farm_members").insert({
     farm_id: farmId,
@@ -85,6 +136,5 @@ export async function ensureOwnerFarm(
   });
 
   if (memberError && memberError.code !== "23505") throw memberError;
-
   return { farmId, created };
 }
