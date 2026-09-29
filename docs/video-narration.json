@@ -1,0 +1,199 @@
+{
+  "voice": "AI Voice Generator: deep",
+  "speed": "1.0x",
+  "synchronization": "One audio clip per guide card, with 0.25 seconds of padding",
+  "timelines": {
+    "records": [
+      {
+        "start": 0,
+        "end": 4.125,
+        "title": "Start a record",
+        "transcript": "Welcome to FarmVoice Records. Let\u2019s make a farm record together."
+      },
+      {
+        "start": 4.125,
+        "end": 8.75,
+        "title": "Choose your field",
+        "transcript": "Choose your field, then tap the microphone and describe the work you did."
+      },
+      {
+        "start": 8.75,
+        "end": 14.75,
+        "title": "Review suggestions",
+        "transcript": "FarmVoice can suggest details from your note, including the product, amount, location, and date."
+      },
+      {
+        "start": 14.75,
+        "end": 19.583333333333332,
+        "title": "Check and save",
+        "transcript": "Check those suggestions, fill in anything missing, and save when you\u2019re ready."
+      },
+      {
+        "start": 19.583333333333332,
+        "end": 22.291666666666664,
+        "title": "Finish later",
+        "transcript": "You can also save a draft and finish it later."
+      }
+    ],
+    "fields": [
+      {
+        "start": 0,
+        "end": 6.166666666666667,
+        "title": "Set up fields",
+        "transcript": "Let\u2019s set up your fields. Open Fields and add a production area with a name your crew will recognize."
+      },
+      {
+        "start": 6.166666666666667,
+        "end": 9.833333333333334,
+        "title": "Add identifiers",
+        "transcript": "Include any farm, tract, or field identifiers you have."
+      },
+      {
+        "start": 9.833333333333334,
+        "end": 16.083333333333336,
+        "title": "Import boundaries",
+        "transcript": "If you have boundary files, open Import USDA Fields and upload a supported ZIP or GeoJSON file."
+      },
+      {
+        "start": 16.083333333333336,
+        "end": 18.791666666666668,
+        "title": "Check the map",
+        "transcript": "Check the names and boundaries before saving."
+      },
+      {
+        "start": 18.791666666666668,
+        "end": 23.833333333333336,
+        "title": "Keep field history",
+        "transcript": "Keeping work linked to the right field makes its history easier to review."
+      }
+    ],
+    "team": [
+      {
+        "start": 0,
+        "end": 5.541666666666667,
+        "title": "Plan work",
+        "transcript": "Let\u2019s get your crew organized. Open Team to invite workers and plan the week\u2019s work."
+      },
+      {
+        "start": 5.541666666666667,
+        "end": 10.0,
+        "title": "Invite workers",
+        "transcript": "Share the complete join code so each worker can join with their own account."
+      },
+      {
+        "start": 10.0,
+        "end": 14.666666666666668,
+        "title": "Record time",
+        "transcript": "Workers can clock in and out, with location captured at supported events."
+      },
+      {
+        "start": 14.666666666666668,
+        "end": 18.916666666666668,
+        "title": "Crew leader help",
+        "transcript": "A crew leader can help keep records when workers don\u2019t have phones."
+      },
+      {
+        "start": 18.916666666666668,
+        "end": 24.833333333333336,
+        "title": "Approve and export",
+        "transcript": "Review completed time before approving it, then export the hours for payroll preparation."
+      }
+    ],
+    "h2a": [
+      {
+        "start": 0,
+        "end": 7.916666666666667,
+        "title": "Start with the roster",
+        "transcript": "Let\u2019s organize your H-2A records. Start with the contract and worker roster, then give each person the appropriate role."
+      },
+      {
+        "start": 7.916666666666667,
+        "end": 14.166666666666668,
+        "title": "Record the day",
+        "transcript": "A crew leader can record the worksite, hours offered, hours worked, and piece counts for the day."
+      },
+      {
+        "start": 14.166666666666668,
+        "end": 18.791666666666668,
+        "title": "Review entries",
+        "transcript": "Review the entries before approval, and explain any later corrections."
+      },
+      {
+        "start": 18.791666666666668,
+        "end": 25.25,
+        "title": "Keep documents",
+        "transcript": "Keep supporting documents together so you can check the records against the actual work and your applicable requirements."
+      }
+    ],
+    "housing": [
+      {
+        "start": 0,
+        "end": 7.291666666666667,
+        "title": "Add the property",
+        "transcript": "Let\u2019s keep your housing records organized. Add the property, its address, occupancy details, and inspection dates."
+      },
+      {
+        "start": 7.291666666666667,
+        "end": 13.75,
+        "title": "Confirm free housing",
+        "transcript": "When assigning housing, confirm that it is provided without rent only after you have checked that fact."
+      },
+      {
+        "start": 13.75,
+        "end": 17.333333333333332,
+        "title": "Inspect and document",
+        "transcript": "Complete the inspection checklist and add dated photos."
+      },
+      {
+        "start": 17.333333333333332,
+        "end": 21.5,
+        "title": "Complete repairs",
+        "transcript": "If something needs repair, assign the work and record its completion."
+      },
+      {
+        "start": 21.5,
+        "end": 26.458333333333332,
+        "title": "Review the packet",
+        "transcript": "Review the housing packet against your source documents and applicable requirements."
+      }
+    ],
+    "quickbooks": [
+      {
+        "start": 0,
+        "end": 3.75,
+        "title": "Select the farm",
+        "transcript": "Let\u2019s connect QuickBooks. First, select the correct farm."
+      },
+      {
+        "start": 3.75,
+        "end": 7.708333333333334,
+        "title": "Connect securely",
+        "transcript": "Choose Connect QuickBooks and complete the Intuit sign-in."
+      },
+      {
+        "start": 7.708333333333334,
+        "end": 11.041666666666668,
+        "title": "Check the company",
+        "transcript": "When you return, check that the company name is right."
+      },
+      {
+        "start": 11.041666666666668,
+        "end": 16.625,
+        "title": "Match workers",
+        "transcript": "Match each FarmVoice worker to the correct QuickBooks employee, and set the payroll time zone."
+      },
+      {
+        "start": 16.625,
+        "end": 20.708333333333332,
+        "title": "Send approved time",
+        "transcript": "Send completed, manager-approved time, then review the results."
+      },
+      {
+        "start": 20.708333333333332,
+        "end": 24.541666666666664,
+        "title": "Reconnect if needed",
+        "transcript": "If the connection expires, reconnect before trying again."
+      }
+    ]
+  }
+}
