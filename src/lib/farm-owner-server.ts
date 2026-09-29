@@ -3,7 +3,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { selectAuthorizedFarmId } from "@/src/lib/farm-selection";
 
 type EnsureOwnerFarmResult = {
-  farmId: string;
+  farmId: string | null;
   created: boolean;
 };
 
@@ -69,18 +69,20 @@ export async function ensureOwnerFarm(
   supabase: SupabaseClient,
   user: User
 ): Promise<EnsureOwnerFarmResult> {
-  const { data: ownerMemberships, error: membershipError } = await supabase
+  // Account initialization is intentionally different from privileged owner-farm
+  // selection. Any existing membership means this account is already initialized.
+  // This prevents worker-only users from accidentally receiving a new farm and lets
+  // multi-farm users finish ordinary sign-in without choosing a privileged context.
+  const { data: memberships, error: membershipError } = await supabase
     .from("farm_members")
-    .select("farm_id")
-    .eq("user_id", user.id)
-    .eq("role", "owner");
+    .select("farm_id, role")
+    .eq("user_id", user.id);
 
   if (membershipError) throw membershipError;
-  if (ownerMemberships?.length) {
+  if (memberships?.length) {
+    const farmIds = [...new Set(memberships.map((membership) => membership.farm_id as string))];
     return {
-      farmId: selectAuthorizedFarmId(
-        ownerMemberships.map((membership) => ({ farm_id: membership.farm_id as string }))
-      ),
+      farmId: farmIds.length === 1 ? farmIds[0] : null,
       created: false,
     };
   }
