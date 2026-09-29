@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import PwaRegister from "./pwa-register";
 import FarmVoiceHelpShell from "@/src/components/farmvoice-help-shell";
+import SectionVideoHelp from "@/src/components/section-video-help";
 
 export const metadata: Metadata = {
   title: "FarmVoice Records",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <PwaRegister />
         <FarmVoiceHelpShell />
+        <SectionVideoHelp />
         <header className="nav">
           <div className="container nav-inner">
             <Link className="brand" href="/">FarmVoice Records</Link>
