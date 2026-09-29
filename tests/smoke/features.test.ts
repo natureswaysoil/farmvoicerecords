@@ -5,7 +5,7 @@ const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3100";
 
 test("public FarmVoice pages render their feature entry points", async () => {
   const pages = [
-    ["/", "Speak your farm records"],
+    ["/", "Record pesticide applications"],
     ["/login", "Email and password"],
     ["/signup", "Set your FarmVoice password"],
     ["/billing", "Unlimited workers"],
@@ -71,3 +71,4 @@ test("production does not expose the QuickBooks error test route", async () => {
   const response = await fetch(new URL("/api/quickbooks/test-error-handling", baseUrl), { method: "POST" });
   assert.equal(response.status, 404);
 });
+
