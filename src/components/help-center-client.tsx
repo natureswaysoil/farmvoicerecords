@@ -37,8 +37,8 @@ export default function HelpCenterClient() {
           </div>
         ) : (
           <div className="notice">
-            <strong>Instructional video slot is ready.</strong>
-            <p>The FarmVoice tour video can be published here by setting <code>NEXT_PUBLIC_FARMVOICE_TOUR_VIDEO_URL</code>. Until the video is uploaded, use the complete guided tour below.</p>
+            <strong>Start with a section guide.</strong>
+            <p>Open a FarmVoice workspace and choose “Watch guide” for a short narrated walkthrough. The written steps below cover the full getting started path.</p>
           </div>
         )}
         <div className="grid-2">
@@ -51,6 +51,24 @@ export default function HelpCenterClient() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="card stack">
+        <div className="kicker">Short video guides</div>
+        <h2>Watch a feature walkthrough</h2>
+        <div className="grid-3">
+          {[
+            ["Field records", "/videos/farmvoice-records.mp4"],
+            ["Fields", "/videos/farmvoice-fields.mp4"],
+            ["Team and GPS time", "/videos/farmvoice-team.mp4"],
+            ["H-2A records", "/videos/farmvoice-h2a.mp4"],
+            ["H-2A housing", "/videos/farmvoice-housing.mp4"],
+            ["QuickBooks", "/videos/farmvoice-quickbooks.mp4"],
+          ].map(([title, href]) => (
+            <a className="card footer-link" href={href} key={href}>▶ {title}</a>
+          ))}
+        </div>
+        <p className="small muted">Each guide has spoken instructions and on-screen captions. Videos play only when you choose them.</p>
       </section>
 
       <section className="card stack">
