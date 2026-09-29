@@ -401,7 +401,7 @@ export default function QuickBooksIntegrationPage() {
                 >
                   {testingErrors ? "Testing..." : "Run API error test"}
                 </button>
-                <button className="btn secondary" onClick={loadErrorLogs} disabled={loadingErrors}>
+                <button className="btn secondary" onClick={() => loadErrorLogs()} disabled={loadingErrors}>
                   {loadingErrors ? "Loading..." : "Load recent errors"}
                 </button>
                 <button className="btn secondary" onClick={downloadErrorLogs} disabled={!errorLogs.length}>
