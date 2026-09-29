@@ -1,4 +1,23 @@
-const CACHE = "farmvoice-offline-v2";
+const CACHE = "farmvoice-offline-v3";
+// Keep shell references plus at most 100 dynamically loaded chunks. Replacing
+// a shell prunes chunks from previous releases, even when this worker is unchanged.
+async function pruneAssets(cache) {
+  const referenced = new Set();
+  for (const path of ["/records", "/offline"]) {
+    const shell = await cache.match(path);
+    if (!shell) continue;
+    for (const match of (await shell.text()).matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g))
+      referenced.add(new URL(match[1].replace(/&amp;/g, "&"), self.location.origin).href);
+  }
+  const extra = (await cache.keys()).filter(request =>
+    new URL(request.url).pathname.startsWith("/_next/static/") && !referenced.has(request.url));
+  for (const request of extra.slice(0, Math.max(0, extra.length - 100)))
+    await cache.delete(request);
+}
+async function storeResponse(cache, key, response) {
+  await cache.put(key, response);
+  await pruneAssets(cache);
+}
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -53,7 +72,7 @@ self.addEventListener("fetch", (event) => {
           event.waitUntil(
             caches
               .open(CACHE)
-              .then((cache) => cache.put(shell ? url.pathname : request, copy)),
+              .then((cache) => storeResponse(cache, shell ? url.pathname : request, copy)),
           );
         }
         return response;

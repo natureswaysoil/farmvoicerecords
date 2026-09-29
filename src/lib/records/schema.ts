@@ -138,7 +138,7 @@ export function purchaseProblems(payload: Record<string, unknown>): string[] {
     "unit",
     "totalCost",
   ].filter((k) => !String(payload[k] ?? "").trim());
-  if (!(Number(payload.quantity) > 0)) missing.push("positive quantity");
+  if (!Number.isFinite(Number(payload.quantity)) || !(Number(payload.quantity) > 0)) missing.push("positive quantity");
   if (
     !Number.isFinite(Number(payload.totalCost)) ||
     Number(payload.totalCost) < 0
