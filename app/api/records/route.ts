@@ -94,11 +94,18 @@ export async function POST(request: Request) {
         "Record could not be saved. Check your plan and retry.",
         400,
       );
-    if (error)
-      throw new AccessError(
-        "Record ID conflict. Retry to confirm delivery.",
-        409,
-      );
+    if (error) {
+      const delivered = await supabase
+        .from("farm_records")
+        .select("id,created_by,farm_id")
+        .eq("id", record.id)
+        .maybeSingle();
+      if (delivered.error)
+        throw new AccessError("Unable to confirm delivery. Retry shortly.", 503);
+      if (!delivered.data || delivered.data.created_by !== user.id ||
+          delivered.data.farm_id !== record.farmId)
+        throw new AccessError("Record ID is already in use.", 409);
+    }
     return Response.json({ id: record.id });
   } catch (error) {
     return apiError(error);

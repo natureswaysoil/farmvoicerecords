@@ -20,6 +20,7 @@ test("database enforces trials, H-2A entitlement, ownership, quota and definer w
         "utf8",
       ),
     );
+    await db.exec(await readFile(new URL("../supabase/migrations/20260929202500_subscription_delete_enforcement.sql", import.meta.url), "utf8"));
     await db.exec(
       `set role authenticated;select set_config('request.jwt.claim.sub','${owner}',false);`,
     );
@@ -63,6 +64,7 @@ test("database enforces trials, H-2A entitlement, ownership, quota and definer w
       `reset role;update farm_billing set trial_ends_at=now()-interval '1 day';set role authenticated;select set_config('request.jwt.claim.sub','${owner}',false)`,
     );
     assert.equal(await allowed(), false);
+    await db.exec("delete from farm_records");
     assert.equal((await db.query("select * from farm_records")).rows.length, 1);
     await assert.rejects(() =>
       db.exec(`insert into farm_records(farm_id) values('${farm}')`),
@@ -83,10 +85,17 @@ test("database enforces trials, H-2A entitlement, ownership, quota and definer w
     );
     assert.equal(await allowed("h2a"), true);
     await db.exec("select public.test_definer_write()");
+    await db.exec(`reset role;create function public.test_definer_delete() returns void language sql security definer set search_path='' as $$ delete from public.h2a_documents $$;set role authenticated;`);
+    await db.exec("select public.test_definer_delete()");
+    assert.equal((await db.query("select * from h2a_documents")).rows.length, 0);
+    await db.exec("select public.test_definer_write()");
     await db.exec(
       `reset role;update farm_billing set status='canceled';set role authenticated;`,
     );
     await assert.rejects(() => db.exec("select public.test_definer_write()"));
+    await db.exec("delete from h2a_documents");
+    assert.equal((await db.query("select * from h2a_documents")).rows.length, 1);
+    await assert.rejects(() => db.exec("select public.test_definer_delete()"));
   } finally {
     await db.close();
   }
