@@ -12,21 +12,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://vvcpyagznemodmwparlx.supabase.co
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_eQCZgdRRXzrSYLYkoS1vWw_lnNEB27m
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54399
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-public-key
       NEXT_PUBLIC_SITE_URL: https://farmvoicerecords.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - run: npm install --package-lock-only
+          node-version: 24
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
       - name: Test running application
         run: |
-          npm run start -- -p 3100 > /tmp/farmvoice-next.log 2>&1 &
+          npm run start -- -H 127.0.0.1 -p 3100 > /tmp/farmvoice-next.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
@@ -45,3 +46,4 @@ jobs:
             cat /tmp/farmvoice-next.log
             exit 1
           }
+

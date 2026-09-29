@@ -5,7 +5,10 @@ import {
   qboRequest,
   tokenExpiry,
 } from "@/src/lib/quickbooks";
-import { logQuickBooksError, requireFarmOwner } from "@/src/lib/quickbooks-server";
+import {
+  logQuickBooksError,
+  requireFarmOwner,
+} from "@/src/lib/quickbooks-server";
 
 export const runtime = "nodejs";
 
@@ -16,16 +19,23 @@ export async function GET(request: NextRequest) {
     const state = request.nextUrl.searchParams.get("state");
     const realmId = request.nextUrl.searchParams.get("realmId");
     const rawCookie = request.cookies.get("farmvoice_qbo_oauth")?.value;
-    if (!code || !state || !realmId || !rawCookie) throw new Error("Incomplete QuickBooks callback.");
+    if (!code || !state || !realmId || !rawCookie)
+      throw new Error("Incomplete QuickBooks callback.");
 
-    const saved = JSON.parse(Buffer.from(rawCookie, "base64url").toString("utf8")) as {
+    const saved = JSON.parse(
+      Buffer.from(rawCookie, "base64url").toString("utf8"),
+    ) as {
       state: string;
       farmId: string;
     };
-    if (saved.state !== state) throw new Error("QuickBooks authorization state did not match.");
+    if (saved.state !== state)
+      throw new Error("QuickBooks authorization state did not match.");
 
     const { supabase, user, farmId } = await requireFarmOwner(saved.farmId);
-    if (farmId !== saved.farmId) throw new Error("Farm authorization changed during QuickBooks connection.");
+    if (farmId !== saved.farmId)
+      throw new Error(
+        "Farm authorization changed during QuickBooks connection.",
+      );
 
     const { data: existingConnection, error: existingError } = await supabase
       .from("quickbooks_connections")
@@ -35,10 +45,12 @@ export async function GET(request: NextRequest) {
     if (existingError) throw existingError;
 
     const tokens = await exchangeAuthorizationCode(code);
-    const company = await qboRequest<{ CompanyInfo?: { CompanyName?: string } }>(
+    const company = await qboRequest<{
+      CompanyInfo?: { CompanyName?: string };
+    }>(
       realmId,
       tokens.data.access_token,
-      "/companyinfo/" + encodeURIComponent(realmId)
+      "/companyinfo/" + encodeURIComponent(realmId),
     );
 
     const row = {
@@ -70,9 +82,11 @@ export async function GET(request: NextRequest) {
       if (mappingError) throw mappingError;
     }
 
-    const { error } = await supabase.from("quickbooks_connections").upsert(row, {
-      onConflict: "farm_id",
-    });
+    const { error } = await supabase
+      .from("quickbooks_connections")
+      .upsert(row, {
+        onConflict: "farm_id",
+      });
     if (error) throw error;
 
     destination.searchParams.set("connected", "1");
@@ -82,7 +96,13 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     try {
       const raw = request.cookies.get("farmvoice_qbo_oauth")?.value;
-      const savedFarmId = raw ? (JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as { farmId?: string }).farmId : null;
+      const savedFarmId = raw
+        ? (
+            JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as {
+              farmId?: string;
+            }
+          ).farmId
+        : null;
       const ctx = await requireFarmOwner(savedFarmId);
       await logQuickBooksError({
         supabase: ctx.supabase,
@@ -97,8 +117,10 @@ export async function GET(request: NextRequest) {
 
     destination.searchParams.set(
       "error",
-      error instanceof Error ? error.message : "QuickBooks connection failed."
+      "QuickBooks connection failed. Reconnect or contact support.",
     );
-    return NextResponse.redirect(destination);
+    const response = NextResponse.redirect(destination);
+    response.cookies.delete("farmvoice_qbo_oauth");
+    return response;
   }
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Use & EULA | FarmVoice Records",
+  title: "Terms of Use & EULA",
   description: "FarmVoice Records terms of use and end-user license agreement.",
 };
 
@@ -209,3 +209,4 @@ export default function TermsPage() {
     </main>
   );
 }
+

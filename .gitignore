@@ -5,3 +5,9 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+
+
+*.tsbuildinfo
+supabase/.temp/
+test-results/
+playwright-report/

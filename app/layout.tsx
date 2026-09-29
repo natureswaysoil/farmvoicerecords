@@ -1,3 +1,5 @@
+import AuthNavigation from "@/src/components/auth-navigation";
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
@@ -6,40 +8,61 @@ import FarmVoiceHelpShell from "@/src/components/farmvoice-help-shell";
 import SectionVideoHelp from "@/src/components/section-video-help";
 
 export const metadata: Metadata = {
-  title: "FarmVoice Records",
-  description: "Voice-first farm records, labor scheduling, GPS time and payroll preparation.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://farmvoicerecords.com",
+  ),
+  title: {
+    default: "FarmVoice Records — Farm recordkeeping by voice",
+    template: "%s | FarmVoice Records",
+  },
+  openGraph: {
+    title: "FarmVoice Records",
+    description:
+      "Speak, review and organize pesticide, purchase and workforce records.",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
+  description:
+    "Voice-first farm records, labor scheduling, GPS time and payroll preparation.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
         <PwaRegister />
+        <Analytics />
         <FarmVoiceHelpShell />
         <SectionVideoHelp />
         <header className="nav">
           <div className="container nav-inner">
-            <Link className="brand" href="/">FarmVoice Records</Link>
-            <nav className="nav-links" aria-label="Main navigation">
-              <Link href="/records">Field records</Link>
-              <Link href="/fields">Fields</Link>
-              <Link href="/team">Team</Link>
-              <Link href="/h2a">H-2A</Link>
-              <Link href="/h2a/housing">Housing</Link>
-              <Link href="/integrations/quickbooks">QuickBooks</Link>
-              <Link href="/join">Join farm</Link>
-              <Link href="/billing">Pricing</Link>
-              <Link href="/help">Help & FAQ</Link>
-              <Link href="/support">Support</Link>
-              <Link className="btn" href="/login">Sign in</Link>
-            </nav>
+            <Link className="brand" href="/">
+              FarmVoice Records
+            </Link>
+            <AuthNavigation />
           </div>
         </header>
         {children}
         <footer className="footer">
           <div className="container">
-            FarmVoice Records does not guarantee the accuracy or completeness of records, reports, calculations, payroll information, or compliance data. Users are responsible for reviewing and verifying all information before relying on it. Always verify pesticide records against the product label and applicable law.{" "}
-            <Link className="footer-link" href="/privacy">Privacy</Link> · <Link className="footer-link" href="/terms">Terms</Link> · <Link className="footer-link" href="/help">Help & FAQ</Link> · <Link className="footer-link" href="/support">Support</Link>
+            FarmVoice Records · Farm records, reviewed by you.{" "}
+            <Link className="footer-link" href="/privacy">
+              Privacy
+            </Link>{" "}
+            ·{" "}
+            <Link className="footer-link" href="/terms">
+              Terms
+            </Link>{" "}
+            ·{" "}
+            <Link className="footer-link" href="/help">
+              Help & FAQ
+            </Link>{" "}
+            ·{" "}
+            <Link className="footer-link" href="/support">
+              Support
+            </Link>
           </div>
         </footer>
       </body>

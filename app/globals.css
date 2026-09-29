@@ -11,3 +11,6 @@
 .section-video-header h2{margin:8px 0 16px}
 .section-video-player{display:block;width:100%;aspect-ratio:16/9;max-height:70vh;background:#16352a;border-radius:10px}
 @media(max-width:600px){.section-video-button{left:12px;bottom:12px;max-width:calc(100vw - 180px);font-size:12px;padding:12px}.section-video-dialog{padding:12px}.section-video-header h2{font-size:24px}}
+
+
+.focus-guard { position: fixed; width: 1px; height: 1px; padding: 0; overflow: hidden; opacity: 0; pointer-events: none; }

@@ -1,3 +1,4 @@
+import { track } from "@vercel/analytics/server";
 import crypto from "node:crypto";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { selectAuthorizedFarmId } from "@/src/lib/farm-selection";
@@ -16,7 +17,10 @@ function makeJoinCode() {
   return crypto.randomBytes(5).toString("hex").toUpperCase();
 }
 
-export async function listOwnerFarms(supabase: SupabaseClient, userId: string): Promise<OwnerFarm[]> {
+export async function listOwnerFarms(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<OwnerFarm[]> {
   const { data: memberships, error } = await supabase
     .from("farm_members")
     .select("farm_id")
@@ -26,7 +30,9 @@ export async function listOwnerFarms(supabase: SupabaseClient, userId: string): 
   if (error) throw error;
   if (!memberships?.length) return [];
 
-  const ids = [...new Set(memberships.map((membership) => membership.farm_id as string))];
+  const ids = [
+    ...new Set(memberships.map((membership) => membership.farm_id as string)),
+  ];
   const { data: farms, error: farmError } = await supabase
     .from("farms")
     .select("id, name")
@@ -40,7 +46,7 @@ export async function listOwnerFarms(supabase: SupabaseClient, userId: string): 
 export async function requireOwnerFarmId(
   supabase: SupabaseClient,
   userId: string,
-  requestedFarmId?: string | null
+  requestedFarmId?: string | null,
 ) {
   const { data: memberships, error } = await supabase
     .from("farm_members")
@@ -50,8 +56,10 @@ export async function requireOwnerFarmId(
 
   if (error) throw error;
   return selectAuthorizedFarmId(
-    (memberships ?? []).map((membership) => ({ farm_id: membership.farm_id as string })),
-    requestedFarmId
+    (memberships ?? []).map((membership) => ({
+      farm_id: membership.farm_id as string,
+    })),
+    requestedFarmId,
   );
 }
 
@@ -67,7 +75,7 @@ async function findOwnedFarms(supabase: SupabaseClient, userId: string) {
 
 export async function ensureOwnerFarm(
   supabase: SupabaseClient,
-  user: User
+  user: User,
 ): Promise<EnsureOwnerFarmResult> {
   // Account initialization is intentionally different from privileged owner-farm
   // selection. Any existing membership means this account is already initialized.
@@ -80,7 +88,9 @@ export async function ensureOwnerFarm(
 
   if (membershipError) throw membershipError;
   if (memberships?.length) {
-    const farmIds = [...new Set(memberships.map((membership) => membership.farm_id as string))];
+    const farmIds = [
+      ...new Set(memberships.map((membership) => membership.farm_id as string)),
+    ];
     return {
       farmId: farmIds.length === 1 ? farmIds[0] : null,
       created: false,
@@ -89,7 +99,9 @@ export async function ensureOwnerFarm(
 
   const ownedFarmIds = await findOwnedFarms(supabase, user.id);
   if (ownedFarmIds.length > 1) {
-    throw new Error("Multiple owner farms exist without matching owner memberships. Contact FarmVoice support.");
+    throw new Error(
+      "Multiple owner farms exist without matching owner memberships. Contact FarmVoice support.",
+    );
   }
 
   let farmId = ownedFarmIds[0];
@@ -122,7 +134,9 @@ export async function ensureOwnerFarm(
 
       const reread = await findOwnedFarms(supabase, user.id);
       if (reread.length > 1) {
-        throw new Error("Multiple owner farms were created concurrently. Contact FarmVoice support.");
+        throw new Error(
+          "Multiple owner farms were created concurrently. Contact FarmVoice support.",
+        );
       }
       farmId = reread[0];
     }
@@ -138,5 +152,12 @@ export async function ensureOwnerFarm(
   });
 
   if (memberError && memberError.code !== "23505") throw memberError;
+  if (created) {
+    try {
+      await track("trial_started", { source: "farm_created" });
+    } catch {
+      /* Analytics must not interrupt account creation. */
+    }
+  }
   return { farmId, created };
 }

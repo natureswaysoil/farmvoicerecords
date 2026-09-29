@@ -1,42 +1,103 @@
 import Link from "next/link";
-
-const benefits = [
-  ["Speak instead of type", "Dictate a note about a pesticide application while details are fresh."],
-  ["Keep complete records", "Missing-field checks flag incomplete pesticide records instead of guessing."],
-  ["Track labor accurately", "Workers can clock in and out with GPS, job details and manager review."],
-  ["Track field work", "Keep field history together with scheduling and actual work time."],
-  ["Plan the week", "Assign workers to dates, fields and jobs from one team workspace."],
-  ["Prepare payroll", "Approve completed time and export approved hours as CSV."],
-];
-
+import { guideVideos } from "@/src/lib/videos";
 export default function HomePage() {
+  const recordGuide = guideVideos.find((v) => v.slug === "records")!;
   return (
     <main>
       <section className="container hero">
         <div>
-          <div className="eyebrow">Voice-first farm records</div>
-          <h1>Record pesticide applications and organize your farm team.</h1>
-          <p className="lede">Dictate or type an application note, enter the required pesticide details, and review them before saving. Manage worker scheduling, GPS time and payroll preparation in the same app.</p>
+          <div className="eyebrow">Farm records, ready for your review</div>
+          <h1>Pesticide and H-2A recordkeeping, organized by voice.</h1>
+          <p className="lede">
+            Speak in English or Spanish. Review suggested fields, fill missing
+            details, and keep pesticide, purchase and workforce records
+            together.
+          </p>
           <div className="actions">
-            <Link className="btn" href="/records">Try a record</Link>
-            <Link className="btn secondary" href="/signup">Start free trial</Link>
+            <Link className="btn" href="/signup">
+              Start free trial
+            </Link>
+            <Link className="btn secondary" href="/demo">
+              See a sample record
+            </Link>
           </div>
+          <p>Core $49/month · Unlimited workers · H-2A add-on available</p>
         </div>
         <div className="card stack">
-          <span className="badge">Today at a glance</span>
-          <div><div className="stat">One team</div><div className="muted">Owners and workers</div></div>
-          <div><div className="stat">One schedule</div><div className="muted">Jobs and fields</div></div>
-          <div><div className="stat">GPS checks</div><div className="muted">Captured at record or time-clock events</div></div>
-          <div><div className="stat">Approved time</div><div className="muted">Ready for payroll export</div></div>
+          <span className="badge">Watch the field-record guide</span>
+          <video
+            controls
+            playsInline
+            preload="none"
+            style={{ width: "100%" }}
+            aria-label="Field records walkthrough"
+          >
+            <source src={recordGuide.src} type="video/mp4" />
+          </video>
+          <p className="small">
+            A short introduction to the record workflow. Review all suggested
+            values before saving.
+          </p>
         </div>
       </section>
-      <section className="section"><div className="container"><div className="kicker">Why FarmVoice Records</div><h2>Less office work. Better farm records.</h2><div className="grid-3">{benefits.map(([title,body])=><article className="card" key={title}><h3>{title}</h3><p className="muted">{body}</p></article>)}</div></div></section>
-      <section className="section"><div className="container grid-2">
-        <div className="card"><span className="badge">1</span><h3>Speak or type a note</h3><p className="muted">Describe a pesticide application. Voice capture adds a note in supported browsers; enter the record fields before confirming.</p></div>
-        <div className="card"><span className="badge">2</span><h3>Review the details</h3><p className="muted">Enter and check quantities, dates, application details and any GPS reading. The app never invents missing compliance fields.</p></div>
-        <div className="card"><span className="badge">3</span><h3>Save and organize</h3><p className="muted">Keep drafts when details are incomplete. Confirmed restricted-use pesticide records are blocked until federal baseline requirements are present.</p></div>
-        <div className="card"><span className="badge">4</span><h3>Review and export</h3><p className="muted">Track scheduled versus actual hours, approvals, records and CSV exports.</p></div>
-      </div></section>
+      <section className="container section grid-3">
+        {[
+          [
+            "Speak and review",
+            "Server transcription supports English and Spanish. Field suggestions retain evidence from your original note.",
+          ],
+          [
+            "Keep work moving offline",
+            "After your first online visit, save pesticide and purchase records on this device. Reopen online to deliver queued records.",
+          ],
+          [
+            "Organize H-2A records",
+            "Keep workforce, housing, payroll worksheets and supporting documents in one farm workspace.",
+          ],
+        ].map(([title, body]) => (
+          <article className="card" key={title}>
+            <h2>{title}</h2>
+            <p>{body}</p>
+          </article>
+        ))}
+      </section>
+      <section className="container section stack">
+        <h2>Built around work on a North Carolina family farm</h2>
+        <p>
+          FarmVoice is operated by Nature’s Way Soil &amp; Vermicompost LLC. The
+          goal is practical: capture work while it is fresh, review it, and keep
+          the evidence together.
+        </p>
+        <h2>See what your records look like</h2>
+        <div className="inline">
+          <Link href="/demo">Sample record and inspector view</Link>
+          <Link href="/resources/pesticide-record-template">
+            Pesticide record template
+          </Link>
+          <Link href="/resources/h2a-payroll-recordkeeping">
+            H-2A payroll recordkeeping
+          </Link>
+          <Link href="/security">Data security and MFA</Link>
+        </div>
+        <h2>Six short walkthroughs</h2>
+        <div className="grid-3">
+          {guideVideos.map((v) => (
+            <article className="card stack" key={v.slug}>
+              <h3>{v.title}</h3>
+              <video
+                controls
+                playsInline
+                preload="none"
+                style={{ width: "100%" }}
+                aria-label={`${v.title} walkthrough`}
+              >
+                <source src={v.src} type="video/mp4" />
+              </video>
+              <Link href={v.prefix}>Open {v.title}</Link>
+            </article>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
