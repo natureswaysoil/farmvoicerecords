@@ -1,0 +1,2 @@
+example_only,worker,period_start,period_end,hours_offered,hours_worked,pay_basis,hourly_rate_usd,gross_pay_usd,deductions_usd,net_pay_usd,review_status
+"FICTIONAL EXAMPLE - NOT A WAGE DETERMINATION","Example Worker","2026-09-14","2026-09-20",40,40,"hourly",20,800,0,800,"Verify contract, applicable wage, overtime and deductions before use"

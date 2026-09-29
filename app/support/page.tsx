@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Support | FarmVoice Records",
+  title: "Support",
   description: "Contact FarmVoice Records support.",
 };
 
@@ -51,3 +51,4 @@ export default function SupportPage() {
     </main>
   );
 }
+

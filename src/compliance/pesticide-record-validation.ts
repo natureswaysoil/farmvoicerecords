@@ -1,3 +1,5 @@
+// Legacy USDA checklist retained as a product completeness check, not current legal certification.
+// 7 CFR Part 110 was removed effective July 11, 2025. Verify current state/WPS/label rules.
 // Nationwide restricted-use pesticide (RUP) recordkeeping validation
 // Federal baseline: 7 U.S.C. § 136i-1 and USDA AMS pesticide recordkeeping guidance.
 //
@@ -62,7 +64,10 @@ const FEDERAL_FULL_APPLICATION_FIELDS: FieldRequirement[] = [
   { key: "epaRegNumber", label: "EPA registration number" },
   { key: "amountApplied", label: "Total amount applied" },
   { key: "amountUnit", label: "Amount unit" },
-  { key: "cropOrSite", label: "Crop, commodity, stored product, or site treated" },
+  {
+    key: "cropOrSite",
+    label: "Crop, commodity, stored product, or site treated",
+  },
   { key: "fieldLocation", label: "Application location" },
   { key: "areaTreated", label: "Size of area treated" },
   { key: "areaUnit", label: "Area unit" },
@@ -145,10 +150,13 @@ function validSpotLocation(value?: string): boolean {
 }
 
 function isRecordEntryOverdue(record: PesticideRecord): boolean {
-  if (!record.applicationDate || !isValidIsoDate(record.applicationDate)) return false;
+  if (!record.applicationDate || !isValidIsoDate(record.applicationDate))
+    return false;
 
   const application = new Date(`${record.applicationDate}T00:00:00Z`);
-  const created = record.recordCreatedAt ? new Date(record.recordCreatedAt) : new Date();
+  const created = record.recordCreatedAt
+    ? new Date(record.recordCreatedAt)
+    : new Date();
 
   if (Number.isNaN(created.getTime())) return false;
 
@@ -156,8 +164,14 @@ function isRecordEntryOverdue(record: PesticideRecord): boolean {
   return elapsedMs > 14 * 24 * 60 * 60 * 1000;
 }
 
-export function qualifiesForFederalSpotTreatment(record: PesticideRecord): boolean {
-  if (!record.isRestrictedUse || !record.isSpotTreatment || record.isGreenhouseOrNursery) {
+export function qualifiesForFederalSpotTreatment(
+  record: PesticideRecord,
+): boolean {
+  if (
+    !record.isRestrictedUse ||
+    !record.isSpotTreatment ||
+    record.isGreenhouseOrNursery
+  ) {
     return false;
   }
 
@@ -195,7 +209,10 @@ function validateFederal(record: PesticideRecord): {
       message: `${field.label} is required for this restricted-use pesticide record.`,
     }));
 
-  if (hasValue(record.amountApplied) && positiveNumber(record.amountApplied) === null) {
+  if (
+    hasValue(record.amountApplied) &&
+    positiveNumber(record.amountApplied) === null
+  ) {
     issues.push({
       field: "amountApplied",
       label: "Total amount applied",
@@ -205,7 +222,11 @@ function validateFederal(record: PesticideRecord): {
     });
   }
 
-  if (!spotTreatmentUsed && hasValue(record.areaTreated) && positiveNumber(record.areaTreated) === null) {
+  if (
+    !spotTreatmentUsed &&
+    hasValue(record.areaTreated) &&
+    positiveNumber(record.areaTreated) === null
+  ) {
     issues.push({
       field: "areaTreated",
       label: "Size of area treated",
@@ -215,23 +236,31 @@ function validateFederal(record: PesticideRecord): {
     });
   }
 
-  if (hasValue(record.applicationDate) && !isValidIsoDate(record.applicationDate)) {
+  if (
+    hasValue(record.applicationDate) &&
+    !isValidIsoDate(record.applicationDate)
+  ) {
     issues.push({
       field: "applicationDate",
       label: "Date of application",
       source: "federal",
       kind: "invalid",
-      message: "Application date must be a valid calendar date in YYYY-MM-DD format.",
+      message:
+        "Application date must be a valid calendar date in YYYY-MM-DD format.",
     });
   }
 
-  if (hasValue(record.epaRegNumber) && !isPlausibleEpaRegNumber(record.epaRegNumber)) {
+  if (
+    hasValue(record.epaRegNumber) &&
+    !isPlausibleEpaRegNumber(record.epaRegNumber)
+  ) {
     issues.push({
       field: "epaRegNumber",
       label: "EPA registration number",
       source: "federal",
       kind: "invalid",
-      message: "EPA registration number should use a numeric hyphenated format such as 123-456 or 123-456-789.",
+      message:
+        "EPA registration number should use a numeric hyphenated format such as 123-456 or 123-456-789.",
     });
   }
 
@@ -253,7 +282,7 @@ function validateFederal(record: PesticideRecord): {
       source: "federal",
       kind: "invalid",
       message:
-        "This application does not qualify for the federal spot-treatment shortcut. Complete the full RUP record.",
+        "This application does not qualify for the legacy spot-treatment checklist. Complete the full RUP record.",
     });
   }
 
@@ -266,7 +295,7 @@ function validateFederal(record: PesticideRecord): {
       source: "federal",
       kind: "timing",
       message:
-        "This RUP record was entered more than 14 days after the application date. Keep the record, but flag it for compliance review.",
+        "This record was entered more than 14 days after the application date. Check the current deadline for your operation.",
     });
   }
 
@@ -280,7 +309,10 @@ function validateFederal(record: PesticideRecord): {
 
 export const STATE_VALIDATORS: Partial<Record<string, StateValidator>> = {};
 
-export function registerStateValidator(state: string, validator: StateValidator): void {
+export function registerStateValidator(
+  state: string,
+  validator: StateValidator,
+): void {
   STATE_VALIDATORS[state.trim().toUpperCase()] = validator;
 }
 
@@ -291,7 +323,9 @@ function validateState(record: PesticideRecord): ValidationIssue[] {
   return validator ? validator(record) : [];
 }
 
-export function validatePesticideRecord(record: PesticideRecord): ValidationResult {
+export function validatePesticideRecord(
+  record: PesticideRecord,
+): ValidationResult {
   const federal = validateFederal(record);
   const stateIssues = validateState(record);
   const allIssues = [...federal.issues, ...stateIssues];
@@ -304,7 +338,9 @@ export function validatePesticideRecord(record: PesticideRecord): ValidationResu
     .filter((issue) => issue.kind === "invalid")
     .map((issue) => issue.message);
 
-  const federalBlockingIssues = federal.issues.filter((issue) => issue.kind !== "timing");
+  const federalBlockingIssues = federal.issues.filter(
+    (issue) => issue.kind !== "timing",
+  );
 
   return {
     complete: blockingIssues.length === 0,
@@ -313,7 +349,8 @@ export function validatePesticideRecord(record: PesticideRecord): ValidationResu
     requiredFields: federal.requiredFields,
     issues: allIssues,
     federalComplete: federalBlockingIssues.length === 0,
-    stateComplete: stateIssues.filter((issue) => issue.kind !== "timing").length === 0,
+    stateComplete:
+      stateIssues.filter((issue) => issue.kind !== "timing").length === 0,
     federalSpotTreatmentUsed: federal.spotTreatmentUsed,
     recordEntryOverdue: federal.recordEntryOverdue,
   };
@@ -332,9 +369,7 @@ export class PesticideRecordIncompleteError extends Error {
   constructor(result: ValidationResult) {
     const problems = [...result.missingFields, ...result.invalidFields];
 
-    super(
-      `Pesticide record is incomplete or invalid: ${problems.join(", ")}`
-    );
+    super(`Pesticide record is incomplete or invalid: ${problems.join(", ")}`);
 
     this.name = "PesticideRecordIncompleteError";
     this.result = result;

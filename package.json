@@ -7,22 +7,29 @@
     "build": "next build",
     "start": "next start",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "test:smoke": "node --experimental-strip-types --test tests/smoke/*.test.ts"
+    "test:smoke": "node --experimental-strip-types --test tests/smoke/*.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.116.0",
+    "@vercel/analytics": "2.0.1",
+    "ai": "7.0.122",
     "next": "16.3.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "stripe": "22.6.2",
+    "zod": "4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@playwright/test": "1.56.1",
     "@types/node": "24.7.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "typescript": "5.9.3"
   },
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   }
 }

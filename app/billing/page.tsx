@@ -1,36 +1,53 @@
 import Link from "next/link";
-
+import BillingControls from "@/src/components/billing-controls";
 export default function BillingPage() {
   return (
-    <main className="container section">
+    <main className="container section stack">
       <div className="kicker">Simple farm pricing</div>
-      <h2>Every FarmVoice feature. One farm plan.</h2>
+      <h1>Start with records. Add H-2A when you need it.</h1>
       <p className="lede">
-        Try FarmVoice free for 14 days with no credit card required. Then keep your entire farm team on one simple monthly plan.
+        14-day trial with no card required, starting when your farm is created.
+        Unlimited workers. Existing records remain available to view and export
+        after your trial.
       </p>
-
-      <div className="card stack" style={{ maxWidth: 620, margin: "28px auto 0" }}>
-        <div>
-          <span className="badge">FarmVoice Complete</span>
+      <div className="grid-2">
+        <section className="card stack">
+          <h2>FarmVoice Core</h2>
           <div className="price">
-            $49
-            <span className="muted" style={{ fontSize: 16 }}>/month per farm</span>
+            $49 <small>/month per farm</small>
           </div>
-        </div>
-        <strong>Unlimited workers</strong>
-        <p className="muted">
-          Includes farm and field records, scheduling, GPS timekeeping, Smart Photo Evidence,
-          pesticide recordkeeping, USDA/FSA field tools, H-2A workforce and housing records,
-          payroll preparation, QuickBooks integration, Help Center, and FarmVoice support.
-        </p>
-        <p className="muted">
-          100 GB of farm photo and document storage is included. Additional storage may require an extra storage plan.
-        </p>
-        <Link className="btn" href="/signup">Start 14-day free trial</Link>
+          <p>Or $490/year — two months free.</p>
+          <p>
+            Pesticide and purchase records, English/Spanish voice capture,
+            suggested fields, field history, offline record queue, scheduling,
+            GPS time, evidence and QuickBooks time export.
+          </p>
+          <p>
+            100 GB of farm photo and document storage included. Additional
+            storage requires a separate plan.
+          </p>
+          <Link className="btn" href="/signup">
+            Start 14-day free trial
+          </Link>
+        </section>
+        <section className="card stack">
+          <h2>H-2A workforce and housing</h2>
+          <div className="price">
+            +$149 <small>/month per farm</small>
+          </div>
+          <p>Or +$1,490/year. Requires Core.</p>
+          <p>
+            Add contracts, crew records, housing assignments, inspections,
+            documents, payroll worksheets and audit exports. Included during the
+            initial trial.
+          </p>
+        </section>
       </div>
-
-      <p className="muted" style={{ marginTop: 24, textAlign: "center" }}>
-        Cancel anytime. <Link href="/integrations/quickbooks">Connect QuickBooks</Link> to send approved employee time directly from FarmVoice.
+      <BillingControls />
+      <p>
+        Cancel through Manage billing. Annual plans are billed annually. Records
+        support your review; they do not certify legal compliance. AI requests
+        are limited to 30 per user per hour.
       </p>
     </main>
   );

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type FarmContext = {
+  farmName?: string;
   userId: string;
   farmId: string;
   role: "owner" | "worker";
@@ -43,25 +44,27 @@ export type CloudHistoryEvent = {
 };
 
 export async function getFarmContexts(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
 ): Promise<FarmContext[]> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) return [];
 
   const userId = userData.user.id;
-  const [{ data: memberships, error: memberError }, { data: ownedFarms, error: ownerError }] =
-    await Promise.all([
-      supabase
-        .from("farm_members")
-        .select("farm_id, role")
-        .eq("user_id", userId)
-        .order("created_at"),
-      supabase
-        .from("farms")
-        .select("id")
-        .eq("owner_user_id", userId)
-        .order("created_at"),
-    ]);
+  const [
+    { data: memberships, error: memberError },
+    { data: ownedFarms, error: ownerError },
+  ] = await Promise.all([
+    supabase
+      .from("farm_members")
+      .select("farm_id, role")
+      .eq("user_id", userId)
+      .order("created_at"),
+    supabase
+      .from("farms")
+      .select("id")
+      .eq("owner_user_id", userId)
+      .order("created_at"),
+  ]);
 
   if (memberError || ownerError) return [];
 
@@ -91,14 +94,16 @@ export async function getFarmContexts(
 
 export async function getFarmContext(
   supabase: SupabaseClient,
-  preferredFarmId?: string | null
+  preferredFarmId?: string | null,
 ): Promise<FarmContext | null> {
   const contexts = await getFarmContexts(supabase);
   if (!contexts.length) return null;
 
   const selected =
     preferredFarmId ||
-    (typeof window !== "undefined" ? window.localStorage.getItem("farmvoice_selected_farm_id") : null);
+    (typeof window !== "undefined"
+      ? window.localStorage.getItem("farmvoice_selected_farm_id")
+      : null);
 
   return contexts.find((ctx) => ctx.farmId === selected) ?? contexts[0];
 }
@@ -111,7 +116,7 @@ export function rememberFarmSelection(farmId: string) {
 
 export async function loadCloudFields(
   supabase: SupabaseClient,
-  farmId: string
+  farmId: string,
 ): Promise<CloudField[]> {
   const { data, error } = await supabase
     .from("fields")
@@ -127,7 +132,7 @@ export async function loadCloudFields(
 
 export async function loadCloudFieldHistory(
   supabase: SupabaseClient,
-  farmId: string
+  farmId: string,
 ): Promise<CloudHistoryEvent[]> {
   const { data, error } = await supabase
     .from("field_history_events")
@@ -138,4 +143,20 @@ export async function loadCloudFieldHistory(
 
   if (error) throw error;
   return (data ?? []) as CloudHistoryEvent[];
+}
+
+export async function getNamedFarmContexts(
+  supabase: SupabaseClient,
+): Promise<FarmContext[]> {
+  const contexts = await getFarmContexts(supabase);
+  if (!contexts.length) return contexts;
+  const { data } = await supabase
+    .from("farms")
+    .select("id,name")
+    .in(
+      "id",
+      contexts.map((c) => c.farmId),
+    );
+  const names = new Map((data ?? []).map((f) => [f.id, f.name]));
+  return contexts.map((c) => ({ ...c, farmName: names.get(c.farmId) }));
 }

@@ -1,0 +1,9 @@
+# FarmVoice Records
+Farm recordkeeping software. English/Spanish voice notes, reviewed field suggestions, pesticide and purchase records, workforce and housing workflows.
+- Product: https://farmvoicerecords.com/
+- Pricing: https://farmvoicerecords.com/billing
+- Demonstration: https://farmvoicerecords.com/demo
+- Help: https://farmvoicerecords.com/help
+- Security: https://farmvoicerecords.com/security
+- Pesticide resources: https://farmvoicerecords.com/resources/pesticide-record-template
+AI output requires human review. FarmVoice does not certify legal compliance.

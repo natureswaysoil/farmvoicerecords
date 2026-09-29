@@ -63,11 +63,16 @@ export default function QuickBooksIntegrationPage() {
 
   async function load(targetFarmId = farmId) {
     const requestId = ++loadSequence.current;
-    const query = targetFarmId ? "?farmId=" + encodeURIComponent(targetFarmId) : "";
-    const response = await fetch("/api/quickbooks/status" + query, { cache: "no-store" });
+    const query = targetFarmId
+      ? "?farmId=" + encodeURIComponent(targetFarmId)
+      : "";
+    const response = await fetch("/api/quickbooks/status" + query, {
+      cache: "no-store",
+    });
     const body = await response.json();
     if (requestId !== loadSequence.current) return;
-    if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks.");
+    if (!response.ok)
+      throw new Error(body.error ?? "Unable to load QuickBooks.");
     setStatus(body);
     setTimezone(body.timezone ?? "UTC");
     setMessage("");
@@ -77,10 +82,16 @@ export default function QuickBooksIntegrationPage() {
     loadFarms()
       .then((owned) => {
         if (owned.length > 1) {
-          setMessage("Select the farm whose QuickBooks company you want to manage.");
+          setMessage(
+            "Select the farm whose QuickBooks company you want to manage.",
+          );
         }
       })
-      .catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
+      .catch((error) =>
+        setMessage(
+          error instanceof Error ? error.message : "Unable to load QuickBooks.",
+        ),
+      );
     // Initial farm discovery only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -91,16 +102,29 @@ export default function QuickBooksIntegrationPage() {
     setStatus(null);
     setErrorLogs([]);
     if (!farmId) return;
-    load(farmId).catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
+    load(farmId).catch((error) =>
+      setMessage(
+        error instanceof Error ? error.message : "Unable to load QuickBooks.",
+      ),
+    );
     // Reload whenever the explicit farm context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [farmId]);
 
   function downloadErrorLogs() {
     if (!errorLogs.length) return;
-    const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const escape = (value: unknown) =>
+      `"${String(value ?? "").replaceAll('"', '""')}"`;
     const rows = [
-      ["occurred_at", "operation", "endpoint", "http_status", "intuit_tid", "error_code", "error_message"],
+      [
+        "occurred_at",
+        "operation",
+        "endpoint",
+        "http_status",
+        "intuit_tid",
+        "error_code",
+        "error_message",
+      ],
       ...errorLogs.map((item) => [
         item.occurred_at,
         item.operation,
@@ -111,9 +135,12 @@ export default function QuickBooksIntegrationPage() {
         item.error_message,
       ]),
     ];
-    const blob = new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")], {
-      type: "text/csv",
-    });
+    const blob = new Blob(
+      [rows.map((row) => row.map(escape).join(",")).join("\n")],
+      {
+        type: "text/csv",
+      },
+    );
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -126,15 +153,24 @@ export default function QuickBooksIntegrationPage() {
     const requestId = ++errorLoadSequence.current;
     setLoadingErrors(true);
     try {
-      const query = targetFarmId ? "?farmId=" + encodeURIComponent(targetFarmId) : "";
-      const response = await fetch("/api/quickbooks/errors" + query, { cache: "no-store" });
+      const query = targetFarmId
+        ? "?farmId=" + encodeURIComponent(targetFarmId)
+        : "";
+      const response = await fetch("/api/quickbooks/errors" + query, {
+        cache: "no-store",
+      });
       const body = await response.json();
       if (requestId !== errorLoadSequence.current) return;
-      if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks error logs.");
+      if (!response.ok)
+        throw new Error(body.error ?? "Unable to load QuickBooks error logs.");
       setErrorLogs(body.errors ?? []);
     } catch (error) {
       if (requestId === errorLoadSequence.current) {
-        setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks error logs.");
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load QuickBooks error logs.",
+        );
       }
     } finally {
       if (requestId === errorLoadSequence.current) setLoadingErrors(false);
@@ -142,12 +178,20 @@ export default function QuickBooksIntegrationPage() {
   }
 
   const mappingsByWorker = useMemo(
-    () => new Map((status?.mappings ?? []).map((mapping) => [mapping.worker_user_id, mapping])),
-    [status]
+    () =>
+      new Map(
+        (status?.mappings ?? []).map((mapping) => [
+          mapping.worker_user_id,
+          mapping,
+        ]),
+      ),
+    [status],
   );
 
   async function saveMapping(workerUserId: string, employeeId: string) {
-    const employee = status?.quickBooksEmployees.find((item) => item.Id === employeeId);
+    const employee = status?.quickBooksEmployees.find(
+      (item) => item.Id === employeeId,
+    );
     const response = await fetch("/api/quickbooks/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -159,11 +203,11 @@ export default function QuickBooksIntegrationPage() {
       }),
     });
     const body = await response.json();
-    if (!response.ok) return setMessage(body.error ?? "Unable to save mapping.");
+    if (!response.ok)
+      return setMessage(body.error ?? "Unable to save mapping.");
     setMessage("Employee mapping saved.");
     await load();
   }
-
 
   async function saveTimezone() {
     const response = await fetch("/api/quickbooks/status", {
@@ -172,26 +216,42 @@ export default function QuickBooksIntegrationPage() {
       body: JSON.stringify({ farmId, timezone }),
     });
     const body = await response.json();
-    if (!response.ok) return setMessage(body.error ?? "Unable to save payroll timezone.");
+    if (!response.ok)
+      return setMessage(body.error ?? "Unable to save payroll timezone.");
     setMessage("Payroll timezone saved.");
     await load();
   }
 
   async function disconnectQuickBooks() {
-    if (!window.confirm("Disconnect QuickBooks from this farm? Future FarmVoice syncs will stop until you reconnect.")) {
+    if (
+      !window.confirm(
+        "Disconnect QuickBooks from this farm? Future FarmVoice syncs will stop until you reconnect.",
+      )
+    ) {
       return;
     }
 
     setDisconnecting(true);
     setMessage("Disconnecting QuickBooks...");
     try {
-      const response = await fetch("/api/quickbooks/disconnect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ farmId }) });
+      const response = await fetch("/api/quickbooks/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId }),
+      });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Unable to disconnect QuickBooks.");
-      setMessage("QuickBooks disconnected. Existing records already sent to QuickBooks are unchanged.");
+      if (!response.ok)
+        throw new Error(body.error ?? "Unable to disconnect QuickBooks.");
+      setMessage(
+        "QuickBooks disconnected. Existing records already sent to QuickBooks are unchanged.",
+      );
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to disconnect QuickBooks.");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to disconnect QuickBooks.",
+      );
     } finally {
       setDisconnecting(false);
     }
@@ -201,20 +261,29 @@ export default function QuickBooksIntegrationPage() {
     setSyncing(true);
     setMessage("Sending approved time to QuickBooks...");
     try {
-      const response = await fetch("/api/quickbooks/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ farmId }) });
+      const response = await fetch("/api/quickbooks/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId }),
+      });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "QuickBooks sync failed.");
+      if (!response.ok)
+        throw new Error(body.error ?? "QuickBooks sync failed.");
       if (body.reconnectRequired) {
-        setMessage("QuickBooks authorization needs attention. Reconnect QuickBooks before syncing again.");
+        setMessage(
+          "QuickBooks authorization needs attention. Reconnect QuickBooks before syncing again.",
+        );
       } else {
         setMessage(
-          `QuickBooks sync complete: ${body.synced} sent, ${body.skipped.length} skipped, ${body.failed.length} failed.`
+          `QuickBooks sync complete: ${body.synced} sent, ${body.skipped.length} skipped, ${body.failed.length} failed.`,
         );
       }
       await load();
       await loadErrorLogs();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "QuickBooks sync failed.");
+      setMessage(
+        error instanceof Error ? error.message : "QuickBooks sync failed.",
+      );
     } finally {
       setSyncing(false);
     }
@@ -226,8 +295,9 @@ export default function QuickBooksIntegrationPage() {
         <div className="kicker">Accounting integration</div>
         <h2>QuickBooks</h2>
         <p className="muted">
-          Connect the farm's QuickBooks company, match FarmVoice workers to QuickBooks employees,
-          then send only completed and manager-approved time.
+          Connect the farm's QuickBooks company, match FarmVoice workers to
+          QuickBooks employees, then send only completed and manager-approved
+          time.
         </p>
       </div>
 
@@ -235,9 +305,17 @@ export default function QuickBooksIntegrationPage() {
         <section className="card stack">
           <div className="field">
             <label htmlFor="quickbooks-farm">Farm</label>
-            <select id="quickbooks-farm" value={farmId} onChange={(event) => setFarmId(event.target.value)}>
+            <select
+              id="quickbooks-farm"
+              value={farmId}
+              onChange={(event) => setFarmId(event.target.value)}
+            >
               <option value="">Select a farm</option>
-              {farms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name}</option>)}
+              {farms.map((farm) => (
+                <option key={farm.id} value={farm.id}>
+                  {farm.name}
+                </option>
+              ))}
             </select>
           </div>
         </section>
@@ -256,17 +334,37 @@ export default function QuickBooksIntegrationPage() {
             </p>
             {status?.reconnectRequired && (
               <p className="notice" style={{ marginTop: 12 }}>
-                QuickBooks authorization has expired or become invalid. Reconnect QuickBooks before sending more time.
-                {status.lastIntuitTid ? <> Intuit request ID: <code>{status.lastIntuitTid}</code>.</> : null}
+                QuickBooks authorization has expired or become invalid.
+                Reconnect QuickBooks before sending more time.
+                {status.lastIntuitTid ? (
+                  <>
+                    {" "}
+                    Intuit request ID: <code>{status.lastIntuitTid}</code>.
+                  </>
+                ) : null}
               </p>
             )}
           </div>
           <div className="inline">
-            <a className="btn" href={farmId ? "/api/quickbooks/connect?farmId=" + encodeURIComponent(farmId) : "/api/quickbooks/connect"}>
-              {status?.connected || status?.reconnectRequired ? "Reconnect QuickBooks" : "Connect QuickBooks"}
+            <a
+              className="btn"
+              href={
+                farmId
+                  ? "/api/quickbooks/connect?farmId=" +
+                    encodeURIComponent(farmId)
+                  : "/api/quickbooks/connect"
+              }
+            >
+              {status?.connected || status?.reconnectRequired
+                ? "Reconnect QuickBooks"
+                : "Connect QuickBooks"}
             </a>
             {status?.connected && (
-              <button className="btn secondary" disabled={disconnecting} onClick={disconnectQuickBooks}>
+              <button
+                className="btn secondary"
+                disabled={disconnecting}
+                onClick={disconnectQuickBooks}
+              >
                 {disconnecting ? "Disconnecting..." : "Disconnect QuickBooks"}
               </button>
             )}
@@ -280,7 +378,8 @@ export default function QuickBooksIntegrationPage() {
             <div>
               <h3>Employee matching</h3>
               <p className="muted">
-                Each FarmVoice worker must be matched once to the correct QuickBooks employee.
+                Each FarmVoice worker must be matched once to the correct
+                QuickBooks employee.
               </p>
             </div>
             {status.workers.length ? (
@@ -296,11 +395,15 @@ export default function QuickBooksIntegrationPage() {
                     const current = mappingsByWorker.get(worker.user_id);
                     return (
                       <tr key={worker.user_id}>
-                        <td>{worker.employee_number ?? worker.user_id.slice(0, 8)}</td>
+                        <td>
+                          {worker.employee_number ?? worker.user_id.slice(0, 8)}
+                        </td>
                         <td>
                           <select
                             value={current?.quickbooks_employee_id ?? ""}
-                            onChange={(event) => saveMapping(worker.user_id, event.target.value)}
+                            onChange={(event) =>
+                              saveMapping(worker.user_id, event.target.value)
+                            }
                           >
                             <option value="">Select employee</option>
                             {status.quickBooksEmployees.map((employee) => (
@@ -316,14 +419,17 @@ export default function QuickBooksIntegrationPage() {
                 </tbody>
               </table>
             ) : (
-              <p className="muted">No worker accounts are attached to this farm yet.</p>
+              <p className="muted">
+                No worker accounts are attached to this farm yet.
+              </p>
             )}
           </section>
 
           <section className="card stack">
             <h3>Payroll timezone</h3>
             <p className="muted">
-              QuickBooks uses this timezone to determine each work date. Use an IANA timezone such as America/New_York.
+              QuickBooks uses this timezone to determine each work date. Use an
+              IANA timezone such as America/New_York.
             </p>
             <div className="inline">
               <input
@@ -332,10 +438,14 @@ export default function QuickBooksIntegrationPage() {
                 placeholder="America/New_York"
                 style={{ minWidth: 260 }}
               />
-              <button className="btn secondary" onClick={saveTimezone}>Save timezone</button>
+              <button className="btn secondary" onClick={saveTimezone}>
+                Save timezone
+              </button>
               <button
                 className="btn secondary"
-                onClick={() => setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)}
+                onClick={() =>
+                  setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+                }
               >
                 Use this device
               </button>
@@ -345,11 +455,16 @@ export default function QuickBooksIntegrationPage() {
           <section className="card stack">
             <h3>Approved payroll time</h3>
             <p className="muted">
-              FarmVoice keeps GPS and detailed field records here. QuickBooks receives only approved
-              employee time, work date, job/field description and duration.
+              FarmVoice keeps GPS and detailed field records here. QuickBooks
+              receives only approved employee time, work date, job/field
+              description and duration.
             </p>
             <div>
-              <button className="btn" disabled={syncing || Boolean(status?.reconnectRequired)} onClick={syncApprovedTime}>
+              <button
+                className="btn"
+                disabled={syncing || Boolean(status?.reconnectRequired)}
+                onClick={syncApprovedTime}
+              >
                 {syncing ? "Sending..." : "Send approved time to QuickBooks"}
               </button>
             </div>
@@ -360,22 +475,37 @@ export default function QuickBooksIntegrationPage() {
               <div>
                 <h3>QuickBooks troubleshooting</h3>
                 <p className="muted">
-                  FarmVoice stores recent QuickBooks errors and Intuit request IDs for support. Tokens and secrets are not included.
+                  FarmVoice stores recent QuickBooks errors and Intuit request
+                  IDs for support. Tokens and secrets are not included.
                 </p>
               </div>
               <div className="inline">
-                <button className="btn secondary" onClick={() => loadErrorLogs()} disabled={loadingErrors}>
+                <button
+                  className="btn secondary"
+                  onClick={() => loadErrorLogs()}
+                  disabled={loadingErrors}
+                >
                   {loadingErrors ? "Loading..." : "Load recent errors"}
                 </button>
-                <button className="btn secondary" onClick={downloadErrorLogs} disabled={!errorLogs.length}>
+                <button
+                  className="btn secondary"
+                  onClick={downloadErrorLogs}
+                  disabled={!errorLogs.length}
+                >
                   Download error log
                 </button>
               </div>
             </div>
             {status?.lastApiAt && (
               <p className="muted">
-                Last QuickBooks API activity: {new Date(status.lastApiAt).toLocaleString()}
-                {status.lastIntuitTid ? <> · Intuit request ID: <code>{status.lastIntuitTid}</code></> : null}
+                Last QuickBooks API activity:{" "}
+                {new Date(status.lastApiAt).toLocaleString()}
+                {status.lastIntuitTid ? (
+                  <>
+                    {" "}
+                    · Intuit request ID: <code>{status.lastIntuitTid}</code>
+                  </>
+                ) : null}
               </p>
             )}
             {errorLogs.length > 0 && (
@@ -395,7 +525,9 @@ export default function QuickBooksIntegrationPage() {
                       <td>{new Date(item.occurred_at).toLocaleString()}</td>
                       <td>{item.operation}</td>
                       <td>{item.http_status ?? "—"}</td>
-                      <td><code>{item.intuit_tid ?? "—"}</code></td>
+                      <td>
+                        <code>{item.intuit_tid ?? "—"}</code>
+                      </td>
                       <td>{item.error_message}</td>
                     </tr>
                   ))}
@@ -413,4 +545,3 @@ export default function QuickBooksIntegrationPage() {
     </main>
   );
 }
-
