@@ -9,7 +9,7 @@ test("public FarmVoice pages render their feature entry points", async () => {
     ["/login", "Email and password"],
     ["/signup", "Set your FarmVoice password"],
     ["/billing", "Unlimited workers"],
-    ["/help", "Help"],
+    ["/help", "Watch a feature walkthrough"],
   ] as const;
 
   for (const [path, expected] of pages) {
@@ -42,4 +42,22 @@ test("unauthenticated QuickBooks connection cannot begin OAuth", async () => {
   });
   assert.equal(response.status, 401);
   assert.equal(response.headers.get("location"), null);
+});
+
+test("all public video guides are delivered as MP4s", async () => {
+  const guides = ["records", "fields", "team", "h2a", "housing", "quickbooks"];
+
+  for (const guide of guides) {
+    const path = `/videos/farmvoice-${guide}.mp4`;
+    const response = await fetch(new URL(path, baseUrl), {
+      headers: { Range: "bytes=0-31" },
+      redirect: "manual",
+    });
+    assert.ok(response.status === 206 || response.status === 200, `${path}: HTTP ${response.status}`);
+    assert.match(response.headers.get("content-type") ?? "", /^video\/mp4\b/i, path);
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    assert.ok(bytes.length >= 12, `${path} is too short`);
+    assert.equal(new TextDecoder().decode(bytes.slice(4, 8)), "ftyp", `${path} is not an MP4`);
+  }
 });
