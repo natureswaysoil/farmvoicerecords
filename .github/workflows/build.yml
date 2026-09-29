@@ -24,3 +24,24 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Test running application
+        run: |
+          npm run start -- -p 3100 > /tmp/farmvoice-next.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3100/ -o /dev/null; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat /tmp/farmvoice-next.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if ! curl -fsS http://127.0.0.1:3100/ -o /dev/null; then
+            cat /tmp/farmvoice-next.log
+            exit 1
+          fi
+          SMOKE_BASE_URL=http://127.0.0.1:3100 npm run test:smoke || {
+            cat /tmp/farmvoice-next.log
+            exit 1
+          }
