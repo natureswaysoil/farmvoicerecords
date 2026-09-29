@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     };
     if (saved.state !== state) throw new Error("QuickBooks authorization state did not match.");
 
-    const { supabase, user, farmId } = await requireFarmOwner();
+    const { supabase, user, farmId } = await requireFarmOwner(saved.farmId);
     if (farmId !== saved.farmId) throw new Error("Farm authorization changed during QuickBooks connection.");
 
     const { data: existingConnection, error: existingError } = await supabase
@@ -81,7 +81,9 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     try {
-      const ctx = await requireFarmOwner();
+      const raw = request.cookies.get("farmvoice_qbo_oauth")?.value;
+      const savedFarmId = raw ? (JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as { farmId?: string }).farmId : null;
+      const ctx = await requireFarmOwner(savedFarmId);
       await logQuickBooksError({
         supabase: ctx.supabase,
         farmId: ctx.farmId,
