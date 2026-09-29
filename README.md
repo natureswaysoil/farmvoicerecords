@@ -1,34 +1,42 @@
 # FarmVoice Records
 
-Runnable Next.js reconstruction for **farmvoicerecords.com**, based on the verified current FarmVoice feature guide and live Site projection.
+FarmVoice Records is a production Next.js farm recordkeeping and workforce application for **farmvoicerecords.com**.
 
-## Implemented in this repository
+## Current architecture
 
-- Home/marketing page
-- Passwordless-login UI boundary
-- Farm join-code UI with complete 6–10 character handling
-- Pesticide application form
-- Browser voice-recognition hook with typed fallback
-- GPS capture for pesticide records
-- Nationwide federal RUP completeness validator
-- Draft vs confirmed save behavior; incomplete RUP records cannot be confirmed
-- State-validator extension registry
-- Browser-local record persistence and CSV export
-- Team scheduling
-- GPS clock-in/out
-- Manager approval and approved-time CSV export
-- Pricing page
+- Next.js App Router application deployed on Vercel
+- Supabase Auth for FarmVoice user accounts and MFA
+- Supabase Postgres with Row Level Security for farm-scoped data
+- Private Supabase Storage for Smart Photo Evidence and documents
+- Farm and field records with voice/typed entry, GPS capture and CSV export
+- Team scheduling, GPS clock-in/out, manager review and payroll preparation
+- Federal RUP pesticide record completeness checks with state-rule extension points
+- USDA/FSA field-boundary import workflows
+- H-2A contracts, workers, daily crew records, housing, transportation, training, recruitment, separation, documents and audit support
+- QuickBooks Online OAuth, employee mapping, approved-time sync and diagnostics
+- FarmVoice Help Center, first-login onboarding and in-app help assistant
+- Resend-backed notification workflows
 
-## Backend boundary
+## Security model
 
-The current production app is a ChatGPT Site projection. The Site platform does not expose its original source tree through the connected tools, so this is a clean reconstruction rather than a byte-for-byte export.
+FarmVoice data is scoped by farm. Server-side privileged workflows authenticate the current Supabase user and require an authorized farm membership before accessing farm resources. Multi-farm workflows must use an explicit authorized farm context rather than silently choosing the first membership returned by the database.
 
-Cloud authentication, shared farm data, email delivery, photo storage, subscription billing and server-side membership must be connected to a backend before this reconstruction replaces production. They are deliberately not faked.
+Supabase configuration is required through environment variables; the application does not contain fallback project credentials.
+
+## Required Supabase environment variables
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+```
+
+The publishable key is intended for the browser and relies on Supabase Auth and RLS for authorization. Never expose a Supabase service-role or secret key with a `NEXT_PUBLIC_` prefix.
 
 ## Run
 
 ```bash
 npm install
+npm test
 npm run dev
 ```
 
@@ -39,21 +47,13 @@ npm run build
 npm start
 ```
 
-## RUP validation
+## Pesticide/RUP validation
 
-`src/compliance/pesticide-record-validation.ts` validates the federal private-applicator RUP recordkeeping baseline and exposes `registerStateValidator()` for verified state rules. The UI says “Federal USDA RUP baseline complete” rather than claiming universal legal compliance.
-
-## Historical production Site
-
-- Site slug: `farmpilot-records`
-- Project ID: `appgprj_6aacad1d87f08191b96c0312fab01f54`
-- Source version observed: `23`
-- Projection revision observed: `47`
-
+`src/compliance/pesticide-record-validation.ts` validates the federal private-applicator RUP recordkeeping baseline and exposes `registerStateValidator()` for verified state rules. FarmVoice does not claim that software validation guarantees regulatory compliance.
 
 ## QuickBooks Online integration
 
-Farm owners can connect QuickBooks Online at `/integrations/quickbooks`, map FarmVoice worker accounts to QuickBooks employees, and send completed manager-approved time entries as QuickBooks TimeActivity records. GPS coordinates and detailed pesticide/compliance records remain in FarmVoice.
+Farm owners can connect QuickBooks Online at `/integrations/quickbooks`, map FarmVoice workers to QuickBooks employees, and send completed manager-approved time entries as QuickBooks TimeActivity records. GPS coordinates and detailed pesticide/compliance records remain in FarmVoice.
 
 Required Vercel environment variables:
 
@@ -68,3 +68,7 @@ QBO_ENVIRONMENT=production
 `QBO_TOKEN_ENCRYPTION_KEY` must decode from base64 to exactly 32 random bytes. Keep all QuickBooks credentials server-side; never expose them with a `NEXT_PUBLIC_` prefix.
 
 For an Intuit sandbox, set `QBO_ENVIRONMENT=sandbox` and register the corresponding callback URL in the Intuit developer app.
+
+## Historical note
+
+This repository began as a reconstruction of an earlier FarmVoice Site projection. The README previously described backend services as unconnected. That description is obsolete: the repository now contains the production Supabase, storage, H-2A, QuickBooks, MFA and related backend integrations.

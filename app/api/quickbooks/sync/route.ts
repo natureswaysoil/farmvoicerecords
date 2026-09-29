@@ -26,9 +26,10 @@ function localDate(iso: string, timeZone: string) {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const ctx = await getValidQuickBooksAccessToken();
+    const body = await request.json().catch(() => ({}));
+    const ctx = await getValidQuickBooksAccessToken(typeof body.farmId === "string" ? body.farmId : null);
 
     const [mappingsResult, farmResult] = await Promise.all([
       ctx.supabase

@@ -70,9 +70,10 @@ async function runExpectedErrorTest(args: {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const ctx = await getValidQuickBooksAccessToken();
+    const body = await request.json().catch(() => ({}));
+    const ctx = await getValidQuickBooksAccessToken(typeof body.farmId === "string" ? body.farmId : null);
 
     const results = await Promise.all([
       runExpectedErrorTest({

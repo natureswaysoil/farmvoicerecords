@@ -12,9 +12,10 @@ function validateTimeZone(value: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const ctx = await getQuickBooksConnection();
+    const farmIdParam = new URL(request.url).searchParams.get("farmId");
+    const ctx = await getQuickBooksConnection(farmIdParam);
     const [membersResult, mappingsResult, farmResult] = await Promise.all([
       ctx.supabase
         .from("farm_members")
@@ -41,7 +42,7 @@ export async function GET() {
 
     if (connection && !connection.reconnect_required) {
       try {
-        quickBooksEmployees = await loadQuickBooksEmployees();
+        quickBooksEmployees = await loadQuickBooksEmployees(ctx.farmId);
       } catch {
         const { data: refreshedConnection, error: connectionError } = await ctx.supabase
           .from("quickbooks_connections")
@@ -58,6 +59,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      farmId: ctx.farmId,
       connected: Boolean(connection),
       companyName: connection?.company_name ?? null,
       realmId: connection?.realm_id ?? null,
@@ -80,8 +82,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, farmId, user } = await requireFarmOwner();
     const body = await request.json();
+    const { supabase, farmId, user } = await requireFarmOwner(typeof body.farmId === "string" ? body.farmId : null);
 
     if (typeof body.timezone === "string") {
       const timezone = body.timezone.trim();

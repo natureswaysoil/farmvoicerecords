@@ -4,6 +4,13 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL": "https://vvcpyagznemodmwparlx.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_eQCZgdRRXzrSYLYkoS1vWw_lnNEB27m",
+      "NEXT_PUBLIC_SITE_URL": "https://farmvoicerecords.com"
+    }
+  },
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://vvcpyagznemodmwparlx.supabase.co",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_eQCZgdRRXzrSYLYkoS1vWw_lnNEB27m",
