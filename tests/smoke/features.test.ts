@@ -61,3 +61,13 @@ test("all public video guides are delivered as MP4s", async () => {
     assert.equal(new TextDecoder().decode(bytes.slice(4, 8)), "ftyp", `${path} is not an MP4`);
   }
 });
+
+test("unauthenticated QuickBooks errors request returns 401", async () => {
+  const response = await fetch(new URL("/api/quickbooks/errors", baseUrl));
+  assert.equal(response.status, 401);
+});
+
+test("production does not expose the QuickBooks error test route", async () => {
+  const response = await fetch(new URL("/api/quickbooks/test-error-handling", baseUrl), { method: "POST" });
+  assert.equal(response.status, 404);
+});

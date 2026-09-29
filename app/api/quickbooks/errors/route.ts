@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to load QuickBooks error logs." },
-      { status: 400 }
+      { status: error instanceof Error && error.message === "Sign in is required." ? 401 : 400 }
     );
   }
 }

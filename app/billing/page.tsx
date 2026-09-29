@@ -26,7 +26,7 @@ export default function BillingPage() {
         <p className="muted">
           100 GB of farm photo and document storage is included. Additional storage may require an extra storage plan.
         </p>
-        <Link className="btn" href="/login">Start 14-day free trial</Link>
+        <Link className="btn" href="/signup">Start 14-day free trial</Link>
       </div>
 
       <p className="muted" style={{ marginTop: 24, textAlign: "center" }}>
