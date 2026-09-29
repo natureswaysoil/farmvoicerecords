@@ -5,9 +5,10 @@ import { requireFarmOwner } from "@/src/lib/quickbooks-server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { farmId } = await requireFarmOwner();
+    const farmIdParam = new URL(request.url).searchParams.get("farmId");
+    const { farmId } = await requireFarmOwner(farmIdParam);
     const state = crypto.randomBytes(24).toString("base64url");
     const response = NextResponse.redirect(buildQuickBooksAuthorizeUrl(state));
     response.cookies.set(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Worker = { user_id: string; employee_number: string | null; role: string };
 type Employee = { Id: string; DisplayName: string };
@@ -21,7 +21,10 @@ type ErrorLog = {
   reconnect_required: boolean;
 };
 
+type Farm = { id: string; name: string };
+
 type Status = {
+  farmId: string;
   connected: boolean;
   companyName: string | null;
   timezone: string;
@@ -37,6 +40,8 @@ type Status = {
 
 export default function QuickBooksIntegrationPage() {
   const [status, setStatus] = useState<Status | null>(null);
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [farmId, setFarmId] = useState("");
   const [message, setMessage] = useState("Loading QuickBooks integration...");
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -44,10 +49,25 @@ export default function QuickBooksIntegrationPage() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [loadingErrors, setLoadingErrors] = useState(false);
   const [testingErrors, setTestingErrors] = useState(false);
+  const loadSequence = useRef(0);
+  const errorLoadSequence = useRef(0);
 
-  async function load() {
-    const response = await fetch("/api/quickbooks/status", { cache: "no-store" });
+  async function loadFarms() {
+    const response = await fetch("/api/farms/owned", { cache: "no-store" });
     const body = await response.json();
+    if (!response.ok) throw new Error(body.error ?? "Unable to load farms.");
+    const owned = (body.farms ?? []) as Farm[];
+    setFarms(owned);
+    if (owned.length === 1 && !farmId) setFarmId(owned[0].id);
+    return owned;
+  }
+
+  async function load(targetFarmId = farmId) {
+    const requestId = ++loadSequence.current;
+    const query = targetFarmId ? "?farmId=" + encodeURIComponent(targetFarmId) : "";
+    const response = await fetch("/api/quickbooks/status" + query, { cache: "no-store" });
+    const body = await response.json();
+    if (requestId !== loadSequence.current) return;
     if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks.");
     setStatus(body);
     setTimezone(body.timezone ?? "UTC");
@@ -55,8 +75,27 @@ export default function QuickBooksIntegrationPage() {
   }
 
   useEffect(() => {
-    load().catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
+    loadFarms()
+      .then((owned) => {
+        if (owned.length > 1) {
+          setMessage("Select the farm whose QuickBooks company you want to manage.");
+        }
+      })
+      .catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
+    // Initial farm discovery only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    loadSequence.current += 1;
+    errorLoadSequence.current += 1;
+    setStatus(null);
+    setErrorLogs([]);
+    if (!farmId) return;
+    load(farmId).catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks."));
+    // Reload whenever the explicit farm context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farmId]);
 
   function downloadErrorLogs() {
     if (!errorLogs.length) return;
@@ -88,7 +127,7 @@ export default function QuickBooksIntegrationPage() {
     setTestingErrors(true);
     setMessage("Running read-only QuickBooks API error tests...");
     try {
-      const response = await fetch("/api/quickbooks/test-error-handling", { method: "POST" });
+      const response = await fetch("/api/quickbooks/test-error-handling", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ farmId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "QuickBooks error-handling test failed.");
 
@@ -112,17 +151,22 @@ export default function QuickBooksIntegrationPage() {
     }
   }
 
-  async function loadErrorLogs() {
+  async function loadErrorLogs(targetFarmId = farmId) {
+    const requestId = ++errorLoadSequence.current;
     setLoadingErrors(true);
     try {
-      const response = await fetch("/api/quickbooks/errors", { cache: "no-store" });
+      const query = targetFarmId ? "?farmId=" + encodeURIComponent(targetFarmId) : "";
+      const response = await fetch("/api/quickbooks/errors" + query, { cache: "no-store" });
       const body = await response.json();
+      if (requestId !== errorLoadSequence.current) return;
       if (!response.ok) throw new Error(body.error ?? "Unable to load QuickBooks error logs.");
       setErrorLogs(body.errors ?? []);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks error logs.");
+      if (requestId === errorLoadSequence.current) {
+        setMessage(error instanceof Error ? error.message : "Unable to load QuickBooks error logs.");
+      }
     } finally {
-      setLoadingErrors(false);
+      if (requestId === errorLoadSequence.current) setLoadingErrors(false);
     }
   }
 
@@ -137,6 +181,7 @@ export default function QuickBooksIntegrationPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        farmId,
         workerUserId,
         quickbooksEmployeeId: employeeId,
         quickbooksEmployeeName: employee?.DisplayName ?? "",
@@ -153,7 +198,7 @@ export default function QuickBooksIntegrationPage() {
     const response = await fetch("/api/quickbooks/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ timezone }),
+      body: JSON.stringify({ farmId, timezone }),
     });
     const body = await response.json();
     if (!response.ok) return setMessage(body.error ?? "Unable to save payroll timezone.");
@@ -169,7 +214,7 @@ export default function QuickBooksIntegrationPage() {
     setDisconnecting(true);
     setMessage("Disconnecting QuickBooks...");
     try {
-      const response = await fetch("/api/quickbooks/disconnect", { method: "POST" });
+      const response = await fetch("/api/quickbooks/disconnect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ farmId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to disconnect QuickBooks.");
       setMessage("QuickBooks disconnected. Existing records already sent to QuickBooks are unchanged.");
@@ -185,7 +230,7 @@ export default function QuickBooksIntegrationPage() {
     setSyncing(true);
     setMessage("Sending approved time to QuickBooks...");
     try {
-      const response = await fetch("/api/quickbooks/sync", { method: "POST" });
+      const response = await fetch("/api/quickbooks/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ farmId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "QuickBooks sync failed.");
       if (body.reconnectRequired) {
@@ -215,6 +260,18 @@ export default function QuickBooksIntegrationPage() {
         </p>
       </div>
 
+      {farms.length > 1 && (
+        <section className="card stack">
+          <div className="field">
+            <label htmlFor="quickbooks-farm">Farm</label>
+            <select id="quickbooks-farm" value={farmId} onChange={(event) => setFarmId(event.target.value)}>
+              <option value="">Select a farm</option>
+              {farms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name}</option>)}
+            </select>
+          </div>
+        </section>
+      )}
+
       <section className="card stack">
         <div className="inline" style={{ justifyContent: "space-between" }}>
           <div>
@@ -234,7 +291,7 @@ export default function QuickBooksIntegrationPage() {
             )}
           </div>
           <div className="inline">
-            <a className="btn" href="/api/quickbooks/connect">
+            <a className="btn" href={farmId ? "/api/quickbooks/connect?farmId=" + encodeURIComponent(farmId) : "/api/quickbooks/connect"}>
               {status?.connected || status?.reconnectRequired ? "Reconnect QuickBooks" : "Connect QuickBooks"}
             </a>
             {status?.connected && (
@@ -344,7 +401,7 @@ export default function QuickBooksIntegrationPage() {
                 >
                   {testingErrors ? "Testing..." : "Run API error test"}
                 </button>
-                <button className="btn secondary" onClick={loadErrorLogs} disabled={loadingErrors}>
+                <button className="btn secondary" onClick={() => loadErrorLogs()} disabled={loadingErrors}>
                   {loadingErrors ? "Loading..." : "Load recent errors"}
                 </button>
                 <button className="btn secondary" onClick={downloadErrorLogs} disabled={!errorLogs.length}>

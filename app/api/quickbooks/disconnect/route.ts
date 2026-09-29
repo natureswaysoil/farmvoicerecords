@@ -3,9 +3,10 @@ import { requireFarmOwner } from "@/src/lib/quickbooks-server";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const { supabase, farmId } = await requireFarmOwner();
+    const body = await request.json().catch(() => ({}));
+    const { supabase, farmId } = await requireFarmOwner(typeof body.farmId === "string" ? body.farmId : null);
 
     const { error: mappingError } = await supabase
       .from("quickbooks_employee_mappings")

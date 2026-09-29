@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { createClient } from "@/src/lib/supabase/server";
+import { requireOwnerFarmId } from "@/src/lib/farm-owner-server";
 import {
   decryptSecret,
   encryptSecret,
@@ -9,25 +10,17 @@ import {
   tokenExpiry,
 } from "@/src/lib/quickbooks";
 
-export async function requireFarmOwner() {
+export async function requireFarmOwner(requestedFarmId?: string | null) {
   const supabase = await createClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error("Sign in is required.");
 
-  const { data: membership, error } = await supabase
-    .from("farm_members")
-    .select("farm_id, role")
-    .eq("user_id", userData.user.id)
-    .eq("role", "owner")
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !membership) throw new Error("Farm owner access is required.");
-  return { supabase, user: userData.user, farmId: membership.farm_id as string };
+  const farmId = await requireOwnerFarmId(supabase, userData.user.id, requestedFarmId);
+  return { supabase, user: userData.user, farmId };
 }
 
-export async function getQuickBooksConnection() {
-  const ctx = await requireFarmOwner();
+export async function getQuickBooksConnection(requestedFarmId?: string | null) {
+  const ctx = await requireFarmOwner(requestedFarmId);
   const { data, error } = await ctx.supabase
     .from("quickbooks_connections")
     .select("*")
@@ -110,8 +103,8 @@ async function releaseRefreshLock(
     .eq("refresh_lock_token", token);
 }
 
-export async function getValidQuickBooksAccessToken() {
-  const ctx = await getQuickBooksConnection();
+export async function getValidQuickBooksAccessToken(requestedFarmId?: string | null) {
+  const ctx = await getQuickBooksConnection(requestedFarmId);
   if (!ctx.connection) throw new Error("QuickBooks is not connected.");
   if (ctx.connection.reconnect_required) {
     throw new Error("QuickBooks authorization needs to be reconnected.");
@@ -228,8 +221,8 @@ export async function getValidQuickBooksAccessToken() {
   }
 }
 
-export async function loadQuickBooksEmployees() {
-  const ctx = await getValidQuickBooksAccessToken();
+export async function loadQuickBooksEmployees(requestedFarmId?: string | null) {
+  const ctx = await getValidQuickBooksAccessToken(requestedFarmId);
   const query = encodeURIComponent(
     "select Id, DisplayName, Active from Employee where Active = true"
   );
