@@ -7,7 +7,7 @@ export default function HomePage() {
       <section className="container hero">
         <div>
           <div className="eyebrow">Farm records, ready for your review</div>
-          <h1>Farm recordkeeping that starts with your voice.</h1>
+          <h1>Less paperwork. More time for your farm.</h1>
           <p className="lede">
             Speak your field notes in English or Spanish. Review your records,
             attach photos, and have your crew paperwork ready. One supervisor
