@@ -79,6 +79,11 @@ export async function GET(request: NextRequest) {
         .from("quickbooks_employee_mappings")
         .delete()
         .eq("farm_id", farmId);
+      const { error: crewMappingError } = await supabase
+        .from("quickbooks_crew_mappings")
+        .delete()
+        .eq("farm_id", farmId);
+      if (crewMappingError) throw crewMappingError;
       if (mappingError) throw mappingError;
     }
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
+import { validCaptureTime } from "../src/lib/records/receipt.ts";
 import { purchaseProblems } from "../src/lib/records/schema.ts";
 
 test("purchase quantities must be finite and positive", () => {
@@ -35,7 +36,7 @@ test("offline cache bounds old chunks while preserving current shell assets", as
 });
 test("concurrent identical record deliveries both succeed", async () => {
   const ts = await import("typescript");
-  const record = {id: "record", farmId: "farm", userId: "owner", status: "draft", type: "purchase", payload: {}, createdAt: "2026-09-29T00:00:00Z"};
+  const record = {id: "record", farmId: "farm", userId: "owner", status: "draft", type: "purchase", payload: {}, createdAt: new Date().toISOString()};
   let reads = 0, inserts = 0;
   const supabase = {from() {return {
     select() {return this;}, eq() {return this;},
@@ -50,6 +51,7 @@ test("concurrent identical record deliveries both succeed", async () => {
   const exports: Record<string, any> = {};
   const context = vm.createContext({exports, Response, require(path: string) {
     if (path.includes("access-server")) return {authorizeFarm: async () => ({supabase, user: {id: "owner"}}), requirePlan: async () => {}, AccessError, apiError: (error: AccessError) => Response.json({}, {status: error.status})};
+    if (path.includes("receipt")) return {validCaptureTime};
     if (path.includes("schema")) return {recordRequestSchema: {safeParse: () => ({success: true, data: record})}};
     return {};
   }});

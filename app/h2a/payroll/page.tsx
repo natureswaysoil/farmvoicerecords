@@ -11,6 +11,8 @@ import {
   type H2aFarmChoice,
 } from "@/src/lib/h2a-farm-context";
 import { collectPages } from "@/src/lib/pagination";
+import { weeklyHours } from "@/src/lib/h2a-hours";
+import H2aWeeklyHours from "@/src/components/h2a-weekly-hours";
 import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
 
 type Contract = {
@@ -30,6 +32,10 @@ type Worker = {
   contract_id: string | null;
 };
 type Daily = {
+  shift_minutes: number | null;
+  paid_break_minutes: number | null;
+  break_minutes: number;
+  approved_at: string | null;
   worker_id: string;
   contract_id: string | null;
   work_date: string;
@@ -156,7 +162,7 @@ export default function H2APayrollPage() {
           supabase
             .from("h2a_daily_records")
             .select(
-              "worker_id,contract_id,work_date,hours_offered,hours_worked,piece_quantity",
+              "worker_id,contract_id,work_date,hours_offered,hours_worked,piece_quantity,shift_minutes,paid_break_minutes,break_minutes,approved_at",
             )
             .eq("farm_id", farm.farmId)
             .order("id")
@@ -205,24 +211,24 @@ export default function H2APayrollPage() {
   async function saveWage(e: FormEvent) {
     e.preventDefault();
     if (!ctx || loading) return;
-    const { error } = await supabase
-      .from("h2a_wage_rates")
-      .insert({
-        farm_id: ctx.farmId,
-        contract_id: wage.contractId || null,
-        effective_date: wage.effective,
-        hourly_rate: Number(wage.rate),
-        source: wage.source || null,
-        verified_by: ctx.userId,
-        verified_at: new Date().toISOString(),
-        created_by: ctx.userId,
-      });
+    const { error } = await supabase.from("h2a_wage_rates").insert({
+      farm_id: ctx.farmId,
+      contract_id: wage.contractId || null,
+      effective_date: wage.effective,
+      hourly_rate: Number(wage.rate),
+      source: wage.source || null,
+      verified_by: ctx.userId,
+      verified_at: new Date().toISOString(),
+      created_by: ctx.userId,
+    });
     setMessage(error ? error.message : "Wage-rate record saved.");
   }
 
   async function savePay(e: FormEvent) {
     e.preventDefault();
     if (!ctx || loading) return;
+    if (!form.start || !form.end || form.end < form.start)
+      return setMessage("Choose a valid pay period.");
     const contractId = workers.find((w) => w.id === form.workerId)?.contract_id;
     const rows = daily.filter(
       (r) =>
@@ -235,44 +241,40 @@ export default function H2APayrollPage() {
       (s, r) => s + Number(r.hours_offered || 0),
       0,
     );
-    const hoursWorked = rows.reduce(
-      (s, r) => s + Number(r.hours_worked || 0),
-      0,
-    );
+    const hoursWorked =
+      Math.round(
+        (weeklyHours(rows).reduce((sum, week) => sum + week.minutes, 0) / 60) *
+          100,
+      ) / 100;
     const rate = Number(form.rate) || 0;
     const piece = Number(form.pieceEarnings) || 0;
     const gross = hoursWorked * rate + piece;
     const ded = Number(form.deductions) || 0,
       reimb = Number(form.reimbursements) || 0;
     const net = gross - ded + reimb;
-    const { error } = await supabase
-      .from("h2a_pay_statements")
-      .insert({
-        farm_id: ctx.farmId,
-        worker_id: form.workerId,
-        contract_id:
-          form.contractId ||
-          workers.find((w) => w.id === form.workerId)?.contract_id ||
-          null,
-        period_start: form.start,
-        period_end: form.end,
-        payday: form.payday || null,
-        hours_offered: hoursOffered,
-        hours_worked: hoursWorked,
-        hourly_rate: rate || null,
-        piece_units: rows.reduce(
-          (s, r) => s + Number(r.piece_quantity || 0),
-          0,
-        ),
-        piece_earnings: piece,
-        gross_earnings: gross,
-        deductions: ded,
-        reimbursements: reimb,
-        net_amount: net,
-        reviewed_by: ctx.userId,
-        reviewed_at: new Date().toISOString(),
-        created_by: ctx.userId,
-      });
+    const { error } = await supabase.from("h2a_pay_statements").insert({
+      farm_id: ctx.farmId,
+      worker_id: form.workerId,
+      contract_id:
+        form.contractId ||
+        workers.find((w) => w.id === form.workerId)?.contract_id ||
+        null,
+      period_start: form.start,
+      period_end: form.end,
+      payday: form.payday || null,
+      hours_offered: hoursOffered,
+      hours_worked: hoursWorked,
+      hourly_rate: rate || null,
+      piece_units: rows.reduce((s, r) => s + Number(r.piece_quantity || 0), 0),
+      piece_earnings: piece,
+      gross_earnings: gross,
+      deductions: ded,
+      reimbursements: reimb,
+      net_amount: net,
+      reviewed_by: ctx.userId,
+      reviewed_at: new Date().toISOString(),
+      created_by: ctx.userId,
+    });
     setMessage(
       error
         ? error.message
@@ -567,6 +569,21 @@ export default function H2APayrollPage() {
               }
             />
           </div>
+          <H2aWeeklyHours
+            rows={daily.filter(
+              (r) =>
+                r.worker_id === form.workerId &&
+                r.contract_id ===
+                  workers.find((w) => w.id === form.workerId)?.contract_id &&
+                r.work_date >= form.start &&
+                r.work_date <= form.end,
+            )}
+            names={workerName}
+          />
+          <p className="small">
+            Worksheet hours come from daily paid hours. Breaks are not deducted
+            again. Review pending days before saving.
+          </p>
           <button className="btn">Save reviewed worksheet</button>
         </form>
       </section>

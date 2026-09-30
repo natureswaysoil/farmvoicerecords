@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <div>
         <div className="kicker">Legal</div>
         <h1>Privacy Policy</h1>
-        <p className="muted">Effective September 29, 2026</p>
+        <p className="muted">Effective September 30, 2026</p>
       </div>
 
       <section className="card stack">
@@ -109,7 +109,8 @@ export default function PrivacyPage() {
           handled under that provider&apos;s own terms and privacy practices.
         </p>
 
-        <h2>Data retention</h2>
+        <h2>Data retention and deletion requests</h2>
+        <p>Account and farm deletion requests are handled by support. Deleting a login does not automatically delete shared farm records, crew rosters, time entries, review history, record revisions, or storage usage records. We review related records and files together to preserve shared access and any applicable retention obligations. Contact james@farmvoicerecords.com to request deletion; we will explain any information that must be retained and why. Export your records before requesting deletion.</p>
         <p>
           We retain account and farm records for as long as needed to provide
           the service, meet legitimate business and legal obligations, resolve

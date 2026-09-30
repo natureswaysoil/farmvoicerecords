@@ -1,0 +1,16 @@
+id,worker_id,clock_in,clock_out,break_minutes,job,field_name,approval_status,expected_net_hours
+51b09ea4-52aa-5a46-b908-f952eb34c6af,02efaac3-4d5b-5f2c-bebb-34442e78bb9f,2026-09-21T08:00:00-04:00,2026-09-21T16:00:00-04:00,45,DEMO Harvest preparation,DEMO North Vegetable Field,pending,7.25
+4dcd50c1-c6bc-5967-8038-112f81d629ff,329b13ce-e848-50d1-a83f-c445fd0bcfb4,2026-09-21T08:00:00-04:00,2026-09-21T16:00:00-04:00,30,DEMO Irrigation checks,DEMO South Pasture,pending,7.5
+ae6d00e1-3114-5299-8b5f-899139154753,5216574c-ffa5-541d-88af-87e856db851a,2026-09-21T08:00:00-04:00,2026-09-21T16:00:00-04:00,60,DEMO Nursery maintenance,DEMO Nursery Block,pending,7.0
+05ed2697-9cf9-50bb-b81d-0acd4b52ed22,02efaac3-4d5b-5f2c-bebb-34442e78bb9f,2026-09-22T08:00:00-04:00,2026-09-22T16:00:00-04:00,45,DEMO Harvest preparation,DEMO North Vegetable Field,pending,7.25
+c5769c80-7517-55e7-826d-4bf3517eb812,329b13ce-e848-50d1-a83f-c445fd0bcfb4,2026-09-22T08:00:00-04:00,2026-09-22T16:00:00-04:00,30,DEMO Irrigation checks,DEMO South Pasture,pending,7.5
+2116bea5-282e-5ad5-8ea7-86445b0e9cf3,5216574c-ffa5-541d-88af-87e856db851a,2026-09-22T08:00:00-04:00,2026-09-22T16:00:00-04:00,60,DEMO Nursery maintenance,DEMO Nursery Block,pending,7.0
+b13a7e7f-5f88-551c-96a8-c6af8d70e012,02efaac3-4d5b-5f2c-bebb-34442e78bb9f,2026-09-23T08:00:00-04:00,2026-09-23T16:00:00-04:00,45,DEMO Harvest preparation,DEMO North Vegetable Field,pending,7.25
+89696bf0-620b-542c-b509-11f7abdf013c,329b13ce-e848-50d1-a83f-c445fd0bcfb4,2026-09-23T08:00:00-04:00,2026-09-23T16:00:00-04:00,30,DEMO Irrigation checks,DEMO South Pasture,pending,7.5
+cf1e8dca-fe21-5dc7-a6aa-c38d935e8aee,5216574c-ffa5-541d-88af-87e856db851a,2026-09-23T08:00:00-04:00,2026-09-23T16:00:00-04:00,60,DEMO Nursery maintenance,DEMO Nursery Block,pending,7.0
+9b12a247-cfa0-59f6-b4e2-55fda0a7806b,02efaac3-4d5b-5f2c-bebb-34442e78bb9f,2026-09-24T08:00:00-04:00,2026-09-24T16:00:00-04:00,45,DEMO Harvest preparation,DEMO North Vegetable Field,pending,7.25
+28c7fa66-84a0-5f66-bbd1-300e8e6401ce,329b13ce-e848-50d1-a83f-c445fd0bcfb4,2026-09-24T08:00:00-04:00,2026-09-24T16:00:00-04:00,30,DEMO Irrigation checks,DEMO South Pasture,pending,7.5
+269c29b4-a930-5352-8277-326103bdd9ee,5216574c-ffa5-541d-88af-87e856db851a,2026-09-24T08:00:00-04:00,2026-09-24T16:00:00-04:00,60,DEMO Nursery maintenance,DEMO Nursery Block,pending,7.0
+a226f0ca-d45f-577f-9f36-791569c4c8f8,02efaac3-4d5b-5f2c-bebb-34442e78bb9f,2026-09-25T08:00:00-04:00,2026-09-25T16:00:00-04:00,45,DEMO Harvest preparation,DEMO North Vegetable Field,pending,7.25
+bb430a11-915e-5aa5-824c-2d44cc1f3864,329b13ce-e848-50d1-a83f-c445fd0bcfb4,2026-09-25T08:00:00-04:00,2026-09-25T16:00:00-04:00,30,DEMO Irrigation checks,DEMO South Pasture,pending,7.5
+fbad133c-5011-50a6-a135-a47171b8ae99,5216574c-ffa5-541d-88af-87e856db851a,2026-09-25T08:00:00-04:00,2026-09-25T16:00:00-04:00,60,DEMO Nursery maintenance,DEMO Nursery Block,pending,7.0
