@@ -1,0 +1,4 @@
+id,name,area_type,size_value,size_unit,current_crop,organic_status,management_notes
+52cbff68-0e1d-56f5-a476-2b77d9f18cab,DEMO North Vegetable Field,field,12,acres,Sweet potatoes,unknown,"FICTIONAL DEMO DATA — not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+b8358804-5106-58b0-ba94-7e235051b798,DEMO South Pasture,pasture,8,acres,Mixed grass,unknown,"FICTIONAL DEMO DATA — not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+4bf6311b-ef22-5efe-bb34-14791624d7ec,DEMO Nursery Block,block,2,acres,Container plants,unknown,"FICTIONAL DEMO DATA — not actual farm activity, payroll, pesticide instructions, or compliance evidence."

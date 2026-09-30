@@ -1,0 +1,568 @@
+{
+  "notice": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence.",
+  "version": 1,
+  "fixture_date": "2026-09-30",
+  "farm": {
+    "name": "FarmVoice DEMO \u2014 Fictional Training Farm",
+    "state": "NC",
+    "timezone": "America/New_York"
+  },
+  "fields": [
+    {
+      "id": "52cbff68-0e1d-56f5-a476-2b77d9f18cab",
+      "name": "DEMO North Vegetable Field",
+      "area_type": "field",
+      "size_value": 12,
+      "size_unit": "acres",
+      "current_crop": "Sweet potatoes",
+      "organic_status": "unknown",
+      "management_notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+    },
+    {
+      "id": "b8358804-5106-58b0-ba94-7e235051b798",
+      "name": "DEMO South Pasture",
+      "area_type": "pasture",
+      "size_value": 8,
+      "size_unit": "acres",
+      "current_crop": "Mixed grass",
+      "organic_status": "unknown",
+      "management_notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+    },
+    {
+      "id": "4bf6311b-ef22-5efe-bb34-14791624d7ec",
+      "name": "DEMO Nursery Block",
+      "area_type": "block",
+      "size_value": 2,
+      "size_unit": "acres",
+      "current_crop": "Container plants",
+      "organic_status": "unknown",
+      "management_notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+    }
+  ],
+  "records": [
+    {
+      "id": "04d107ab-c702-5b58-b444-b834cfbecf0b",
+      "record_type": "purchase",
+      "status": "draft",
+      "field_id": "52cbff68-0e1d-56f5-a476-2b77d9f18cab",
+      "created_at": "2026-09-21T16:30:00-04:00",
+      "received_at": null,
+      "payload": {
+        "vendor": "DEMO Farm Supply",
+        "item": "DEMO irrigation fittings",
+        "quantity": "12",
+        "unit": "pieces",
+        "totalCost": "84.00",
+        "purchaseDate": "2026-09-21",
+        "fieldLocation": "DEMO North Vegetable Field",
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+      }
+    },
+    {
+      "id": "f3f68b95-682f-5e87-9569-c5ac1c7b6dae",
+      "record_type": "pesticide",
+      "status": "draft",
+      "field_id": "52cbff68-0e1d-56f5-a476-2b77d9f18cab",
+      "created_at": "2026-09-21T17:00:00-04:00",
+      "received_at": null,
+      "payload": {
+        "applicatorName": "DEMO Applicator",
+        "certificationNumber": "",
+        "productName": "DEMO placeholder \u2014 select a real labeled product before actual use",
+        "epaRegNumber": "",
+        "amountApplied": "",
+        "amountUnit": "",
+        "cropOrSite": "Sweet potatoes",
+        "fieldLocation": "DEMO North Vegetable Field",
+        "areaTreated": "12",
+        "areaUnit": "acres",
+        "applicationDate": "2026-09-21",
+        "isRestrictedUse": false,
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence. Deliberately incomplete draft; registration, certification, amount and units require review."
+      }
+    },
+    {
+      "id": "ab64d362-36f5-50e9-b9c0-6c1a331864eb",
+      "record_type": "purchase",
+      "status": "draft",
+      "field_id": "b8358804-5106-58b0-ba94-7e235051b798",
+      "created_at": "2026-09-22T16:30:00-04:00",
+      "received_at": null,
+      "payload": {
+        "vendor": "DEMO Farm Supply",
+        "item": "DEMO fence supplies",
+        "quantity": "4",
+        "unit": "rolls",
+        "totalCost": "220.00",
+        "purchaseDate": "2026-09-22",
+        "fieldLocation": "DEMO South Pasture",
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+      }
+    },
+    {
+      "id": "71e10753-3b5d-585c-b612-8ce81f6399fb",
+      "record_type": "pesticide",
+      "status": "draft",
+      "field_id": "b8358804-5106-58b0-ba94-7e235051b798",
+      "created_at": "2026-09-22T17:00:00-04:00",
+      "received_at": null,
+      "payload": {
+        "applicatorName": "DEMO Applicator",
+        "certificationNumber": "",
+        "productName": "DEMO placeholder \u2014 select a real labeled product before actual use",
+        "epaRegNumber": "",
+        "amountApplied": "",
+        "amountUnit": "",
+        "cropOrSite": "Mixed grass",
+        "fieldLocation": "DEMO South Pasture",
+        "areaTreated": "8",
+        "areaUnit": "acres",
+        "applicationDate": "2026-09-22",
+        "isRestrictedUse": false,
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence. Deliberately incomplete draft; registration, certification, amount and units require review."
+      }
+    },
+    {
+      "id": "fee74974-e354-59e4-81c8-32686ad92560",
+      "record_type": "purchase",
+      "status": "draft",
+      "field_id": "4bf6311b-ef22-5efe-bb34-14791624d7ec",
+      "created_at": "2026-09-23T16:30:00-04:00",
+      "received_at": null,
+      "payload": {
+        "vendor": "DEMO Farm Supply",
+        "item": "DEMO nursery containers",
+        "quantity": "100",
+        "unit": "containers",
+        "totalCost": "75.00",
+        "purchaseDate": "2026-09-23",
+        "fieldLocation": "DEMO Nursery Block",
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+      }
+    },
+    {
+      "id": "9705f905-5a17-500c-9dd8-e51ea5842ab7",
+      "record_type": "pesticide",
+      "status": "draft",
+      "field_id": "4bf6311b-ef22-5efe-bb34-14791624d7ec",
+      "created_at": "2026-09-23T17:00:00-04:00",
+      "received_at": null,
+      "payload": {
+        "applicatorName": "DEMO Applicator",
+        "certificationNumber": "",
+        "productName": "DEMO placeholder \u2014 select a real labeled product before actual use",
+        "epaRegNumber": "",
+        "amountApplied": "",
+        "amountUnit": "",
+        "cropOrSite": "Container plants",
+        "fieldLocation": "DEMO Nursery Block",
+        "areaTreated": "2",
+        "areaUnit": "acres",
+        "applicationDate": "2026-09-23",
+        "isRestrictedUse": false,
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence. Deliberately incomplete draft; registration, certification, amount and units require review."
+      }
+    }
+  ],
+  "crew_workers": [
+    {
+      "id": "02efaac3-4d5b-5f2c-bebb-34442e78bb9f",
+      "name": "DEMO Alex Sample",
+      "employee_number": "DEMO-001",
+      "active": true
+    },
+    {
+      "id": "329b13ce-e848-50d1-a83f-c445fd0bcfb4",
+      "name": "DEMO Casey Sample",
+      "employee_number": "DEMO-002",
+      "active": true
+    },
+    {
+      "id": "5216574c-ffa5-541d-88af-87e856db851a",
+      "name": "DEMO Jordan Sample",
+      "employee_number": "DEMO-003",
+      "active": true
+    }
+  ],
+  "crew_time_entries": [
+    {
+      "id": "51b09ea4-52aa-5a46-b908-f952eb34c6af",
+      "worker_id": "02efaac3-4d5b-5f2c-bebb-34442e78bb9f",
+      "clock_in": "2026-09-21T08:00:00-04:00",
+      "clock_out": "2026-09-21T16:00:00-04:00",
+      "break_minutes": 45,
+      "job": "DEMO Harvest preparation",
+      "field_name": "DEMO North Vegetable Field",
+      "approval_status": "pending",
+      "expected_net_hours": 7.25
+    },
+    {
+      "id": "4dcd50c1-c6bc-5967-8038-112f81d629ff",
+      "worker_id": "329b13ce-e848-50d1-a83f-c445fd0bcfb4",
+      "clock_in": "2026-09-21T08:00:00-04:00",
+      "clock_out": "2026-09-21T16:00:00-04:00",
+      "break_minutes": 30,
+      "job": "DEMO Irrigation checks",
+      "field_name": "DEMO South Pasture",
+      "approval_status": "pending",
+      "expected_net_hours": 7.5
+    },
+    {
+      "id": "ae6d00e1-3114-5299-8b5f-899139154753",
+      "worker_id": "5216574c-ffa5-541d-88af-87e856db851a",
+      "clock_in": "2026-09-21T08:00:00-04:00",
+      "clock_out": "2026-09-21T16:00:00-04:00",
+      "break_minutes": 60,
+      "job": "DEMO Nursery maintenance",
+      "field_name": "DEMO Nursery Block",
+      "approval_status": "pending",
+      "expected_net_hours": 7.0
+    },
+    {
+      "id": "05ed2697-9cf9-50bb-b81d-0acd4b52ed22",
+      "worker_id": "02efaac3-4d5b-5f2c-bebb-34442e78bb9f",
+      "clock_in": "2026-09-22T08:00:00-04:00",
+      "clock_out": "2026-09-22T16:00:00-04:00",
+      "break_minutes": 45,
+      "job": "DEMO Harvest preparation",
+      "field_name": "DEMO North Vegetable Field",
+      "approval_status": "pending",
+      "expected_net_hours": 7.25
+    },
+    {
+      "id": "c5769c80-7517-55e7-826d-4bf3517eb812",
+      "worker_id": "329b13ce-e848-50d1-a83f-c445fd0bcfb4",
+      "clock_in": "2026-09-22T08:00:00-04:00",
+      "clock_out": "2026-09-22T16:00:00-04:00",
+      "break_minutes": 30,
+      "job": "DEMO Irrigation checks",
+      "field_name": "DEMO South Pasture",
+      "approval_status": "pending",
+      "expected_net_hours": 7.5
+    },
+    {
+      "id": "2116bea5-282e-5ad5-8ea7-86445b0e9cf3",
+      "worker_id": "5216574c-ffa5-541d-88af-87e856db851a",
+      "clock_in": "2026-09-22T08:00:00-04:00",
+      "clock_out": "2026-09-22T16:00:00-04:00",
+      "break_minutes": 60,
+      "job": "DEMO Nursery maintenance",
+      "field_name": "DEMO Nursery Block",
+      "approval_status": "pending",
+      "expected_net_hours": 7.0
+    },
+    {
+      "id": "b13a7e7f-5f88-551c-96a8-c6af8d70e012",
+      "worker_id": "02efaac3-4d5b-5f2c-bebb-34442e78bb9f",
+      "clock_in": "2026-09-23T08:00:00-04:00",
+      "clock_out": "2026-09-23T16:00:00-04:00",
+      "break_minutes": 45,
+      "job": "DEMO Harvest preparation",
+      "field_name": "DEMO North Vegetable Field",
+      "approval_status": "pending",
+      "expected_net_hours": 7.25
+    },
+    {
+      "id": "89696bf0-620b-542c-b509-11f7abdf013c",
+      "worker_id": "329b13ce-e848-50d1-a83f-c445fd0bcfb4",
+      "clock_in": "2026-09-23T08:00:00-04:00",
+      "clock_out": "2026-09-23T16:00:00-04:00",
+      "break_minutes": 30,
+      "job": "DEMO Irrigation checks",
+      "field_name": "DEMO South Pasture",
+      "approval_status": "pending",
+      "expected_net_hours": 7.5
+    },
+    {
+      "id": "cf1e8dca-fe21-5dc7-a6aa-c38d935e8aee",
+      "worker_id": "5216574c-ffa5-541d-88af-87e856db851a",
+      "clock_in": "2026-09-23T08:00:00-04:00",
+      "clock_out": "2026-09-23T16:00:00-04:00",
+      "break_minutes": 60,
+      "job": "DEMO Nursery maintenance",
+      "field_name": "DEMO Nursery Block",
+      "approval_status": "pending",
+      "expected_net_hours": 7.0
+    },
+    {
+      "id": "9b12a247-cfa0-59f6-b4e2-55fda0a7806b",
+      "worker_id": "02efaac3-4d5b-5f2c-bebb-34442e78bb9f",
+      "clock_in": "2026-09-24T08:00:00-04:00",
+      "clock_out": "2026-09-24T16:00:00-04:00",
+      "break_minutes": 45,
+      "job": "DEMO Harvest preparation",
+      "field_name": "DEMO North Vegetable Field",
+      "approval_status": "pending",
+      "expected_net_hours": 7.25
+    },
+    {
+      "id": "28c7fa66-84a0-5f66-bbd1-300e8e6401ce",
+      "worker_id": "329b13ce-e848-50d1-a83f-c445fd0bcfb4",
+      "clock_in": "2026-09-24T08:00:00-04:00",
+      "clock_out": "2026-09-24T16:00:00-04:00",
+      "break_minutes": 30,
+      "job": "DEMO Irrigation checks",
+      "field_name": "DEMO South Pasture",
+      "approval_status": "pending",
+      "expected_net_hours": 7.5
+    },
+    {
+      "id": "269c29b4-a930-5352-8277-326103bdd9ee",
+      "worker_id": "5216574c-ffa5-541d-88af-87e856db851a",
+      "clock_in": "2026-09-24T08:00:00-04:00",
+      "clock_out": "2026-09-24T16:00:00-04:00",
+      "break_minutes": 60,
+      "job": "DEMO Nursery maintenance",
+      "field_name": "DEMO Nursery Block",
+      "approval_status": "pending",
+      "expected_net_hours": 7.0
+    },
+    {
+      "id": "a226f0ca-d45f-577f-9f36-791569c4c8f8",
+      "worker_id": "02efaac3-4d5b-5f2c-bebb-34442e78bb9f",
+      "clock_in": "2026-09-25T08:00:00-04:00",
+      "clock_out": "2026-09-25T16:00:00-04:00",
+      "break_minutes": 45,
+      "job": "DEMO Harvest preparation",
+      "field_name": "DEMO North Vegetable Field",
+      "approval_status": "pending",
+      "expected_net_hours": 7.25
+    },
+    {
+      "id": "bb430a11-915e-5aa5-824c-2d44cc1f3864",
+      "worker_id": "329b13ce-e848-50d1-a83f-c445fd0bcfb4",
+      "clock_in": "2026-09-25T08:00:00-04:00",
+      "clock_out": "2026-09-25T16:00:00-04:00",
+      "break_minutes": 30,
+      "job": "DEMO Irrigation checks",
+      "field_name": "DEMO South Pasture",
+      "approval_status": "pending",
+      "expected_net_hours": 7.5
+    },
+    {
+      "id": "fbad133c-5011-50a6-a135-a47171b8ae99",
+      "worker_id": "5216574c-ffa5-541d-88af-87e856db851a",
+      "clock_in": "2026-09-25T08:00:00-04:00",
+      "clock_out": "2026-09-25T16:00:00-04:00",
+      "break_minutes": 60,
+      "job": "DEMO Nursery maintenance",
+      "field_name": "DEMO Nursery Block",
+      "approval_status": "pending",
+      "expected_net_hours": 7.0
+    }
+  ],
+  "h2a_contract": {
+    "id": "b51172e6-0988-553e-91b8-638c1af30a45",
+    "name": "DEMO Fall Harvest \u2014 Fictional Contract",
+    "start_date": "2026-09-01",
+    "end_date": "2026-10-31",
+    "crop_or_commodity": "Sweet potatoes",
+    "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence. No certified job order, wage determination, or legal contract is asserted."
+  },
+  "h2a_workers": [
+    {
+      "id": "246c0dfc-b835-577b-8f05-53a5136b4da7",
+      "employee_number": "DEMO-H2A-001",
+      "legal_name": "DEMO H2A Worker 1",
+      "worker_type": "h2a",
+      "status": "expected",
+      "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence. No immigration or work authorization is asserted."
+    },
+    {
+      "id": "a2471ffc-53fe-54fd-8978-caead8915ec8",
+      "employee_number": "DEMO-H2A-002",
+      "legal_name": "DEMO H2A Worker 2",
+      "worker_type": "h2a",
+      "status": "expected",
+      "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence. No immigration or work authorization is asserted."
+    }
+  ],
+  "h2a_daily_records": [
+    {
+      "id": "81d5c64f-92cb-5332-a13c-819bcdf53cc0",
+      "worker_id": "246c0dfc-b835-577b-8f05-53a5136b4da7",
+      "work_date": "2026-09-21",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "7082abf0-3cda-5e0c-a2db-af7957fc9201",
+      "worker_id": "a2471ffc-53fe-54fd-8978-caead8915ec8",
+      "work_date": "2026-09-21",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "63e552e2-2e9e-5364-849b-2e266e26bdbe",
+      "worker_id": "246c0dfc-b835-577b-8f05-53a5136b4da7",
+      "work_date": "2026-09-22",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "d11df9a6-2e77-5c50-adb9-8db4953fafef",
+      "worker_id": "a2471ffc-53fe-54fd-8978-caead8915ec8",
+      "work_date": "2026-09-22",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "68ae2774-784d-56e0-8e09-b6078cda1de5",
+      "worker_id": "246c0dfc-b835-577b-8f05-53a5136b4da7",
+      "work_date": "2026-09-23",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "f0188f59-1571-5bd5-b19f-0d8a995d144c",
+      "worker_id": "a2471ffc-53fe-54fd-8978-caead8915ec8",
+      "work_date": "2026-09-23",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "26a1a385-78d9-55a0-8895-befae343189b",
+      "worker_id": "246c0dfc-b835-577b-8f05-53a5136b4da7",
+      "work_date": "2026-09-24",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "fbef70c1-30dc-525b-976e-95ecacef3962",
+      "worker_id": "a2471ffc-53fe-54fd-8978-caead8915ec8",
+      "work_date": "2026-09-24",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "d545689e-7991-50a7-9975-e5a18bf00f64",
+      "worker_id": "246c0dfc-b835-577b-8f05-53a5136b4da7",
+      "work_date": "2026-09-25",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    },
+    {
+      "id": "581f70c7-a5be-5c87-9663-163832862a47",
+      "worker_id": "a2471ffc-53fe-54fd-8978-caead8915ec8",
+      "work_date": "2026-09-25",
+      "crew_name": "DEMO Harvest Crew",
+      "worksite": "DEMO site \u2014 no real address",
+      "field_name": "DEMO North Vegetable Field",
+      "job": "DEMO Harvest preparation",
+      "hours_offered": 8,
+      "start_time": "08:00",
+      "end_time": "16:00",
+      "break_minutes": 45,
+      "hours_worked": 7.25
+    }
+  ],
+  "voice_prompts": [
+    {
+      "language": "English",
+      "type": "purchase",
+      "text": "Demo purchase. On September 21, 2026, bought 12 irrigation fittings from Demo Farm Supply for 84 dollars total for Demo North Vegetable Field.",
+      "expected_fields": {
+        "vendor": "DEMO Farm Supply",
+        "item": "DEMO irrigation fittings",
+        "quantity": "12",
+        "unit": "pieces",
+        "totalCost": "84.00",
+        "purchaseDate": "2026-09-21",
+        "fieldLocation": "DEMO North Vegetable Field",
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+      }
+    },
+    {
+      "language": "Spanish",
+      "type": "purchase",
+      "text": "Compra de demostraci\u00f3n. El 22 de septiembre de 2026 compr\u00e9 cuatro rollos de materiales para cercas de Demo Farm Supply por un total de 220 d\u00f3lares para Demo South Pasture.",
+      "expected_fields": {
+        "vendor": "DEMO Farm Supply",
+        "item": "DEMO fence supplies",
+        "quantity": "4",
+        "unit": "rolls",
+        "totalCost": "220.00",
+        "purchaseDate": "2026-09-22",
+        "fieldLocation": "DEMO South Pasture",
+        "demo": true,
+        "notes": "FICTIONAL DEMO DATA \u2014 not actual farm activity, payroll, pesticide instructions, or compliance evidence."
+      }
+    },
+    {
+      "language": "English",
+      "type": "pesticide",
+      "text": "This is a demonstration pesticide draft for Demo North Vegetable Field, sweet potatoes, 12 acres, September 21, 2026. Product, registration number, applicator certification, and amount still need review.",
+      "expected_behavior": "Keep missing product registration, certification and amount blank. Do not invent them or confirm the draft."
+    }
+  ]
+}
