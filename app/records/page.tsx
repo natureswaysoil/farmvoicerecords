@@ -23,7 +23,13 @@ import {
   queueRecord,
   queuedRecords,
   syncRecords,
+  discardQueuedRecord,
+  deliveryError,
+  rawQueuedRecords,
 } from "@/src/lib/records/offline";
+import { collectPages } from "@/src/lib/pagination";
+import { recordsCsv, recordPacket } from "@/src/lib/records/export";
+import type { QueuedRecord } from "@/src/lib/records/schema";
 import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
 const labels: Record<string, [string, string]> = {
   applicatorName: ["Applicator name", "Nombre del aplicador"],
@@ -58,6 +64,9 @@ export default function RecordsPage() {
   const [supabase] = useState(createClient);
   const [language, setLanguage] = useState<0 | 1>(0);
   const t = (en: string, es: string) => (language ? es : en);
+  useEffect(() => {
+    setLanguage(localStorage.getItem("farmvoice-language") === "es" ? 1 : 0);
+  }, []);
   const [exporting, setExporting] = useState(false);
   const [contexts, setContexts] = useState<FarmContext[]>([]),
     [farmId, setFarmId] = useState("");
@@ -84,9 +93,31 @@ export default function RecordsPage() {
       record_type: string;
       status: string;
       created_at: string;
-      payload: unknown;
+      payload: Record<string, unknown>;
+      revision?: number;
+      field_id?: string | null;
+      created_by?: string;
     }[]
   >([]);
+  const [editing, setEditing] = useState<{
+    id: string;
+    revision?: number;
+    createdAt: string;
+    status: string;
+  } | null>(null);
+  const [changeReason, setChangeReason] = useState("");
+  const [filter, setFilter] = useState("");
+  const [history, setHistory] = useState<
+    {
+      record_id: string;
+      revision: number;
+      snapshot: unknown;
+      reason: string;
+      changed_at: string;
+    }[]
+  >([]);
+  const [recordLimit, setRecordLimit] = useState(100);
+  const [reload, setReload] = useState(0);
   const [gps, setGps] = useState<{
     lat: number;
     lng: number;
@@ -136,7 +167,12 @@ export default function RecordsPage() {
           localStorage.setItem(cacheKey, JSON.stringify(rows));
         if (active) {
           setContexts(rows);
-          setFarmId(rows[0]?.farmId ?? "");
+          const selected = localStorage.getItem("farmvoice_selected_farm_id");
+          setFarmId(
+            rows.find((f) => f.farmId === selected)?.farmId ??
+              rows[0]?.farmId ??
+              "",
+          );
           setLoaded(true);
         }
       } catch {
@@ -176,19 +212,45 @@ export default function RecordsPage() {
       );
       if (!navigator.onLine) return;
       try {
-        await syncRecords(current.userId, current.farmId);
+        try {
+          await syncRecords(current.userId, current.farmId);
+        } catch (e) {
+          if (active)
+            setMessage(
+              e instanceof Error ? e.message : "Some drafts need attention.",
+            );
+        }
         const [f, r] = await Promise.all([
           loadCloudFields(supabase, current.farmId),
           supabase
             .from("farm_records")
-            .select("id,record_type,status,created_at,payload")
+            .select(
+              "id,record_type,status,created_at,payload,revision,field_id,created_by",
+            )
             .eq("farm_id", current.farmId)
             .order("created_at", { ascending: false })
-            .limit(100),
+            .limit(recordLimit),
         ]);
         if (active) {
           setFields(f);
+          if (r.error) throw r.error;
           setRecent(r.data ?? []);
+          setEditing((previous) => {
+            if (
+              !previous ||
+              previous.revision != null ||
+              queuedRecords(current.userId).some((q) => q.id === previous.id)
+            )
+              return previous;
+            const delivered = r.data?.find((row) => row.id === previous.id);
+            return delivered
+              ? {
+                  ...previous,
+                  revision: delivered.revision,
+                  status: delivered.status,
+                }
+              : previous;
+          });
           setPending(
             queuedRecords(current.userId).filter(
               (r) => r.farmId === current.farmId,
@@ -210,7 +272,7 @@ export default function RecordsPage() {
       active = false;
       window.removeEventListener("online", refresh);
     };
-  }, [ctx, supabase]);
+  }, [ctx, supabase, reload, recordLimit]);
   async function extract(text = note) {
     if (!ctx) return;
     setBusy(true);
@@ -325,6 +387,18 @@ export default function RecordsPage() {
       : [...validation.missingFields, ...validation.invalidFields];
   async function save(status: "draft" | "confirmed") {
     if (!ctx) return;
+    if (
+      editing?.status === "confirmed" &&
+      (status !== "confirmed" || changeReason.trim().length < 5)
+    ) {
+      setMessage(
+        t(
+          "Enter a correction reason and keep confirmed status.",
+          "Indique el motivo de la corrección y mantenga el estado confirmado.",
+        ),
+      );
+      return;
+    }
     setReview(true);
     if (status === "confirmed" && problems.length) {
       setMessage(
@@ -349,12 +423,14 @@ export default function RecordsPage() {
       if (saveAttempt.current?.fingerprint !== fingerprint)
         saveAttempt.current = { fingerprint, id: crypto.randomUUID() };
       const row = {
-        id: saveAttempt.current.id,
+        id: editing?.id ?? saveAttempt.current.id,
+        expectedRevision: editing?.revision,
+        changeReason,
         farmId,
         userId: ctx.userId,
         type,
         status,
-        createdAt: new Date().toISOString(),
+        createdAt: editing?.createdAt ?? new Date().toISOString(),
         fieldId: fieldId || null,
         payload: { ...values, transcript: note, gps },
       };
@@ -363,33 +439,57 @@ export default function RecordsPage() {
         queuedRecords(ctx.userId).filter((r) => r.farmId === farmId).length,
       );
       if (navigator.onLine) {
-        await syncRecords(ctx.userId, farmId);
+        let otherFailures = "";
+        try {
+          await syncRecords(ctx.userId, farmId);
+        } catch (error) {
+          if (queuedRecords(ctx.userId).some((q) => q.id === row.id))
+            throw error;
+          otherFailures =
+            error instanceof Error
+              ? error.message
+              : "Other drafts need attention.";
+        }
         setPending(
           queuedRecords(ctx.userId).filter((r) => r.farmId === farmId).length,
         );
-        setRecent((r) => [
-          {
-            id: row.id,
-            record_type: type,
-            status,
-            created_at: row.createdAt,
-            payload: row.payload,
-          },
-          ...r.filter((x) => x.id !== row.id),
-        ]);
+        const saved = await supabase
+          .from("farm_records")
+          .select(
+            "id,record_type,status,created_at,payload,revision,field_id,created_by",
+          )
+          .eq("id", row.id)
+          .eq("farm_id", farmId)
+          .single();
+        if (saved.error)
+          throw new Error("Delivered. Reload to view the current record.");
+        setRecent((r) => [saved.data, ...r.filter((x) => x.id !== row.id)]);
+        setEditing({
+          id: row.id,
+          revision: saved.data.revision,
+          createdAt: row.createdAt,
+          status,
+        });
         setMessage(
           t(
-            "Saved to your farm. Start a new record when ready.",
+            `Saved to your farm. Start a new record when ready. ${otherFailures}`,
             "Guardado en su finca. Puede iniciar un nuevo registro.",
           ),
         );
-      } else
+      } else {
+        setEditing({
+          id: row.id,
+          revision: row.expectedRevision,
+          createdAt: row.createdAt,
+          status,
+        });
         setMessage(
           t(
             "Saved on this device. Reopen this page online to sync. Do not clear browser data before delivery.",
             "Guardado en este dispositivo. Abra esta página con conexión para sincronizar. No borre los datos del navegador.",
           ),
         );
+      }
     } catch (e) {
       setMessage(
         e instanceof Error
@@ -397,6 +497,9 @@ export default function RecordsPage() {
           : "Could not save. Download a copy before leaving.",
       );
     } finally {
+      setPending(
+        queuedRecords(ctx.userId).filter((r) => r.farmId === farmId).length,
+      );
       setBusy(false);
     }
   }
@@ -404,24 +507,93 @@ export default function RecordsPage() {
     if (!ctx) return;
     setExporting(true);
     try {
-      const rows: unknown[] = [];
-      let offset = 0;
-      for (;;) {
-        const result = await supabase
+      const rows = await collectPages((from, to) =>
+        supabase
           .from("farm_records")
           .select("*")
           .eq("farm_id", farmId)
           .order("created_at")
           .order("id")
-          .range(offset, offset + 499);
-        if (result.error) throw result.error;
-        rows.push(...result.data);
-        if (result.data.length < 500) break;
-        offset += 500;
-      }
+          .range(from, to),
+      );
       download("farmvoice-cloud-records.json", rows);
     } catch {
       setMessage("Could not export cloud records. Reconnect and retry.");
+    } finally {
+      setExporting(false);
+    }
+  }
+  function openDraft(row: QueuedRecord) {
+    setEditing({
+      id: row.id,
+      revision: row.expectedRevision,
+      createdAt: row.createdAt,
+      status: row.status,
+    });
+    setType(row.type);
+    setValues(row.payload);
+    setNote(String(row.payload.transcript ?? ""));
+    setFieldId(row.fieldId ?? "");
+    setGps((row.payload.gps as typeof gps) ?? null);
+    setChangeReason(row.changeReason ?? "");
+    setSuggestions({});
+    setReview(false);
+    setAudio(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  async function loadHistory(id: string) {
+    const result = await supabase
+      .from("farm_record_revisions")
+      .select("record_id,revision,snapshot,reason,changed_at")
+      .eq("farm_id", farmId)
+      .eq("record_id", id)
+      .order("revision", { ascending: false });
+    if (result.error)
+      setMessage(
+        t("Could not load history.", "No se pudo cargar el historial."),
+      );
+    else {
+      setHistory(result.data ?? []);
+      if (!result.data?.length)
+        setMessage(t("No earlier revisions.", "No hay versiones anteriores."));
+    }
+  }
+  async function exportReadable(print: boolean) {
+    const win = print ? window.open("", "_blank") : null;
+    if (print && !win) {
+      setMessage("Allow pop-ups to print the records.");
+      return;
+    }
+    if (win) win.opener = null;
+    setExporting(true);
+    try {
+      const rows = await collectPages<(typeof recent)[number]>((from, to) =>
+        supabase
+          .from("farm_records")
+          .select("*")
+          .eq("farm_id", farmId)
+          .order("created_at")
+          .order("id")
+          .range(from, to),
+      );
+      if (win) {
+        win.document.write(recordPacket(rows));
+        win.document.close();
+        win.focus();
+        win.print();
+      } else {
+        const url = URL.createObjectURL(
+          new Blob([recordsCsv(rows)], { type: "text/csv" }),
+        );
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "farmvoice-records.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      win?.close();
+      setMessage("Could not export records. Reconnect and retry.");
     } finally {
       setExporting(false);
     }
@@ -434,7 +606,7 @@ export default function RecordsPage() {
     );
   if (!ctx)
     return (
-      <main className="container section stack" lang={language?"es":"en"}>
+      <main className="container section stack" lang={language ? "es" : "en"}>
         <h1>Farm records</h1>
         <p>
           Sign in and create or join a farm to save records under your account.
@@ -447,12 +619,15 @@ export default function RecordsPage() {
       </main>
     );
   return (
-    <main className="container section stack" lang={language?"es":"en"}>
+    <main className="container section stack" lang={language ? "es" : "en"}>
       <div className="inline">
         <h1>{t("Speak, review and save", "Hable, revise y guarde")}</h1>
         <button
           className="btn secondary"
-          onClick={() => setLanguage(language ? 0 : 1)}
+          onClick={() => {
+            localStorage.setItem("farmvoice-language", language ? "en" : "es");
+            setLanguage(language ? 0 : 1);
+          }}
         >
           {language ? "English" : "Español"}
         </button>
@@ -470,6 +645,11 @@ export default function RecordsPage() {
           disabled={busy || recording}
           onChange={(e) => {
             setFarmId(e.target.value);
+            localStorage.setItem("farmvoice_selected_farm_id", e.target.value);
+            setEditing(null);
+            setHistory([]);
+            setFilter("");
+            setRecordLimit(100);
             setNote("");
             setValues({ isRestrictedUse: false });
             setSuggestions({});
@@ -485,6 +665,24 @@ export default function RecordsPage() {
         </select>
       </label>
       <section className="card form">
+        {editing && (
+          <p>
+            {t("Editing record", "Editando registro")}: {editing.id} ·{" "}
+            {t("Revision", "Versión")}{" "}
+            {editing.revision ?? t("pending", "pendiente")}
+          </p>
+        )}
+        {editing?.status === "confirmed" && (
+          <label>
+            {t("Reason for correction", "Motivo de la corrección")}
+            <input
+              value={changeReason}
+              onChange={(e) => setChangeReason(e.target.value)}
+              minLength={5}
+              maxLength={1000}
+            />
+          </label>
+        )}
         <label>
           {t("Record type", "Tipo de registro")}
           <select
@@ -718,6 +916,9 @@ export default function RecordsPage() {
             className="btn secondary"
             disabled={busy || recording}
             onClick={() => void save("draft")}
+            style={
+              editing?.status === "confirmed" ? { display: "none" } : undefined
+            }
           >
             {t("Save draft", "Guardar borrador")}
           </button>
@@ -731,6 +932,9 @@ export default function RecordsPage() {
           <button
             disabled={busy || recording}
             onClick={() => {
+              setEditing(null);
+              setChangeReason("");
+              setHistory([]);
               saveAttempt.current = null;
               setValues({ isRestrictedUse: false, state: "NC" });
               setNote("");
@@ -785,27 +989,151 @@ export default function RecordsPage() {
             {t("Export all cloud records", "Exportar todos los registros")}
           </button>
         </div>
-        {recent.map((r) => (
-          <details key={r.id}>
-            <summary>
-              {r.record_type} · {r.status} ·{" "}
-              {new Date(r.created_at).toLocaleString()}
-            </summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(r.payload, null, 2)}
-            </pre>
-            <SmartPhotoEvidence
-              farmId={farmId}
-              userId={ctx.userId}
-              module="records"
-              recordType="farm_record"
-              recordId={r.id}
-              category="record_evidence"
-              gps={gps}
-              onMessage={setMessage}
-            />
-          </details>
-        ))}
+        <div className="inline">
+          <button onClick={() => setReload((n) => n + 1)}>
+            {t("Retry delivery", "Reintentar entrega")}
+          </button>
+          <button
+            onClick={() =>
+              download(
+                "farmvoice-device-backup.json",
+                rawQueuedRecords(ctx.userId),
+              )
+            }
+          >
+            {t(
+              "Back up all device drafts",
+              "Respaldar borradores del dispositivo",
+            )}
+          </button>
+          <button onClick={() => void exportReadable(false)}>
+            {t("Download records CSV", "Descargar CSV")}
+          </button>
+          <button onClick={() => void exportReadable(true)}>
+            {t("Print / save PDF", "Imprimir / guardar PDF")}
+          </button>
+        </div>
+        {queuedRecords(ctx.userId)
+          .filter((r) => r.farmId === farmId)
+          .map((r) => (
+            <article className="notice" key={r.id}>
+              <p>
+                {r.type} · {r.id} ·{" "}
+                {deliveryError(ctx.userId, r.id) ??
+                  t("Waiting to send", "Pendiente de envío")}
+              </p>
+              <button disabled={busy} onClick={() => openDraft(r)}>
+                {t("Open / repair draft", "Abrir / corregir borrador")}
+              </button>{" "}
+              <button
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      t(
+                        "Discard this unsent change from this device? Cloud records are kept.",
+                        "¿Eliminar este cambio pendiente del dispositivo? Se conservan los registros guardados.",
+                      ),
+                    )
+                  ) {
+                    discardQueuedRecord(ctx.userId, r.id);
+                    setPending((n) => Math.max(0, n - 1));
+                    if (editing?.id === r.id) setEditing(null);
+                  }
+                }}
+              >
+                {t("Discard device change", "Eliminar cambio local")}
+              </button>
+            </article>
+          ))}
+        <label>
+          {t("Search loaded records", "Buscar registros cargados")}
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} />
+        </label>
+        {recent
+          .filter((r) =>
+            JSON.stringify(r).toLowerCase().includes(filter.toLowerCase()),
+          )
+          .map((r) => (
+            <details key={r.id}>
+              <summary>
+                {r.record_type} · {r.status} ·{" "}
+                {new Date(r.created_at).toLocaleString()} · v{r.revision ?? 1}
+              </summary>
+              <dl>
+                {Object.entries(r.payload).map(([k, v]) => (
+                  <div key={k}>
+                    <dt>
+                      <strong>
+                        {labels[k]?.[language] ?? k.replace(/([A-Z])/g, " $1")}
+                      </strong>
+                    </dt>
+                    <dd>
+                      {typeof v === "object"
+                        ? JSON.stringify(v)
+                        : String(v ?? "—")}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              {(ctx.role === "owner" || r.created_by === ctx.userId) && (
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    openDraft({
+                      id: r.id,
+                      userId: ctx.userId,
+                      farmId,
+                      type: r.record_type as "pesticide" | "purchase",
+                      status: r.status as "draft" | "confirmed",
+                      createdAt: r.created_at,
+                      fieldId: r.field_id ?? null,
+                      payload: r.payload,
+                      expectedRevision: r.revision ?? 1,
+                    })
+                  }
+                >
+                  {t(
+                    r.status === "draft" ? "Finish draft" : "Correct record",
+                    r.status === "draft"
+                      ? "Completar borrador"
+                      : "Corregir registro",
+                  )}
+                </button>
+              )}
+              <button onClick={() => void loadHistory(r.id)}>
+                {t("Revision history", "Historial de cambios")}
+              </button>
+              {history
+                .filter((h) => h.record_id === r.id)
+                .map((h) => (
+                  <details key={h.revision}>
+                    <summary>
+                      v{h.revision} ·{" "}
+                      {h.reason || t("Draft edit", "Cambio de borrador")} ·{" "}
+                      {h.changed_at}
+                    </summary>
+                    <pre style={{ whiteSpace: "pre-wrap" }}>
+                      {JSON.stringify(h.snapshot, null, 2)}
+                    </pre>
+                  </details>
+                ))}
+              <SmartPhotoEvidence
+                farmId={farmId}
+                userId={ctx.userId}
+                module="records"
+                recordType="farm_record"
+                recordId={r.id}
+                category="record_evidence"
+                onMessage={setMessage}
+              />
+            </details>
+          ))}
+        {recent.length >= recordLimit && (
+          <button onClick={() => setRecordLimit((n) => n + 100)}>
+            {t("Load more records", "Cargar más registros")}
+          </button>
+        )}
       </section>
     </main>
   );

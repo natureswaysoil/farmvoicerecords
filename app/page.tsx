@@ -7,11 +7,11 @@ export default function HomePage() {
       <section className="container hero">
         <div>
           <div className="eyebrow">Farm records, ready for your review</div>
-          <h1>Pesticide and H-2A recordkeeping, organized by voice.</h1>
+          <h1>Farm recordkeeping that starts with your voice.</h1>
           <p className="lede">
-            Speak in English or Spanish. Review suggested fields, fill missing
-            details, and keep pesticide, purchase and workforce records
-            together.
+            Speak your field notes in English or Spanish. Review your records,
+            attach photos, and have your crew paperwork ready. One supervisor
+            can record the crew from one phone.
           </p>
           <div className="actions">
             <Link className="btn" href="/signup">
@@ -21,7 +21,9 @@ export default function HomePage() {
               See a sample record
             </Link>
           </div>
-          <p>Core $49/month · Unlimited workers · H-2A add-on available</p>
+          <p>
+            Core $49/month · Unlimited workers · 14-day trial, no card required
+          </p>
         </div>
         <div className="card stack">
           <span className="badge">Watch the field-record guide</span>
@@ -47,8 +49,8 @@ export default function HomePage() {
             "Server transcription supports English and Spanish. Field suggestions retain evidence from your original note.",
           ],
           [
-            "Keep work moving offline",
-            "After your first online visit, save pesticide and purchase records on this device. Reopen online to deliver queued records.",
+            "One phone for your crew",
+            "Record a roster without worker phones or accounts. Save crew entries on your device and send them online for owner review.",
           ],
           [
             "Organize H-2A records",
@@ -79,6 +81,10 @@ export default function HomePage() {
           </Link>
           <Link href="/security">Data security and MFA</Link>
         </div>
+        <p>
+          H-2A workforce and housing is a separate add-on: $149/month plus Core,
+          $198/month total. <Link href="/billing">Compare plans</Link>.
+        </p>
         <h2>Six short walkthroughs</h2>
         <div className="grid-3">
           {guideVideos.map((v) => (

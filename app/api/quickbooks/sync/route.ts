@@ -10,7 +10,9 @@ export const runtime = "nodejs";
 function durationParts(clockIn: string, clockOut: string) {
   const minutesTotal = Math.max(
     0,
-    Math.round((new Date(clockOut).getTime() - new Date(clockIn).getTime()) / 60000)
+    Math.round(
+      (new Date(clockOut).getTime() - new Date(clockIn).getTime()) / 60000,
+    ),
   );
   return { hours: Math.floor(minutesTotal / 60), minutes: minutesTotal % 60 };
 }
@@ -29,20 +31,29 @@ function localDate(iso: string, timeZone: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const ctx = await getValidQuickBooksAccessToken(typeof body.farmId === "string" ? body.farmId : null);
+    const ctx = await getValidQuickBooksAccessToken(
+      typeof body.farmId === "string" ? body.farmId : null,
+    );
 
     const [mappingsResult, farmResult] = await Promise.all([
       ctx.supabase
         .from("quickbooks_employee_mappings")
         .select("worker_user_id, quickbooks_employee_id")
         .eq("farm_id", ctx.farmId),
-      ctx.supabase.from("farms").select("timezone").eq("id", ctx.farmId).single(),
+      ctx.supabase
+        .from("farms")
+        .select("timezone")
+        .eq("id", ctx.farmId)
+        .single(),
     ]);
     if (mappingsResult.error) throw mappingsResult.error;
     if (farmResult.error) throw farmResult.error;
 
     const map = new Map(
-      (mappingsResult.data ?? []).map((m) => [m.worker_user_id, m.quickbooks_employee_id])
+      (mappingsResult.data ?? []).map((m) => [
+        m.worker_user_id,
+        m.quickbooks_employee_id,
+      ]),
     );
     const timezone = farmResult.data.timezone ?? "UTC";
 
@@ -52,7 +63,8 @@ export async function POST(request: Request) {
       .from("time_entries")
       .update({
         qbo_sync_status: "error",
-        qbo_sync_error: "Previous QuickBooks sync was interrupted and was reclaimed.",
+        qbo_sync_error:
+          "Previous QuickBooks sync was interrupted and was reclaimed.",
         qbo_sync_started_at: null,
       })
       .eq("farm_id", ctx.farmId)
@@ -64,7 +76,8 @@ export async function POST(request: Request) {
       .from("time_entries")
       .update({
         qbo_sync_status: "error",
-        qbo_sync_error: "Previous QuickBooks sync lease expired and was reclaimed.",
+        qbo_sync_error:
+          "Previous QuickBooks sync lease expired and was reclaimed.",
         qbo_sync_started_at: null,
       })
       .eq("farm_id", ctx.farmId)
@@ -74,7 +87,9 @@ export async function POST(request: Request) {
 
     const { data: entries, error: entryError } = await ctx.supabase
       .from("time_entries")
-      .select("id, worker_user_id, job, field_name, clock_in, clock_out, approval_status, qbo_sync_status")
+      .select(
+        "id, worker_user_id, job, field_name, clock_in, clock_out, approval_status, qbo_sync_status",
+      )
       .eq("farm_id", ctx.farmId)
       .eq("approval_status", "approved")
       .not("clock_out", "is", null)
@@ -84,18 +99,28 @@ export async function POST(request: Request) {
 
     let synced = 0;
     const skipped: Array<{ id: string; reason: string }> = [];
-    const failed: Array<{ id: string; error: string; intuitTid?: string | null }> = [];
+    const failed: Array<{
+      id: string;
+      error: string;
+      intuitTid?: string | null;
+    }> = [];
     let reconnectRequired = false;
 
     for (const entry of entries ?? []) {
       if (reconnectRequired) {
-        skipped.push({ id: entry.id, reason: "QuickBooks reconnection is required." });
+        skipped.push({
+          id: entry.id,
+          reason: "QuickBooks reconnection is required.",
+        });
         continue;
       }
 
       const employeeId = map.get(entry.worker_user_id);
       if (!employeeId) {
-        skipped.push({ id: entry.id, reason: "No QuickBooks employee mapping." });
+        skipped.push({
+          id: entry.id,
+          reason: "No QuickBooks employee mapping.",
+        });
         continue;
       }
 
@@ -109,20 +134,32 @@ export async function POST(request: Request) {
         .eq("id", entry.id)
         .eq("farm_id", ctx.farmId)
         .eq("qbo_sync_status", entry.qbo_sync_status)
-        .select("id")
+        .eq("approval_status", "approved")
+        .eq("clock_in", entry.clock_in)
+        .eq("clock_out", entry.clock_out!)
+        .select("*")
         .maybeSingle();
       if (claimError) throw claimError;
       if (!claimed) {
-        skipped.push({ id: entry.id, reason: "Already claimed by another sync request." });
+        skipped.push({
+          id: entry.id,
+          reason: "Already claimed by another sync request.",
+        });
         continue;
       }
 
       const endpoint = `/timeactivity?requestid=${encodeURIComponent(entry.id)}`;
 
       try {
-        const { hours, minutes } = durationParts(entry.clock_in, entry.clock_out!);
-        const txnDate = localDate(entry.clock_in, timezone);
-        const description = [entry.job, entry.field_name].filter(Boolean).join(" - ").slice(0, 4000);
+        const { hours, minutes } = durationParts(
+          claimed.clock_in,
+          claimed.clock_out!,
+        );
+        const txnDate = localDate(claimed.clock_in, timezone);
+        const description = [claimed.job, claimed.field_name]
+          .filter(Boolean)
+          .join(" - ")
+          .slice(0, 4000);
 
         const response = await qboRequest<{ TimeActivity?: { Id?: string } }>(
           ctx.connection.realm_id,
@@ -136,15 +173,16 @@ export async function POST(request: Request) {
               EmployeeRef: { value: employeeId },
               Hours: hours,
               Minutes: minutes,
-              StartTime: entry.clock_in,
-              EndTime: entry.clock_out,
+              StartTime: claimed.clock_in,
+              EndTime: claimed.clock_out,
               Description: description || "FarmVoice approved time",
             }),
-          }
+          },
         );
 
         const qboId = response.data.TimeActivity?.Id;
-        if (!qboId) throw new Error("QuickBooks did not return a TimeActivity ID.");
+        if (!qboId)
+          throw new Error("QuickBooks did not return a TimeActivity ID.");
 
         const now = new Date().toISOString();
         const { error: updateError } = await ctx.supabase
@@ -229,14 +267,14 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "QuickBooks sync failed.",
-        reconnectRequired:
-          isQuickBooksApiError(error)
-            ? error.reconnectRequired
-            : error instanceof Error &&
-              error.message.toLowerCase().includes("reconnect"),
+        error:
+          error instanceof Error ? error.message : "QuickBooks sync failed.",
+        reconnectRequired: isQuickBooksApiError(error)
+          ? error.reconnectRequired
+          : error instanceof Error &&
+            error.message.toLowerCase().includes("reconnect"),
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

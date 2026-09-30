@@ -23,6 +23,7 @@ export default function AuthNavigation() {
           <Link href="/records">Records</Link>
           <Link href="/fields">Fields</Link>
           <Link href="/team">Team</Link>
+          <Link href="/team/crew">Crew / Cuadrilla</Link>
           <Link href="/worker">Worker clock / Reloj</Link>
           <Link href="/h2a">H-2A</Link>
           <Link href="/h2a/housing">Housing</Link>

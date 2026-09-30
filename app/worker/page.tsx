@@ -13,19 +13,32 @@ export default function WorkerPage() {
     [job, setJob] = useState(""),
     [field, setField] = useState(""),
     [busy, setBusy] = useState(false),
+    [loadingTime, setLoadingTime] = useState(true),
     [message, setMessage] = useState("");
   const [db] = useState(createClient);
   const t = (en: string, sp: string) => (es ? sp : en);
   const ctx = farms.find((f) => f.farmId === farmId);
   useEffect(() => {
-    void getNamedFarmContexts(db).then((rows) => {
-      const workers = rows.filter((f) => f.role === "worker");
-      setFarms(workers);
-      setFarmId(workers[0]?.farmId ?? "");
-    });
+    void getNamedFarmContexts(db)
+      .then((rows) => {
+        const workers = rows.filter((f) => f.role === "worker");
+        setFarms(workers);
+        const selected = localStorage.getItem("farmvoice_selected_farm_id");
+        setFarmId(
+          workers.find((f) => f.farmId === selected)?.farmId ??
+            workers[0]?.farmId ??
+            "",
+        );
+      })
+      .catch(() =>
+        setMessage(
+          "Could not load farm access. Reconnect and retry. / No se pudo cargar el acceso. Reconecte y reintente.",
+        ),
+      );
   }, [db]);
   useEffect(() => {
     setActive(null);
+    setLoadingTime(true);
     if (!ctx) return;
     let keep = true;
     void db
@@ -38,6 +51,7 @@ export default function WorkerPage() {
       .then(({ data, error }) => {
         if (keep) {
           setActive(data);
+          setLoadingTime(Boolean(error));
           if (error)
             setMessage(
               t(
@@ -52,7 +66,7 @@ export default function WorkerPage() {
     };
   }, [ctx, db, es]);
   async function clock() {
-    if (!ctx) return;
+    if (!ctx || loadingTime) return;
     setBusy(true);
     try {
       if (!navigator.onLine)
@@ -168,7 +182,11 @@ export default function WorkerPage() {
                 )
               : t("Not clocked in", "Sin entrada activa")}
           </p>
-          <button className="btn" disabled={busy} onClick={() => void clock()}>
+          <button
+            className="btn"
+            disabled={busy || loadingTime}
+            onClick={() => void clock()}
+          >
             {busy
               ? t("Saving…", "Guardando…")
               : active

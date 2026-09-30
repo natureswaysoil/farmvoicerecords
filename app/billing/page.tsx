@@ -20,11 +20,13 @@ export default function BillingPage() {
           <p>
             Pesticide and purchase records, English/Spanish voice capture,
             suggested fields, field history, offline record queue, scheduling,
-            GPS time, evidence and QuickBooks time export.
+            GPS time, one-phone crew records, evidence, PDF/CSV reports and
+            QuickBooks individual-time export.
           </p>
           <p>
             100 GB of farm photo and document storage included. Additional
-            storage requires a separate plan.
+            storage requires an agreed plan through support. Uploads pause at
+            your allowance; no automatic overage charges.
           </p>
           <Link className="btn" href="/signup">
             Start 14-day free trial
