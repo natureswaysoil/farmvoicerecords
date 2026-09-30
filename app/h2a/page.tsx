@@ -1,4 +1,6 @@
 "use client";
+import { dailyHours } from "@/src/lib/h2a-hours";
+import H2aWeeklyHours from "@/src/components/h2a-weekly-hours";
 import { collectPages } from "@/src/lib/pagination";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -45,6 +47,9 @@ type DailyRecord = {
   job: string | null;
   hours_offered: number;
   hours_worked: number;
+  shift_minutes: number | null;
+  paid_break_minutes: number | null;
+  break_minutes: number;
   piece_unit: string | null;
   piece_quantity: number | null;
   submitted_at: string;
@@ -135,7 +140,9 @@ export default function H2APage() {
     fieldName: "",
     job: "Field work",
     hoursOffered: "8",
-    hoursWorked: "8",
+    shiftHours: "8",
+    paidBreaks: "0",
+    unpaidMeals: "0",
     pieceUnit: "",
   });
   const [pieceCounts, setPieceCounts] = useState<Record<string,string>>({});
@@ -173,7 +180,7 @@ export default function H2APage() {
       const [c,w,d,h,r,m] = await Promise.all([
         supabase.from("h2a_contracts").select("id,name,eta_case_number,job_order_number,start_date,end_date,crop_or_commodity,expected_hours_per_day,expected_days_per_week,hourly_wage,active").eq("farm_id",farm.farmId).order("start_date",{ascending:false}),
         supabase.from("h2a_workers").select("id,contract_id,employee_number,legal_name,preferred_name,worker_type,preferred_language,arrival_date,work_authorization_end,status").eq("farm_id",farm.farmId).order("employee_number"),
-        supabase.from("h2a_daily_records").select("id,worker_id,work_date,crew_name,worksite,field_name,job,hours_offered,hours_worked,piece_unit,piece_quantity,submitted_at,locked_at,approved_at").eq("farm_id",farm.farmId).order("work_date",{ascending:false}),
+        collectPages((from,to)=>supabase.from("h2a_daily_records").select("id,worker_id,work_date,crew_name,worksite,field_name,job,hours_offered,hours_worked,shift_minutes,paid_break_minutes,break_minutes,piece_unit,piece_quantity,submitted_at,locked_at,approved_at").eq("farm_id",farm.farmId).order("work_date",{ascending:false}).order("id").range(from,to)).then(data=>({data,error:null})),
         supabase.from("h2a_housing").select("id,name,address,max_occupancy,certificate_expires_on").eq("farm_id",farm.farmId).order("name"),
         supabase.from("h2a_user_roles").select("user_id,role").eq("farm_id",farm.farmId),
         supabase.from("farm_members").select("user_id,role,employee_number").eq("farm_id",farm.farmId),
@@ -262,6 +269,8 @@ export default function H2APage() {
     if (!ctx) return;
     const ids = Object.entries(selectedWorkers).filter(([,v]) => v).map(([id]) => id);
     if (!ids.length) return setMessage("Select at least one worker for the crew record.");
+    const duration = dailyHours(crewForm.shiftHours, crewForm.paidBreaks, crewForm.unpaidMeals);
+    if (!duration) return setMessage("Enter a shift up to 24 hours and whole break minutes within the shift. Unpaid meals must be shorter than the shift.");
     const rows = ids.map((workerId) => ({
       farm_id: ctx.farmId,
       contract_id: crewForm.contractId || workers.find((w) => w.id === workerId)?.contract_id || null,
@@ -272,7 +281,10 @@ export default function H2APage() {
       field_name: crewForm.fieldName.trim() || null,
       job: crewForm.job.trim() || null,
       hours_offered: Number(crewForm.hoursOffered) || 0,
-      hours_worked: Number(crewForm.hoursWorked) || 0,
+      hours_worked: duration.hours,
+      shift_minutes: duration.shiftMinutes,
+      paid_break_minutes: duration.paidBreakMinutes,
+      break_minutes: duration.unpaidMealMinutes,
       piece_unit: crewForm.pieceUnit.trim() || null,
       piece_quantity: pieceCounts[workerId] ? Number(pieceCounts[workerId]) : null,
       gps_lat: gps?.lat ?? null,
@@ -599,13 +611,17 @@ export default function H2APage() {
         <div className="row"><div className="field"><label>Date</label><input type="date" value={crewForm.workDate} onChange={e=>setCrewForm({...crewForm,workDate:e.target.value})}/></div><div className="field"><label>Crew</label><input value={crewForm.crewName} onChange={e=>setCrewForm({...crewForm,crewName:e.target.value})}/></div></div>
         <div className="row"><div className="field"><label>Contract</label><select value={crewForm.contractId} onChange={e=>setCrewForm({...crewForm,contractId:e.target.value})}><option value="">Use worker contract</option>{contracts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="field"><label>Job</label><input value={crewForm.job} onChange={e=>setCrewForm({...crewForm,job:e.target.value})}/></div></div>
         <div className="row"><div className="field"><label>Worksite</label><input value={crewForm.worksite} onChange={e=>setCrewForm({...crewForm,worksite:e.target.value})}/></div><div className="field"><label>Field</label><input value={crewForm.fieldName} onChange={e=>setCrewForm({...crewForm,fieldName:e.target.value})}/></div></div>
-        <div className="row"><div className="field"><label>Hours offered to selected workers</label><input inputMode="decimal" value={crewForm.hoursOffered} onChange={e=>setCrewForm({...crewForm,hoursOffered:e.target.value})}/></div><div className="field"><label>Default hours worked</label><input inputMode="decimal" value={crewForm.hoursWorked} onChange={e=>setCrewForm({...crewForm,hoursWorked:e.target.value})}/></div></div>
+        <div className="row"><div className="field"><label>Hours offered to selected workers</label><input inputMode="decimal" value={crewForm.hoursOffered} onChange={e=>setCrewForm({...crewForm,hoursOffered:e.target.value})}/></div><div className="field"><label htmlFor="h2a-shift-hours">Total shift hours, including breaks</label><input id="h2a-shift-hours" type="number" min="0.01" max="24" step="any" required value={crewForm.shiftHours} onChange={e=>setCrewForm({...crewForm,shiftHours:e.target.value})}/></div></div>
+        <div className="row"><div className="field"><label htmlFor="h2a-paid-breaks">Paid rest breaks (minutes)</label><input id="h2a-paid-breaks" type="number" min="0" step="1" required value={crewForm.paidBreaks} onChange={e=>setCrewForm({...crewForm,paidBreaks:e.target.value})}/></div><div className="field"><label htmlFor="h2a-unpaid-meals">Actual unpaid meals (minutes)</label><input id="h2a-unpaid-meals" type="number" min="0" step="1" required value={crewForm.unpaidMeals} onChange={e=>setCrewForm({...crewForm,unpaidMeals:e.target.value})}/></div></div>
+        <p className="small">Enter only meal time actually taken completely free of duties. Paid rest breaks remain in paid hours. No meal time is deducted by default. Submit separate entries for workers with different hours or breaks.</p>
+        <p role="status"><strong>Calculated paid hours per selected worker: {dailyHours(crewForm.shiftHours,crewForm.paidBreaks,crewForm.unpaidMeals)?.hours.toFixed(2) ?? "Check hours and breaks"}</strong></p>
         <div className="field"><label>Piece unit (optional)</label><input placeholder="boxes, buckets, bins" value={crewForm.pieceUnit} onChange={e=>setCrewForm({...crewForm,pieceUnit:e.target.value})}/></div>
         <div style={{overflowX:"auto"}}><table className="table"><thead><tr><th>Include</th><th>Worker</th><th>Employee #</th><th>Piece count</th></tr></thead><tbody>{workers.filter(w=>w.status!=="separated").map(w=><tr key={w.id}><td><input type="checkbox" checked={Boolean(selectedWorkers[w.id])} onChange={e=>setSelectedWorkers({...selectedWorkers,[w.id]:e.target.checked})}/></td><td>{w.preferred_name||w.legal_name}</td><td>{w.employee_number}</td><td><input style={{maxWidth:120}} inputMode="decimal" value={pieceCounts[w.id]??""} onChange={e=>setPieceCounts({...pieceCounts,[w.id]:e.target.value})}/></td></tr>)}</tbody></table></div>
         <label className="inline"><input type="checkbox" required/> I reviewed this crew record and confirm the attendance, hours offered, hours worked, and production entries are accurate to the best of my knowledge.</label>
         <button className="btn">Submit & lock crew records</button>
       </form>}
 
+      <section className="card"><H2aWeeklyHours rows={daily} names={workerName}/></section>
       <section className="card">
         <div className="inline" style={{justifyContent:"space-between"}}><div><div className="kicker">Daily review</div><h2>Recent H-2A crew records</h2></div></div>
         {daily.length ? <div style={{overflowX:"auto"}}><table className="table"><thead><tr><th>Date</th><th>Worker</th><th>Hours offered</th><th>Hours worked</th><th>Pieces</th><th>Status</th>{canAdmin&&<th>Approve</th>}</tr></thead><tbody>{daily.slice(0,50).map(r=><tr key={r.id}><td>{r.work_date}</td><td>{workerName.get(r.worker_id)??r.worker_id.slice(0,8)}</td><td>{r.hours_offered}</td><td>{r.hours_worked}</td><td>{r.piece_quantity??"—"} {r.piece_unit??""}</td><td>{r.approved_at?"Approved":r.locked_at?"Locked / review":"Draft"}</td>{canAdmin&&<td>{r.approved_at?"—":<button className="btn secondary" onClick={()=>approveRecord(r.id)}>Approve</button>}</td>}</tr>)}</tbody></table></div>:<p className="muted">No crew records yet.</p>}

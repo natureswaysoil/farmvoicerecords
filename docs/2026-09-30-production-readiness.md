@@ -33,3 +33,11 @@ Only after acceptance succeeds, export an owner-approved real farm record packet
 ## Automated verification
 
 The test suite covers receipt forgery, capture boundaries, immutable receipt time, legacy exports, database quota defaults, crew review/sync safeguards and farm isolation. A mocked route regression exercises both payroll sources and verifies crew break deductions and omission of start/end timestamps. These tests do not substitute for the hosted acceptance test above.
+
+## H-2A break entry and weekly totals
+
+Also apply `20260930213305_h2a_breaks_weekly_hours.sql` before deploying the updated H-2A pages. New daily entries record total shift hours including breaks, paid rest minutes, and actual unpaid meal minutes. Meals default to zero; the database computes paid hours from shift minutes minus unpaid meals. Paid rest stays included. Submit workers with different durations separately. Existing manual hours remain unchanged and their missing break details are not inferred.
+
+The crew page and selected pay-period worksheet group paid hours by worker and selectable week-start day (Monday initially). Totals include pending records and display pending counts; they do not establish payroll approval or calculate overtime entitlement. Pay-period boundary weeks may be partial. Weekly totals are derived on screen, not stored as separate editable totals. The pay worksheet uses the same net duration with no second break deduction. Existing RLS and record review restrictions remain; break/duration edits during approval or after approval are explicitly rejected.
+
+Verify in staging: submit an eight-hour shift with 30 paid rest minutes and 45 unpaid meal minutes; expect 7.25 paid hours. Five such entries should show 36.25 hours for the week. Change worker, dates, and week-start day and confirm totals update. Verify older manual entries retain their hours.
