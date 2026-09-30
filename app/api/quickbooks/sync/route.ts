@@ -1,3 +1,4 @@
+import { netDuration } from "@/src/lib/quickbooks-time";
 import { NextResponse } from "next/server";
 import { isQuickBooksApiError, qboRequest } from "@/src/lib/quickbooks";
 import {
@@ -6,16 +7,6 @@ import {
 } from "@/src/lib/quickbooks-server";
 
 export const runtime = "nodejs";
-
-function durationParts(clockIn: string, clockOut: string) {
-  const minutesTotal = Math.max(
-    0,
-    Math.round(
-      (new Date(clockOut).getTime() - new Date(clockIn).getTime()) / 60000,
-    ),
-  );
-  return { hours: Math.floor(minutesTotal / 60), minutes: minutesTotal % 60 };
-}
 
 function localDate(iso: string, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -35,7 +26,7 @@ export async function POST(request: Request) {
       typeof body.farmId === "string" ? body.farmId : null,
     );
 
-    const [mappingsResult, farmResult] = await Promise.all([
+    const [mappingsResult, farmResult, crewMappings] = await Promise.all([
       ctx.supabase
         .from("quickbooks_employee_mappings")
         .select("worker_user_id, quickbooks_employee_id")
@@ -45,7 +36,12 @@ export async function POST(request: Request) {
         .select("timezone")
         .eq("id", ctx.farmId)
         .single(),
+      ctx.supabase
+        .from("quickbooks_crew_mappings")
+        .select("worker_id,quickbooks_employee_id")
+        .eq("farm_id", ctx.farmId),
     ]);
+    if (crewMappings.error) throw crewMappings.error;
     if (mappingsResult.error) throw mappingsResult.error;
     if (farmResult.error) throw farmResult.error;
 
@@ -57,46 +53,6 @@ export async function POST(request: Request) {
     );
     const timezone = farmResult.data.timezone ?? "UTC";
 
-    const staleBefore = new Date(Date.now() - 10 * 60_000).toISOString();
-
-    const { error: staleNullError } = await ctx.supabase
-      .from("time_entries")
-      .update({
-        qbo_sync_status: "error",
-        qbo_sync_error:
-          "Previous QuickBooks sync was interrupted and was reclaimed.",
-        qbo_sync_started_at: null,
-      })
-      .eq("farm_id", ctx.farmId)
-      .eq("qbo_sync_status", "syncing")
-      .is("qbo_sync_started_at", null);
-    if (staleNullError) throw staleNullError;
-
-    const { error: staleTimedError } = await ctx.supabase
-      .from("time_entries")
-      .update({
-        qbo_sync_status: "error",
-        qbo_sync_error:
-          "Previous QuickBooks sync lease expired and was reclaimed.",
-        qbo_sync_started_at: null,
-      })
-      .eq("farm_id", ctx.farmId)
-      .eq("qbo_sync_status", "syncing")
-      .lt("qbo_sync_started_at", staleBefore);
-    if (staleTimedError) throw staleTimedError;
-
-    const { data: entries, error: entryError } = await ctx.supabase
-      .from("time_entries")
-      .select(
-        "id, worker_user_id, job, field_name, clock_in, clock_out, approval_status, qbo_sync_status",
-      )
-      .eq("farm_id", ctx.farmId)
-      .eq("approval_status", "approved")
-      .not("clock_out", "is", null)
-      .in("qbo_sync_status", ["not_synced", "error"])
-      .order("clock_in");
-    if (entryError) throw entryError;
-
     let synced = 0;
     const skipped: Array<{ id: string; reason: string }> = [];
     const failed: Array<{
@@ -106,163 +62,214 @@ export async function POST(request: Request) {
     }> = [];
     let reconnectRequired = false;
 
-    for (const entry of entries ?? []) {
-      if (reconnectRequired) {
-        skipped.push({
-          id: entry.id,
-          reason: "QuickBooks reconnection is required.",
-        });
-        continue;
-      }
+    let totalEligible = 0;
+    for (const source of ["time_entries", "crew_time_entries"] as const) {
+      const isCrew = source === "crew_time_entries";
+      const workerMap = isCrew
+        ? new Map(
+            (crewMappings.data ?? []).map((m) => [
+              m.worker_id,
+              m.quickbooks_employee_id,
+            ]),
+          )
+        : map;
+      const staleBefore = new Date(Date.now() - 10 * 60_000).toISOString();
 
-      const employeeId = map.get(entry.worker_user_id);
-      if (!employeeId) {
-        skipped.push({
-          id: entry.id,
-          reason: "No QuickBooks employee mapping.",
-        });
-        continue;
-      }
-
-      const { data: claimed, error: claimError } = await ctx.supabase
-        .from("time_entries")
+      const { error: staleNullError } = await ctx.supabase
+        .from(source)
         .update({
-          qbo_sync_status: "syncing",
-          qbo_sync_error: null,
-          qbo_sync_started_at: new Date().toISOString(),
+          qbo_sync_status: "error",
+          qbo_sync_error:
+            "Previous QuickBooks sync was interrupted and was reclaimed.",
+          qbo_sync_started_at: null,
         })
-        .eq("id", entry.id)
         .eq("farm_id", ctx.farmId)
-        .eq("qbo_sync_status", entry.qbo_sync_status)
-        .eq("approval_status", "approved")
-        .eq("clock_in", entry.clock_in)
-        .eq("clock_out", entry.clock_out!)
+        .eq("qbo_sync_status", "syncing")
+        .is("qbo_sync_started_at", null);
+      if (staleNullError) throw staleNullError;
+
+      const { error: staleTimedError } = await ctx.supabase
+        .from(source)
+        .update({
+          qbo_sync_status: "error",
+          qbo_sync_error:
+            "Previous QuickBooks sync lease expired and was reclaimed.",
+          qbo_sync_started_at: null,
+        })
+        .eq("farm_id", ctx.farmId)
+        .eq("qbo_sync_status", "syncing")
+        .lt("qbo_sync_started_at", staleBefore);
+      if (staleTimedError) throw staleTimedError;
+
+      const { data: entries, error: entryError } = await ctx.supabase
+        .from(source)
         .select("*")
-        .maybeSingle();
-      if (claimError) throw claimError;
-      if (!claimed) {
-        skipped.push({
-          id: entry.id,
-          reason: "Already claimed by another sync request.",
-        });
-        continue;
-      }
+        .eq("farm_id", ctx.farmId)
+        .eq("approval_status", "approved")
+        .not("clock_out", "is", null)
+        .in("qbo_sync_status", ["not_synced", "error"])
+        .order("clock_in");
+      if (entryError) throw entryError;
 
-      const endpoint = `/timeactivity?requestid=${encodeURIComponent(entry.id)}`;
+      totalEligible += entries?.length ?? 0;
+      for (const entry of entries ?? []) {
+        if (reconnectRequired) {
+          skipped.push({
+            id: entry.id,
+            reason: "QuickBooks reconnection is required.",
+          });
+          continue;
+        }
 
-      try {
-        const { hours, minutes } = durationParts(
-          claimed.clock_in,
-          claimed.clock_out!,
+        const employeeId = workerMap.get(
+          isCrew ? entry.worker_id : entry.worker_user_id,
         );
-        const txnDate = localDate(claimed.clock_in, timezone);
-        const description = [claimed.job, claimed.field_name]
-          .filter(Boolean)
-          .join(" - ")
-          .slice(0, 4000);
+        if (!employeeId) {
+          skipped.push({
+            id: entry.id,
+            reason: "No QuickBooks employee mapping.",
+          });
+          continue;
+        }
 
-        const response = await qboRequest<{ TimeActivity?: { Id?: string } }>(
-          ctx.connection.realm_id,
-          ctx.accessToken,
-          endpoint,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              TxnDate: txnDate,
-              NameOf: "Employee",
-              EmployeeRef: { value: employeeId },
-              Hours: hours,
-              Minutes: minutes,
-              StartTime: claimed.clock_in,
-              EndTime: claimed.clock_out,
-              Description: description || "FarmVoice approved time",
-            }),
-          },
-        );
-
-        const qboId = response.data.TimeActivity?.Id;
-        if (!qboId)
-          throw new Error("QuickBooks did not return a TimeActivity ID.");
-
-        const now = new Date().toISOString();
-        const { error: updateError } = await ctx.supabase
-          .from("time_entries")
+        const { data: claimed, error: claimError } = await ctx.supabase
+          .from(source)
           .update({
-            qbo_sync_status: "synced",
-            qbo_time_activity_id: qboId,
-            qbo_realm_id: ctx.connection.realm_id,
-            qbo_synced_at: now,
-            qbo_sync_started_at: null,
+            qbo_sync_status: "syncing",
             qbo_sync_error: null,
-            qbo_intuit_tid: response.intuitTid,
+            qbo_sync_started_at: new Date().toISOString(),
           })
           .eq("id", entry.id)
           .eq("farm_id", ctx.farmId)
-          .eq("qbo_sync_status", "syncing");
-        if (updateError) throw updateError;
+          .eq("qbo_sync_status", entry.qbo_sync_status)
+          .eq("approval_status", "approved")
+          .eq("clock_in", entry.clock_in)
+          .eq("clock_out", entry.clock_out!)
+          .select("*")
+          .maybeSingle();
+        if (claimError) throw claimError;
+        if (!claimed) {
+          skipped.push({
+            id: entry.id,
+            reason: "Already claimed by another sync request.",
+          });
+          continue;
+        }
 
-        await ctx.supabase
-          .from("quickbooks_connections")
-          .update({
-            last_intuit_tid: response.intuitTid,
-            last_api_at: now,
-          })
-          .eq("farm_id", ctx.farmId);
+        const endpoint = `/timeactivity?requestid=${encodeURIComponent(isCrew ? `crew-${entry.id}` : entry.id)}`;
 
-        synced += 1;
-      } catch (error) {
-        const logged = await logQuickBooksError({
-          supabase: ctx.supabase,
-          farmId: ctx.farmId,
-          operation: "create_time_activity",
-          endpoint,
-          error,
-          context: { timeEntryId: entry.id },
-        });
-        const message = logged.message;
+        try {
+          const { hours, minutes } = netDuration(
+            claimed.clock_in,
+            claimed.clock_out!,
+            isCrew ? claimed.break_minutes : 0,
+          );
+          const txnDate = localDate(claimed.clock_in, timezone);
+          const description = [claimed.job, claimed.field_name]
+            .filter(Boolean)
+            .join(" - ")
+            .slice(0, 4000);
 
-        if (isQuickBooksApiError(error) && error.reconnectRequired) {
-          reconnectRequired = true;
+          const response = await qboRequest<{ TimeActivity?: { Id?: string } }>(
+            ctx.connection.realm_id,
+            ctx.accessToken,
+            endpoint,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                TxnDate: txnDate,
+                NameOf: "Employee",
+                EmployeeRef: { value: employeeId },
+                Hours: hours,
+                Minutes: minutes,
+                Description: description || "FarmVoice approved time",
+              }),
+            },
+          );
+
+          const qboId = response.data.TimeActivity?.Id;
+          if (!qboId)
+            throw new Error("QuickBooks did not return a TimeActivity ID.");
+
+          const now = new Date().toISOString();
+          const { error: updateError } = await ctx.supabase
+            .from(source)
+            .update({
+              qbo_sync_status: "synced",
+              qbo_time_activity_id: qboId,
+              qbo_realm_id: ctx.connection.realm_id,
+              qbo_synced_at: now,
+              qbo_sync_started_at: null,
+              qbo_sync_error: null,
+              qbo_intuit_tid: response.intuitTid,
+            })
+            .eq("id", entry.id)
+            .eq("farm_id", ctx.farmId)
+            .eq("qbo_sync_status", "syncing");
+          if (updateError) throw updateError;
+
           await ctx.supabase
             .from("quickbooks_connections")
             .update({
-              reconnect_required: true,
-              last_auth_error: message.slice(0, 2000),
-              last_auth_error_at: new Date().toISOString(),
-              last_intuit_tid: error.intuitTid,
-              last_api_at: new Date().toISOString(),
+              last_intuit_tid: response.intuitTid,
+              last_api_at: now,
             })
             .eq("farm_id", ctx.farmId);
+
+          synced += 1;
+        } catch (error) {
+          const logged = await logQuickBooksError({
+            supabase: ctx.supabase,
+            farmId: ctx.farmId,
+            operation: "create_time_activity",
+            endpoint,
+            error,
+            context: { timeEntryId: entry.id },
+          });
+          const message = logged.message;
+
+          if (isQuickBooksApiError(error) && error.reconnectRequired) {
+            reconnectRequired = true;
+            await ctx.supabase
+              .from("quickbooks_connections")
+              .update({
+                reconnect_required: true,
+                last_auth_error: message.slice(0, 2000),
+                last_auth_error_at: new Date().toISOString(),
+                last_intuit_tid: error.intuitTid,
+                last_api_at: new Date().toISOString(),
+              })
+              .eq("farm_id", ctx.farmId);
+          }
+
+          const { error: saveError } = await ctx.supabase
+            .from(source)
+            .update({
+              qbo_sync_status: "error",
+              qbo_sync_error: message,
+              qbo_sync_started_at: null,
+              qbo_intuit_tid: logged.intuitTid,
+            })
+            .eq("id", entry.id)
+            .eq("farm_id", ctx.farmId)
+            .eq("qbo_sync_status", "syncing");
+
+          failed.push({
+            id: entry.id,
+            error: saveError
+              ? `${message}; also failed to save sync error: ${saveError.message}`
+              : message,
+            intuitTid: logged.intuitTid,
+          });
         }
-
-        const { error: saveError } = await ctx.supabase
-          .from("time_entries")
-          .update({
-            qbo_sync_status: "error",
-            qbo_sync_error: message,
-            qbo_sync_started_at: null,
-            qbo_intuit_tid: logged.intuitTid,
-          })
-          .eq("id", entry.id)
-          .eq("farm_id", ctx.farmId)
-          .eq("qbo_sync_status", "syncing");
-
-        failed.push({
-          id: entry.id,
-          error: saveError
-            ? `${message}; also failed to save sync error: ${saveError.message}`
-            : message,
-          intuitTid: logged.intuitTid,
-        });
       }
     }
-
     return NextResponse.json({
       synced,
       skipped,
       failed,
       reconnectRequired,
-      totalEligible: entries?.length ?? 0,
+      totalEligible,
     });
   } catch (error) {
     return NextResponse.json(

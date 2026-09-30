@@ -38,7 +38,7 @@ export default async function StatePage({
         </p>
         <a href={r.url}>Official {r.name} guidance</a>
         <p>
-          Links reviewed September 29, 2026. The app's completeness checks are a
+          Links reviewed September 30, 2026. The app's completeness checks are a
           recordkeeping aid, not a state-specific legal determination.
         </p>
         <Link href="/resources/pesticide-record-template">

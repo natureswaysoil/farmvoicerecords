@@ -52,7 +52,7 @@ export default function StorageUsage({ farmId }: { farmId: string }) {
         </p>
       )}
       <p className="small">
-        100 GB included per farm (1 GB = 1 billion bytes). Uploads pause at your
+        10 GB included per farm (1 GB = 1 billion bytes). Uploads pause at your
         allowance; existing files stay available. Additional capacity requires
         an agreed plan through{" "}
         <a href="mailto:james@farmvoicerecords.com">support</a>. No automatic

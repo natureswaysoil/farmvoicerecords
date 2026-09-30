@@ -1,3 +1,4 @@
+import { validCaptureTime } from "@/src/lib/records/receipt";
 import {
   authorizeFarm,
   requirePlan,
@@ -74,6 +75,8 @@ export async function POST(request: Request) {
         );
       return Response.json({ id: record.id, revision: existing.data.revision });
     }
+    if (!validCaptureTime(record.createdAt))
+      throw new AccessError("Capture time must be within the last 30 days and no more than 5 minutes ahead. Keep your offline copy and contact support for older records.", 400);
     await requirePlan(supabase, record.farmId);
     if (record.fieldId) {
       const field = await supabase

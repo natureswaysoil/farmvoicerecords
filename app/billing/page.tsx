@@ -24,7 +24,7 @@ export default function BillingPage() {
             QuickBooks individual-time export.
           </p>
           <p>
-            100 GB of farm photo and document storage included. Additional
+            10 GB of farm photo and document storage included. Additional
             storage requires an agreed plan through support. Uploads pause at
             your allowance; no automatic overage charges.
           </p>

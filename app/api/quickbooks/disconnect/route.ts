@@ -6,12 +6,19 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { supabase, farmId } = await requireFarmOwner(typeof body.farmId === "string" ? body.farmId : null);
+    const { supabase, farmId } = await requireFarmOwner(
+      typeof body.farmId === "string" ? body.farmId : null,
+    );
 
     const { error: mappingError } = await supabase
       .from("quickbooks_employee_mappings")
       .delete()
       .eq("farm_id", farmId);
+    const { error: crewMappingError } = await supabase
+      .from("quickbooks_crew_mappings")
+      .delete()
+      .eq("farm_id", farmId);
+    if (crewMappingError) throw crewMappingError;
     if (mappingError) throw mappingError;
 
     const { error: connectionError } = await supabase
@@ -23,8 +30,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to disconnect QuickBooks." },
-      { status: 400 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to disconnect QuickBooks.",
+      },
+      { status: 400 },
     );
   }
 }

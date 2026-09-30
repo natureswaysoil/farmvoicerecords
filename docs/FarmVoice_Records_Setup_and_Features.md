@@ -211,7 +211,7 @@ Exports include all matching synced records, not just the five displayed in the 
 
 FarmVoice is offered as one farm plan: **$49 per month per farm with unlimited workers**, following a **14-day free trial** with no credit card required. The plan includes the FarmVoice recordkeeping, scheduling, GPS time, Smart Photo Evidence, pesticide, USDA/FSA field, H-2A, housing, payroll-preparation and QuickBooks integration features available in the application.
 
-The plan includes **100 GB of farm photo and document storage**, designed to cover most farms including thousands of job photos and years of workforce and field records. Usage beyond the included storage may require an additional storage plan.
+The plan includes **10 GB of farm photo and document storage**, designed to cover most farms including thousands of job photos and years of workforce and field records. Usage beyond the included storage may require an additional storage plan.
 
 Open https://farmvoicerecords.com/billing to review the current offer. Billing should identify Nature’s Way Soil & Vermicompost LLC. If subscription management does not open, contact support rather than starting a second subscription. Trial cutoff enforcement and billing-portal readiness require an owner launch review; do not assume every billing workflow has been verified end to end.
 

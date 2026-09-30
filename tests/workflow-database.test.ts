@@ -307,3 +307,26 @@ test("storage accounting rolls back over-quota uploads and isolates farm usage",
     await db.close();
   }
 });
+
+test("receipt timestamp cannot be forged; capture bounds and legacy times are honest", async () => {
+ const db = await setup();
+ try {
+  await db.exec("create schema storage;create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,metadata jsonb)");
+  await db.exec(await readFile(new URL("supabase/migrations/20260930011259_farm_storage_allowance.sql",root),"utf8"));
+  await db.exec(await readFile(new URL("supabase/migrations/20260930205744_record_receipt_and_crew_billing.sql",root),"utf8"));
+  await as(db,owner);
+  const insert = (time: string) => db.exec(`insert into farm_records(farm_id,created_by,record_type,status,payload,created_at,received_at) values('${farm}','${owner}','purchase','draft','{}',${time},'2000-01-01')`);
+  await assert.rejects(insert("now()-interval '31 days'"),/Capture time/);
+  await assert.rejects(insert("now()+interval '6 minutes'"),/Capture time/);
+  await insert("now()-interval '29 days'");
+  assert.equal((await db.query<{fresh:boolean}>("select received_at > now()-interval '1 minute' as fresh from farm_records")).rows[0].fresh,true);
+  await assert.rejects(db.exec("update farm_records set received_at='2000-01-01'"),/immutable/);
+  assert.equal((await db.query<{limit_bytes:number}>(`select * from farm_storage_status('${farm}')`)).rows[0].limit_bytes,10000000000);
+  await db.exec(`insert into crew_workers(id,farm_id,name,employee_number) values('77777777-7777-4777-8777-777777777777','${farm}','Crew member','C1');insert into crew_time_entries(id,farm_id,worker_id,clock_in,clock_out,break_minutes,job) values('88888888-8888-4888-8888-888888888888','${farm}','77777777-7777-4777-8777-777777777777',now()-interval '8 hours',now(),30,'Harvest');update crew_time_entries set approval_status='approved';update crew_time_entries set qbo_sync_status='syncing';`);
+  await assert.rejects(db.exec("update crew_time_entries set approval_status='rejected',review_reason='Wrong hours'"),/Synced crew/);
+  await db.exec("update crew_time_entries set qbo_sync_status='synced',qbo_time_activity_id='qbo1'");
+  await assert.rejects(db.exec("update crew_time_entries set break_minutes=0"),/immutable/);
+  await as(db,worker);
+  assert.equal((await db.query("select * from quickbooks_crew_mappings")).rows.length,0);
+ } finally { await db.close(); }
+});
