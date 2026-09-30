@@ -33,7 +33,7 @@ The existing Core, worker-setup, billing, subscription-enforcement and evidence-
 
 Each file is transactional. The repository contains older migration filenames with repeated date-only versions; reconcile the installation's existing migration history rather than blindly replaying all legacy migrations with `db push`. Do not rename already-applied historical migrations as part of this release.
 
-The storage migration adds a trigger on `storage.objects` and initializes byte totals from existing metadata. Validate the migration account's privileges and actual hosted Supabase Storage upload, replace, delete and signed-download behavior in staging. Byte accounting and quota rejection were tested in PostgreSQL, but that does not establish compatibility with the live project's Storage service or permissions. Existing farms already over 100 GB retain their files; growing their usage is blocked until capacity is resolved. Keep any agreed allowance adjustment administrative; ordinary users cannot edit the usage table.
+The storage migration adds a trigger on `storage.objects` and initializes byte totals from existing metadata. Validate the migration account's privileges and actual hosted Supabase Storage upload, replace, delete and signed-download behavior in staging. Byte accounting and quota rejection were tested in PostgreSQL, but that does not establish compatibility with the live project's Storage service or permissions. Existing farms already over 10 GB retain their files; growing their usage is blocked until capacity is resolved. Keep any agreed allowance adjustment administrative; ordinary users cannot edit the usage table.
 
 Smoke-check on staging with owner, supervisor, worker and unrelated-farm accounts:
 

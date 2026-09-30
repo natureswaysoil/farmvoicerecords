@@ -38,6 +38,25 @@ alter table public.quickbooks_crew_mappings enable row level security;
 revoke all on public.quickbooks_crew_mappings from anon,authenticated;
 grant select,insert,update,delete on public.quickbooks_crew_mappings to authenticated;
 create policy "owner manages crew QBO mappings" on public.quickbooks_crew_mappings for all to authenticated using(private.core_is_owner(farm_id)) with check(private.core_is_owner(farm_id));
+-- Serialize mapping writes for each farm before checking the other namespace.
+create function private.guard_qbo_employee_mapping() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ perform pg_advisory_xact_lock(hashtextextended(new.farm_id::text, 0));
+ if tg_table_name='quickbooks_crew_mappings' then
+  if exists(select 1 from public.quickbooks_employee_mappings where farm_id=new.farm_id and quickbooks_employee_id=new.quickbooks_employee_id) then
+   raise exception 'QuickBooks employee is already mapped to an account worker';
+  end if;
+ else
+  if exists(select 1 from public.quickbooks_crew_mappings where farm_id=new.farm_id and quickbooks_employee_id=new.quickbooks_employee_id) then
+   raise exception 'QuickBooks employee is already mapped to a crew worker';
+  end if;
+ end if;
+ return new;
+end $$;
+revoke all on function private.guard_qbo_employee_mapping() from public,anon,authenticated;
+create trigger guard_qbo_employee_mapping before insert or update on public.quickbooks_employee_mappings for each row execute function private.guard_qbo_employee_mapping();
+create trigger guard_qbo_employee_mapping before insert or update on public.quickbooks_crew_mappings for each row execute function private.guard_qbo_employee_mapping();
 alter table public.crew_time_entries
  add column qbo_sync_status text not null default 'not_synced' check(qbo_sync_status in ('not_synced','syncing','synced','error')),
  add column qbo_time_activity_id text,
