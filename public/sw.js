@@ -1,9 +1,9 @@
-const CACHE = "farmvoice-offline-v3";
+const CACHE = "farmvoice-offline-v4";
 // Keep shell references plus at most 100 dynamically loaded chunks. Replacing
 // a shell prunes chunks from previous releases, even when this worker is unchanged.
 async function pruneAssets(cache) {
   const referenced = new Set();
-  for (const path of ["/records", "/offline"]) {
+  for (const path of ["/records", "/team/crew", "/offline"]) {
     const shell = await cache.match(path);
     if (!shell) continue;
     for (const match of (await shell.text()).matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g))
@@ -22,7 +22,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      for (const path of ["/records", "/offline"]) {
+      for (const path of ["/records", "/team/crew", "/offline"]) {
         const response = await fetch(path);
         if (!response.ok || response.redirected)
           throw new Error("Offline shell unavailable");
@@ -62,7 +62,7 @@ self.addEventListener("fetch", (event) => {
   const staticAsset = url.pathname.startsWith("/_next/static/");
   const shell =
     request.mode === "navigate" &&
-    ["/records", "/offline"].includes(url.pathname);
+    ["/records", "/team/crew", "/offline"].includes(url.pathname);
   if (!staticAsset && !shell) return;
   event.respondWith(
     fetch(request)

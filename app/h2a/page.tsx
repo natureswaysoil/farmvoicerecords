@@ -1,4 +1,5 @@
 "use client";
+import { collectPages } from "@/src/lib/pagination";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -361,40 +362,144 @@ export default function H2APage() {
   }
 
   async function exportAudit() {
-    if(!ctx) return;
-    const [contractsR,workersR,dailyR,housingR,transportR,trainingR,recruitmentR,separationsR,auditR] = await Promise.all([
-      supabase.from("h2a_contracts").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_workers").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_daily_records").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_housing").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_transportation").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_training").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_recruitment").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_separations").select("*").eq("farm_id",ctx.farmId),
-      supabase.from("h2a_audit_events").select("*").eq("farm_id",ctx.farmId).order("changed_at"),
-    ]);
-    const sections:[string,unknown[]][]=[
-      ["contracts",contractsR.data??[]],["workers",workersR.data??[]],["daily_records",dailyR.data??[]],
-      ["housing",housingR.data??[]],["transportation",transportR.data??[]],["training",trainingR.data??[]],
-      ["recruitment",recruitmentR.data??[]],["separations",separationsR.data??[]],["audit_events",auditR.data??[]]
-    ];
-    const rows:unknown[][]=[["FarmVoice H-2A audit export"],["Generated",new Date().toISOString()]];
-    for(const [name,items] of sections){
-      rows.push([],["SECTION",name]);
-      const objects=items as Record<string,unknown>[];
-      const headers=[...new Set(objects.flatMap((o)=>Object.keys(o)))];
-      rows.push(headers);
-      for(const o of objects) rows.push(headers.map((h)=>typeof o[h]==="object"?JSON.stringify(o[h]):o[h]));
+    if (!ctx) return;
+    try {
+      const [
+        contractsR,
+        workersR,
+        dailyR,
+        housingR,
+        transportR,
+        trainingR,
+        recruitmentR,
+        separationsR,
+        auditR,
+      ] = await Promise.all([
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_contracts")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_workers")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_daily_records")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_housing")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_transportation")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_training")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_recruitment")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_separations")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_audit_events")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("changed_at")
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data })),
+      ]);
+      const sections: [string, unknown[]][] = [
+        ["contracts", contractsR.data ?? []],
+        ["workers", workersR.data ?? []],
+        ["daily_records", dailyR.data ?? []],
+        ["housing", housingR.data ?? []],
+        ["transportation", transportR.data ?? []],
+        ["training", trainingR.data ?? []],
+        ["recruitment", recruitmentR.data ?? []],
+        ["separations", separationsR.data ?? []],
+        ["audit_events", auditR.data ?? []],
+      ];
+      const rows: unknown[][] = [
+        ["FarmVoice H-2A audit export"],
+        ["Generated", new Date().toISOString()],
+      ];
+      for (const [name, items] of sections) {
+        rows.push([], ["SECTION", name]);
+        const objects = items as Record<string, unknown>[];
+        const headers = [...new Set(objects.flatMap((o) => Object.keys(o)))];
+        rows.push(headers);
+        for (const o of objects)
+          rows.push(
+            headers.map((h) =>
+              typeof o[h] === "object" ? JSON.stringify(o[h]) : o[h],
+            ),
+          );
+      }
+      downloadCsv("farmvoice-h2a-audit-export.csv", rows);
+    } catch {
+      setMessage(
+        "Audit export failed. No partial report was downloaded. Reconnect and retry.",
+      );
     }
-    downloadCsv("farmvoice-h2a-audit-export.csv",rows);
   }
 
   const activeContract = contracts.find((c) => c.active);
-  const guarantee = activeContract && activeContract.expected_hours_per_day && activeContract.expected_days_per_week
-    ? Number(activeContract.expected_hours_per_day) * Number(activeContract.expected_days_per_week)
-    : null;
-  const offeredTotal = daily.reduce((s,r)=>s+Number(r.hours_offered||0),0);
-  const workedTotal = daily.reduce((s,r)=>s+Number(r.hours_worked||0),0);
+  const guarantee =
+    activeContract &&
+    activeContract.expected_hours_per_day &&
+    activeContract.expected_days_per_week
+      ? Number(activeContract.expected_hours_per_day) *
+        Number(activeContract.expected_days_per_week)
+      : null;
+  const offeredTotal = daily.reduce(
+    (s, r) => s + Number(r.hours_offered || 0),
+    0,
+  );
+  const workedTotal = daily.reduce(
+    (s, r) => s + Number(r.hours_worked || 0),
+    0,
+  );
 
   return (
     <main className="container section stack">

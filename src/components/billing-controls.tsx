@@ -1,4 +1,5 @@
 "use client";
+import StorageUsage from "@/src/components/storage-usage";
 import { useEffect, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { getNamedFarmContexts, type FarmContext } from "@/src/lib/farm-cloud";
@@ -11,11 +12,19 @@ export default function BillingControls() {
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   useEffect(() => {
-    void getNamedFarmContexts(createClient()).then((rows) => {
-      const owned = rows.filter((r) => r.role === "owner");
-      setFarms(owned);
-      setFarmId(owned[0]?.farmId ?? "");
-    });
+    void getNamedFarmContexts(createClient())
+      .then((rows) => {
+        const owned = rows.filter((r) => r.role === "owner");
+        setFarms(owned);
+        setFarmId(owned[0]?.farmId ?? "");
+      })
+      .catch((error) =>
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not load farm access.",
+        ),
+      );
   }, []);
   useEffect(() => {
     if (!farmId) return;
@@ -54,10 +63,11 @@ export default function BillingControls() {
       setBusy(false);
     }
   }
-  if (!farms.length) return null;
+  if (!farms.length) return message ? <p role="status">{message}</p> : null;
   return (
     <section className="card form">
       <h2>Manage your farm plan</h2>
+      <StorageUsage farmId={farmId} />
       <label>
         Farm
         <select value={farmId} onChange={(e) => setFarmId(e.target.value)}>

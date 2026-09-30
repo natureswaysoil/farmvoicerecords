@@ -454,7 +454,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = public
-as $
+as $$
 begin
   if (select auth.uid()) is null then
     return new;
@@ -507,7 +507,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 create trigger guard_worker_time_entry_update_trigger
 before update on public.time_entries

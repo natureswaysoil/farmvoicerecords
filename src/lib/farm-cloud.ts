@@ -66,7 +66,8 @@ export async function getFarmContexts(
       .order("created_at"),
   ]);
 
-  if (memberError || ownerError) return [];
+  if (memberError || ownerError)
+    throw new Error("Could not load farm access. Reconnect and retry.");
 
   const contexts = new Map<string, FarmContext>();
 

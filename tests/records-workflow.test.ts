@@ -128,3 +128,58 @@ test("offline queue isolates accounts/farms, retains failures, and retries ident
     globalThis.fetch = original;
   }
 });
+
+test("a rejected or malformed queued draft does not block independent delivery", async () => {
+  const memory = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      get length() {
+        return memory.size;
+      },
+      key: (i: number) => [...memory.keys()][i] ?? null,
+      getItem: (k: string) => memory.get(k) ?? null,
+      setItem: (k: string, v: string) => memory.set(k, v),
+      removeItem: (k: string) => memory.delete(k),
+    },
+  });
+  const userId = "11111111-1111-4111-8111-111111111111",
+    farmId = "33333333-3333-4333-8333-333333333333";
+  const row = {
+    id: crypto.randomUUID(),
+    userId,
+    farmId,
+    type: "purchase" as const,
+    status: "draft" as const,
+    createdAt: new Date().toISOString(),
+    fieldId: null,
+    payload: { item: "seed" },
+  };
+  const next = { ...row, id: crypto.randomUUID() };
+  queueRecord(row);
+  queueRecord(next);
+  memory.set(`farmvoice-queue-v1:${userId}:broken`, "{bad json");
+  const original = globalThis.fetch;
+  const delivered: string[] = [];
+  globalThis.fetch = async (_url, init) => {
+    const id = JSON.parse(String(init?.body)).id;
+    delivered.push(id);
+    return id === row.id
+      ? Response.json({ error: "Field removed" }, { status: 400 })
+      : Response.json({ id });
+  };
+  try {
+    await assert.rejects(() => syncRecords(userId, farmId), /Field removed/);
+    assert.deepEqual(delivered, [row.id, next.id]);
+    assert.deepEqual(
+      queuedRecords(userId).map((r) => r.id),
+      [row.id],
+    );
+    assert.equal(
+      memory.get(`farmvoice-queue-v1:${userId}:broken`),
+      "{bad json",
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});

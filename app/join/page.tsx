@@ -108,10 +108,13 @@ export default function JoinPage() {
     setMessage("");
 
     try {
-      const { error } = await supabase.rpc("join_farm_by_code", {
-        p_join_code: normalized,
-        p_employee_number: employeeNumber.trim() || null,
-      });
+      const { data: joinedFarmId, error } = await supabase.rpc(
+        "join_farm_by_code",
+        {
+          p_join_code: normalized,
+          p_employee_number: employeeNumber.trim() || null,
+        },
+      );
 
       if (error) {
         setMessage(error.message || "Unable to join this farm.");
@@ -124,6 +127,8 @@ export default function JoinPage() {
           "Se unió a la finca. Abriendo el reloj del trabajador...",
         ),
       );
+      if (typeof joinedFarmId === "string")
+        localStorage.setItem("farmvoice_selected_farm_id", joinedFarmId);
       window.location.assign("/worker");
     } finally {
       setJoining(false);

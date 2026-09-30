@@ -93,11 +93,13 @@ export const gpsSchema = z.object({
 });
 export const recordRequestSchema = z.object({
   id: z.uuid(),
+  expectedRevision: z.number().int().positive().optional(),
+  changeReason: z.string().trim().max(1000).optional(),
   farmId: z.uuid(),
   userId: z.uuid(),
   type: z.enum(["pesticide", "purchase"]),
   status: z.enum(["draft", "confirmed"]),
-  createdAt: z.iso.datetime(),
+  createdAt: z.iso.datetime({ offset: true }),
   payload: z.record(z.string(), z.unknown()).superRefine((payload, ctx) => {
     if (JSON.stringify(payload).length > 25000)
       ctx.addIssue({ code: "custom", message: "Payload too large" });
@@ -138,7 +140,11 @@ export function purchaseProblems(payload: Record<string, unknown>): string[] {
     "unit",
     "totalCost",
   ].filter((k) => !String(payload[k] ?? "").trim());
-  if (!Number.isFinite(Number(payload.quantity)) || !(Number(payload.quantity) > 0)) missing.push("positive quantity");
+  if (
+    !Number.isFinite(Number(payload.quantity)) ||
+    !(Number(payload.quantity) > 0)
+  )
+    missing.push("positive quantity");
   if (
     !Number.isFinite(Number(payload.totalCost)) ||
     Number(payload.totalCost) < 0

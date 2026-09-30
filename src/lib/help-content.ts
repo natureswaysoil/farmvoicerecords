@@ -26,7 +26,7 @@ export const helpItems: HelpItem[] = [
     category: "Team",
     question: "Does every worker need a phone or FarmVoice login?",
     answer:
-      "No. H-2A crew records can be maintained by an authorized owner, administrator, or crew leader. Workers who use the individual GPS time clock need their own FarmVoice account and a device when clocking in or out.",
+      "No. Core includes one-phone crew records at Team → Crew: an owner or authorized supervisor records a roster without worker accounts. H-2A crew records can also be maintained by an authorized owner, administrator, or crew leader. Workers who use the individual GPS time clock need their own FarmVoice account and a device when clocking in or out.",
     href: "/team",
     linkLabel: "Open Team",
     keywords: ["worker", "phone", "login", "crew", "device"],
@@ -196,7 +196,7 @@ export const helpItems: HelpItem[] = [
     category: "Account",
     question: "How much storage is included?",
     answer:
-      "The FarmVoice plan is designed with 100 GB of included farm storage, enough for most farms including thousands of job photos and years of workforce and field records. Usage beyond the included amount may require additional storage.",
+      "The FarmVoice plan is designed with 100 GB of included farm storage, enough for most farms including thousands of job photos and years of workforce and field records. Uploads pause at the 100 GB allowance. Pricing shows your usage. Additional capacity requires an agreed plan through support; there are no automatic overage charges.",
     keywords: ["storage", "gb", "100", "photos", "limit", "space"],
   },
   {

@@ -42,7 +42,7 @@ test("concurrent identical record deliveries both succeed", async () => {
     async maybeSingle() {
       const firstLookup = ++reads <= 2;
       await Promise.resolve();
-      return {error: null, data: firstLookup ? null : {id: record.id, farm_id: "farm", created_by: "owner"}};
+      return {error: null, data: firstLookup ? null : {id: record.id, farm_id: "farm", created_by: "owner",record_type:record.type,status:record.status,payload:{recordCreatedAt:record.createdAt},field_id:null}};
     },
     async insert() {return {error: ++inserts === 1 ? null : {code: "23505"}};},
   };}};
