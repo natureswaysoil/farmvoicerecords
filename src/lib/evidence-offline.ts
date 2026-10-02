@@ -18,6 +18,7 @@ export type QueuedEvidence = {
 
 const DB="farmvoice-offline-v1";
 const STORE="evidence";
+const syncFlights = new Map<string, Promise<number>>();
 
 function db():Promise<IDBDatabase>{
   return new Promise((resolve,reject)=>{
@@ -61,7 +62,46 @@ async function removeEvidence(id:string){
   database.close();
 }
 
-export async function syncEvidence(supabase:any,farmId:string,userId:string){
+export async function remapQueuedEvidenceRecordId(
+  farmId:string,
+  userId:string,
+  fromRecordId:string,
+  toRecordId:string,
+){
+  if (!fromRecordId || fromRecordId===toRecordId) return 0;
+  const database=await db();
+  const all=await new Promise<QueuedEvidence[]>((resolve,reject)=>{
+    const req=database.transaction(STORE).objectStore(STORE).getAll();
+    req.onsuccess=()=>resolve(req.result as QueuedEvidence[]);
+    req.onerror=()=>reject(req.error);
+  });
+  const matches=all.filter(x =>
+    x.farmId===farmId &&
+    x.userId===userId &&
+    (x.recordId===fromRecordId || x.parentRecordId===fromRecordId)
+  );
+  if (!matches.length) {
+    database.close();
+    return 0;
+  }
+  await new Promise<void>((resolve,reject)=>{
+    const tx=database.transaction(STORE,"readwrite");
+    const store=tx.objectStore(STORE);
+    for (const item of matches) {
+      store.put({
+        ...item,
+        recordId:item.recordId===fromRecordId ? toRecordId : item.recordId,
+        parentRecordId:item.parentRecordId===fromRecordId ? toRecordId : item.parentRecordId,
+      });
+    }
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+  database.close();
+  return matches.length;
+}
+
+async function runEvidenceSync(supabase:any,farmId:string,userId:string){
   let synced=0;
   for(const item of await queuedEvidence(farmId,userId)){
     const upload=await supabase.storage.from("farm-photo-evidence").upload(item.storagePath,item.blob,{cacheControl:"3600",upsert:false,contentType:item.mimeType||undefined});
@@ -78,4 +118,15 @@ export async function syncEvidence(supabase:any,farmId:string,userId:string){
     synced++;
   }
   return synced;
+}
+
+export function syncEvidence(supabase:any,farmId:string,userId:string){
+  const key=`${userId}:${farmId}`;
+  const existing=syncFlights.get(key);
+  if(existing) return existing;
+  const flight=runEvidenceSync(supabase,farmId,userId).finally(()=>{
+    if(syncFlights.get(key)===flight) syncFlights.delete(key);
+  });
+  syncFlights.set(key,flight);
+  return flight;
 }
