@@ -39,7 +39,7 @@ test("public navigation, signup and sample assets", async ({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Less paperwork. More time for your farm.",
+    "Farm paperwork without the paperwork.",
   );
   await expect(
     page
