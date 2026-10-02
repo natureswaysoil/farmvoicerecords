@@ -102,9 +102,47 @@ test("oversized evidence is rejected before offline fallback", async () => {
   assert.ok(offlineBranch > tryBlock);
 });
 
-test("evidence synchronization is single-flight per account and farm", async () => {
+test("evidence synchronization and remapping share one account/farm mutex", async () => {
   const source = await readFile(new URL("../src/lib/evidence-offline.ts", import.meta.url), "utf8");
-  assert.match(source, /const syncFlights = new Map/);
-  assert.match(source, /const existing=syncFlights\.get\(key\)/);
-  assert.match(source, /syncFlights\.set\(key,flight\)/);
+  assert.match(source, /const operationTails = new Map/);
+  assert.match(source, /function serializeEvidence/);
+  assert.match(source, /return serializeEvidence\([\s\S]*remapQueuedEvidenceRecordIdUnlocked/);
+  assert.match(source, /return serializeEvidence\([\s\S]*runEvidenceSync/);
+});
+
+
+test("Ask FarmVoice validates real dates and pages complete datasets", async () => {
+  const source = await readFile(new URL("../app/api/ask-farmvoice/route.ts", import.meta.url), "utf8");
+  assert.match(source, /parsed\.toISOString\(\)\.slice\(0, 10\) === value/);
+  assert.match(source, /collectPages/);
+  assert.doesNotMatch(source, /\.limit\((500|2000|5000|200)\)/);
+  assert.match(source, /recordkeeping review, not a legal or compliance determination/);
+});
+
+test("inspection package uses hardened CSV, complete pagination, printable warning and accessible dates", async () => {
+  const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /collectPages, csvCell/);
+  assert.doesNotMatch(source, /function csvCell/);
+  assert.doesNotMatch(source, /\.limit\(1000\)/);
+  assert.match(source, /<strong>Important:<\/strong> FarmVoice does not certify/);
+  assert.match(source, /htmlFor="package-start"/);
+  assert.match(source, /id="package-start"/);
+  assert.match(source, /htmlFor="package-end"/);
+  assert.match(source, /id="package-end"/);
+});
+
+test("legacy H-2A v1 queues remain discoverable for migration", async () => {
+  const source = await readFile(new URL("../src/lib/h2a-offline.ts", import.meta.url), "utf8");
+  assert.match(source, /farmvoice-h2a-daily-v1/);
+  assert.match(source, /migrateLegacyBatches/);
+  assert.match(source, /crypto\.randomUUID\(\)/);
+});
+
+test("H-2A reconciliation skips identical ids and batches inserts", async () => {
+  const source = await readFile(new URL("../src/lib/h2a-offline.ts", import.meta.url), "utf8");
+  assert.match(source, /if \(serverId===row\.id\) continue/);
+  assert.match(source, /\.in\("worker_id",workerIds\)/);
+  assert.match(source, /\.in\("work_date",workDates\)/);
+  assert.match(source, /\.insert\(inserts\)/);
+  assert.match(source, /Offline reconciliation after reconnect/);
 });
