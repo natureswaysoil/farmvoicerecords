@@ -106,9 +106,9 @@ test("oversized evidence is rejected before offline fallback", async () => {
 test("evidence synchronization and remapping share one account/farm mutex", async () => {
   const source = await readFile(new URL("../src/lib/evidence-offline.ts", import.meta.url), "utf8");
   assert.match(source, /const operationTails = new Map/);
-  assert.match(source, /function serializeEvidence/);
-  assert.match(source, /return serializeEvidence\([\s\S]*remapQueuedEvidenceRecordIdUnlocked/);
-  assert.match(source, /return serializeEvidence\([\s\S]*runEvidenceSync/);
+  assert.match(source, /function withEvidenceSerialization/);
+  assert.match(source, /return withEvidenceSerialization\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
+  assert.match(source, /return withEvidenceSerialization\([\s\S]*runEvidenceSync/);
 });
 
 
@@ -122,7 +122,7 @@ test("Ask FarmVoice validates real dates and pages complete datasets", async () 
 
 test("inspection package uses hardened CSV, complete pagination, printable warning and accessible dates", async () => {
   const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /collectPages, csvCell/);
+  assert.match(source, /collectChunkedPages, collectPages, csvCell/);
   assert.doesNotMatch(source, /function csvCell/);
   assert.doesNotMatch(source, /\.limit\(1000\)/);
   assert.match(source, /<strong>Important:<\/strong> FarmVoice does not certify/);
@@ -187,4 +187,12 @@ test("inspection package applies selected ids through the tested chunk helper", 
   assert.match(source, /collectChunkedPages<Evidence, string>/);
   assert.match(source, /\.in\("record_id", ids\)/);
   assert.doesNotMatch(source, /allEvidence/);
+});
+
+
+test("H-2A reconnect holds the shared evidence mutex through reconciliation", async () => {
+  const source = await readFile(new URL("../app/h2a/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /withEvidenceSerialization/);
+  assert.match(source, /syncH2aDailyBatches\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
+  assert.match(source, /saveH2aDailyRows\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
 });
