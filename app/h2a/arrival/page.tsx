@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
 import { createClient } from "@/src/lib/supabase/client";
@@ -136,16 +136,6 @@ export default function H2aArrivalChecklistPage() {
   const readinessProgress = checklistProgress(
     FARM_READINESS_CHECKLIST,
     readinessRows.filter((row) => row.contract_id === contractId),
-  );
-
-  const workerContext = useMemo(
-    () => ({
-      arrivalDate: selectedWorker?.arrival_date,
-      firstWorkDate: selectedWorker?.first_work_date,
-      contractStart: selectedContract?.start_date,
-      contractEnd: selectedContract?.end_date,
-    }),
-    [selectedWorker, selectedContract],
   );
 
   async function load(preferredFarmId?: string) {
@@ -356,19 +346,21 @@ export default function H2aArrivalChecklistPage() {
   async function saveArrivalFacts() {
     if (!ctx || !selectedWorker || !canAdmin) return;
     setBusy(true);
-    const { error } = await supabase
-      .from("h2a_workers")
-      .update({
-        arrival_date: selectedWorker.arrival_date,
-        first_work_date: selectedWorker.first_work_date,
-        work_authorization_start: selectedWorker.work_authorization_start,
-        work_authorization_end: selectedWorker.work_authorization_end,
-        preferred_language: selectedWorker.preferred_language,
-        emergency_contact: selectedWorker.emergency_contact,
-      })
-      .eq("id", selectedWorker.id)
-      .eq("farm_id", ctx.farmId);
-    if (!error) {
+    try {
+      const { error } = await supabase
+        .from("h2a_workers")
+        .update({
+          arrival_date: selectedWorker.arrival_date,
+          first_work_date: selectedWorker.first_work_date,
+          work_authorization_start: selectedWorker.work_authorization_start,
+          work_authorization_end: selectedWorker.work_authorization_end,
+          preferred_language: selectedWorker.preferred_language,
+          emergency_contact: selectedWorker.emergency_contact,
+        })
+        .eq("id", selectedWorker.id)
+        .eq("farm_id", ctx.farmId);
+      if (error) throw error;
+
       const contract =
         contracts.find((item) => item.id === selectedWorker.contract_id) ?? null;
       const context = {
@@ -383,26 +375,32 @@ export default function H2aArrivalChecklistPage() {
           row.status !== "complete" &&
           row.status !== "exception",
       );
-      await Promise.all(
-        rows.map(async (row) => {
-          const definition = WORKER_ARRIVAL_CHECKLIST.find(
-            (item) => item.key === row.item_key,
-          );
-          if (!definition) return;
-          const dueOn = suggestedDueOn(definition, context);
-          if (dueOn === row.due_on) return;
-          const result = await supabase
-            .from("h2a_worker_arrival_checklist")
-            .update({ due_on: dueOn, updated_at: new Date().toISOString() })
-            .eq("id", row.id)
-            .eq("farm_id", ctx.farmId);
-          if (result.error) throw result.error;
-        }),
+      for (const row of rows) {
+        const definition = WORKER_ARRIVAL_CHECKLIST.find(
+          (item) => item.key === row.item_key,
+        );
+        if (!definition) continue;
+        const dueOn = suggestedDueOn(definition, context);
+        if (dueOn === row.due_on) continue;
+        const result = await supabase
+          .from("h2a_worker_arrival_checklist")
+          .update({ due_on: dueOn, updated_at: new Date().toISOString() })
+          .eq("id", row.id)
+          .eq("farm_id", ctx.farmId);
+        if (result.error) throw result.error;
+      }
+
+      setMessage("Worker arrival facts and suggested deadlines saved.");
+      await load(ctx.farmId);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to save worker arrival facts.",
       );
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
-    setMessage(error ? error.message : "Worker arrival facts and suggested deadlines saved.");
-    if (!error) void load(ctx.farmId);
   }
 
   function updateWorkerLocal(patch: Partial<Worker>) {
