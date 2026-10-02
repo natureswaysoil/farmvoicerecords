@@ -209,7 +209,7 @@ Exports include all matching synced records, not just the five displayed in the 
 
 ## 12. Plans and billing
 
-FarmVoice is offered as one farm plan: **$49 per month per farm with unlimited workers**, following a **14-day free trial** with no credit card required. The plan includes the FarmVoice recordkeeping, scheduling, GPS time, Smart Photo Evidence, pesticide, USDA/FSA field, H-2A, housing, payroll-preparation and QuickBooks integration features available in the application.
+FarmVoice Core is **$49 per month per farm with unlimited workers**, following a **14-day free trial** with no credit card required. Core includes farm recordkeeping, scheduling, GPS time, one-phone crew records, Smart Photo Evidence, pesticide records, USDA/FSA fields, Ask FarmVoice, inspection packages, payroll preparation and QuickBooks integration. H-2A workforce and housing is a separate **$149 per month per farm** add-on.
 
 FarmVoice Core includes **100 GB of farm photo and document storage**, designed to cover most farms including thousands of job photos and years of workforce and field records. Usage beyond the included storage may require an additional storage plan.
 
