@@ -71,23 +71,25 @@ export default function InspectionPackagePage() {
         return query.range(from, to);
       });
 
-      const recordIds = new Set(recordRows.map((row) => row.id));
-      const allEvidence = recordIds.size
-        ? await collectPages<Evidence>((from, to) =>
-            supabase
-              .from("farm_photo_evidence")
-              .select("id,record_id,file_name,category,captured_at")
-              .eq("farm_id", farmId)
-              .eq("module", "records")
-              .eq("record_type", "farm_record")
-              .order("captured_at", { ascending: false })
-              .order("id", { ascending: false })
-              .range(from, to),
-          )
-        : [];
-      const evidenceRows = allEvidence.filter((item) =>
-        recordIds.has(item.record_id),
-      );
+      const recordIds = recordRows.map((row) => row.id);
+      const evidenceRows: Evidence[] = [];
+      const evidenceChunkSize = 100;
+      for (let offset = 0; offset < recordIds.length; offset += evidenceChunkSize) {
+        const ids = recordIds.slice(offset, offset + evidenceChunkSize);
+        const chunk = await collectPages<Evidence>((from, to) =>
+          supabase
+            .from("farm_photo_evidence")
+            .select("id,record_id,file_name,category,captured_at")
+            .eq("farm_id", farmId)
+            .eq("module", "records")
+            .eq("record_type", "farm_record")
+            .in("record_id", ids)
+            .order("captured_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, to),
+        );
+        evidenceRows.push(...chunk);
+      }
 
       setRecords(recordRows);
       setEvidence(evidenceRows);
