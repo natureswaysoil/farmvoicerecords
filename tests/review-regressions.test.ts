@@ -201,22 +201,21 @@ test("H-2A reconnect holds the shared evidence mutex through reconciliation", as
 
 test("evidence creation cannot interleave with H-2A reconciliation for the same farm/account", async () => {
   let releaseDatabase!: () => void;
+  let markReconciliationEntered!: () => void;
   const databaseGate = new Promise<void>((resolve) => { releaseDatabase = resolve; });
-  let remapFinished = false;
-  let databaseStarted = false;
+  const reconciliationEntered = new Promise<void>((resolve) => {
+    markReconciliationEntered = resolve;
+  });
   let databaseFinished = false;
   let evidenceCreationStarted = false;
 
   const reconciliation = withEvidenceSerialization("farm-1", "user-1", async () => {
-    remapFinished = true;
-    databaseStarted = true;
+    markReconciliationEntered();
     await databaseGate;
     databaseFinished = true;
   });
 
-  await Promise.resolve();
-  assert.equal(remapFinished, true);
-  assert.equal(databaseStarted, true);
+  await reconciliationEntered;
   assert.equal(databaseFinished, false);
 
   const evidenceCreation = withEvidenceSerialization("farm-1", "user-1", async () => {
@@ -224,7 +223,7 @@ test("evidence creation cannot interleave with H-2A reconciliation for the same 
     assert.equal(databaseFinished, true);
   });
 
-  await Promise.resolve();
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
   assert.equal(evidenceCreationStarted, false);
 
   releaseDatabase();
