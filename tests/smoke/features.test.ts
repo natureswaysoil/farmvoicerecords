@@ -5,7 +5,7 @@ const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3100";
 
 test("public FarmVoice pages render their feature entry points", async () => {
   const pages = [
-    ["/", "Less paperwork. More time for your farm."],
+    ["/", "Farm paperwork without the paperwork."],
     ["/login", "Email and password"],
     ["/signup", "Set your FarmVoice password"],
     ["/billing", "Unlimited workers"],
