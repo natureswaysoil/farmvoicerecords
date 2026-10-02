@@ -50,7 +50,6 @@ export function isRetryableH2aSyncError(error: unknown) {
   const message=String(e?.message ?? "").toLowerCase();
   const status=Number(e?.status ?? 0);
   return (
-    status===0 ||
     status>=500 ||
     /fetch|network|timeout|timed out|connection|offline|load failed|failed to fetch/.test(message)
   );
