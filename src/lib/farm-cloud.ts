@@ -115,10 +115,29 @@ export function rememberFarmSelection(farmId: string) {
   }
 }
 
+export function cachedFarmContexts(userId: string): FarmContext[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(`farmvoice-contexts:${userId}`) ?? "[]") as FarmContext[];
+  } catch {
+    return [];
+  }
+}
+
+export function cachedFields(farmId: string): CloudField[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(`farmvoice-fields:${farmId}`) ?? "[]") as CloudField[];
+  } catch {
+    return [];
+  }
+}
+
 export async function loadCloudFields(
   supabase: SupabaseClient,
   farmId: string,
 ): Promise<CloudField[]> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return cachedFields(farmId);
   const { data, error } = await supabase
     .from("fields")
     .select("*")
@@ -128,7 +147,10 @@ export async function loadCloudFields(
     .order("fsa_field_number");
 
   if (error) throw error;
-  return (data ?? []) as CloudField[];
+  const rows = (data ?? []) as CloudField[];
+  if (typeof window !== "undefined")
+    window.localStorage.setItem(`farmvoice-fields:${farmId}`, JSON.stringify(rows));
+  return rows;
 }
 
 export async function loadCloudFieldHistory(
@@ -149,6 +171,10 @@ export async function loadCloudFieldHistory(
 export async function getNamedFarmContexts(
   supabase: SupabaseClient,
 ): Promise<FarmContext[]> {
+  const { data: session } = await supabase.auth.getSession();
+  const sessionUserId = session.session?.user.id;
+  if (typeof navigator !== "undefined" && !navigator.onLine && sessionUserId)
+    return cachedFarmContexts(sessionUserId);
   const contexts = await getFarmContexts(supabase);
   if (!contexts.length) return contexts;
   const { data } = await supabase
@@ -159,5 +185,8 @@ export async function getNamedFarmContexts(
       contexts.map((c) => c.farmId),
     );
   const names = new Map((data ?? []).map((f) => [f.id, f.name]));
-  return contexts.map((c) => ({ ...c, farmName: names.get(c.farmId) }));
+  const named = contexts.map((c) => ({ ...c, farmName: names.get(c.farmId) }));
+  if (typeof window !== "undefined" && named[0]?.userId)
+    window.localStorage.setItem(`farmvoice-contexts:${named[0].userId}`, JSON.stringify(named));
+  return named;
 }
