@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { getNamedFarmContexts, rememberFarmSelection, type FarmContext } from "@/src/lib/farm-cloud";
 import { recordReviewProblems } from "@/src/lib/ask-farmvoice";
+import { collectPages, csvCell } from "@/src/lib/pagination";
 
 type RecordRow = {
   id: string;
@@ -21,9 +22,6 @@ type Evidence = {
   captured_at: string;
 };
 
-function csvCell(value: unknown) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
-}
 
 export default function InspectionPackagePage() {
   const [supabase] = useState(() => createClient());
@@ -60,32 +58,38 @@ export default function InspectionPackagePage() {
     setMessage("Preparing inspection package...");
     rememberFarmSelection(farmId);
     try {
-      let query = supabase
-        .from("farm_records")
-        .select("id,record_type,status,payload,created_at")
-        .eq("farm_id", farmId)
-        .eq("record_type", "pesticide")
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      if (start) query = query.gte("created_at", new Date(start + "T00:00:00Z").toISOString());
-      if (end) query = query.lte("created_at", new Date(end + "T23:59:59.999Z").toISOString());
-      const { data: recordRows, error: recordError } = await query;
-      if (recordError) throw recordError;
-
-      const ids = (recordRows ?? []).map((row) => row.id);
-      let evidenceRows: Evidence[] = [];
-      if (ids.length) {
-        const { data, error } = await supabase
-          .from("farm_photo_evidence")
-          .select("id,record_id,file_name,category,captured_at")
+      const recordRows = await collectPages<RecordRow>((from, to) => {
+        let query = supabase
+          .from("farm_records")
+          .select("id,record_type,status,payload,created_at")
           .eq("farm_id", farmId)
-          .in("record_id", ids)
-          .order("captured_at", { ascending: false });
-        if (error) throw error;
-        evidenceRows = (data ?? []) as Evidence[];
-      }
+          .eq("record_type", "pesticide")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (start) query = query.gte("created_at", start + "T00:00:00.000Z");
+        if (end) query = query.lte("created_at", end + "T23:59:59.999Z");
+        return query.range(from, to);
+      });
 
-      setRecords((recordRows ?? []) as RecordRow[]);
+      const recordIds = new Set(recordRows.map((row) => row.id));
+      const allEvidence = recordIds.size
+        ? await collectPages<Evidence>((from, to) =>
+            supabase
+              .from("farm_photo_evidence")
+              .select("id,record_id,file_name,category,captured_at")
+              .eq("farm_id", farmId)
+              .eq("module", "records")
+              .eq("record_type", "farm_record")
+              .order("captured_at", { ascending: false })
+              .order("id", { ascending: false })
+              .range(from, to),
+          )
+        : [];
+      const evidenceRows = allEvidence.filter((item) =>
+        recordIds.has(item.record_id),
+      );
+
+      setRecords(recordRows);
       setEvidence(evidenceRows);
       setMessage("");
     } catch (error) {
@@ -132,10 +136,14 @@ export default function InspectionPackagePage() {
         <h1>Prepare Inspection Package</h1>
         <p className="lede">
           Assemble pesticide records and their linked evidence for a date range. Review flagged
-          fields before sharing. FarmVoice does not certify that a packet satisfies every
-          federal, state, label, or inspection requirement.
+          fields before sharing.
         </p>
       </div>
+      <p className="notice">
+        <strong>Important:</strong> FarmVoice does not certify that this packet satisfies every
+        federal, state, label, or inspection requirement. Verify the records before relying on
+        or submitting the package.
+      </p>
 
       <section className="card form no-print">
         {farms.length > 1 && (
@@ -147,8 +155,8 @@ export default function InspectionPackagePage() {
           </div>
         )}
         <div className="row">
-          <div className="field"><label>Start date</label><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
-          <div className="field"><label>End date</label><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+          <div className="field"><label htmlFor="package-start">Start date</label><input id="package-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
+          <div className="field"><label htmlFor="package-end">End date</label><input id="package-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
         </div>
         <div className="inline">
           <button className="btn" onClick={prepare} disabled={loading}>{loading ? "Preparing..." : "Prepare package"}</button>
