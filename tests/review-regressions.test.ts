@@ -138,9 +138,9 @@ test("legacy H-2A v1 queues remain discoverable for migration", async () => {
   assert.match(source, /crypto\.randomUUID\(\)/);
 });
 
-test("H-2A reconciliation skips identical ids and batches inserts", async () => {
+test("H-2A reconciliation skips only identical ids with identical payloads and batches inserts", async () => {
   const source = await readFile(new URL("../src/lib/h2a-offline.ts", import.meta.url), "utf8");
-  assert.match(source, /if \(serverId===row\.id\) continue/);
+  assert.match(source, /if \(serverId===row\.id && sameMutablePayload\(existing,row\)\) continue/);
   assert.match(source, /\.in\("worker_id",workerIds\)/);
   assert.match(source, /\.in\("work_date",workDates\)/);
   assert.match(source, /\.insert\(inserts\)/);
