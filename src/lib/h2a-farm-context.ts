@@ -4,6 +4,17 @@ import { getFarmContexts, rememberFarmSelection, type FarmContext } from "@/src/
 export type H2aFarmChoice = FarmContext & { name: string };
 
 export async function loadH2aFarmChoices(supabase: SupabaseClient): Promise<H2aFarmChoice[]> {
+  const { data: session } = await supabase.auth.getSession();
+  const userId = session.session?.user.id;
+  const cacheKey = userId ? `farmvoice-h2a-farms:${userId}` : "";
+  if (typeof navigator !== "undefined" && !navigator.onLine && cacheKey) {
+    try {
+      return JSON.parse(localStorage.getItem(cacheKey) ?? "[]") as H2aFarmChoice[];
+    } catch {
+      return [];
+    }
+  }
+
   const contexts = await getFarmContexts(supabase);
   if (!contexts.length) return [];
 
@@ -12,7 +23,9 @@ export async function loadH2aFarmChoices(supabase: SupabaseClient): Promise<H2aF
   if (error) throw error;
 
   const names = new Map((data ?? []).map((row) => [row.id as string, row.name as string]));
-  return contexts.map((c) => ({ ...c, name: names.get(c.farmId) ?? "Farm" }));
+  const choices = contexts.map((c) => ({ ...c, name: names.get(c.farmId) ?? "Farm" }));
+  if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(choices));
+  return choices;
 }
 
 export function pickH2aFarm(choices: H2aFarmChoice[]): H2aFarmChoice | null {
