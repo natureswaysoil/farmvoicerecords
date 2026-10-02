@@ -130,10 +130,12 @@ export function cachedFarmContexts(userId: string): FarmContext[] {
   }
 }
 
-export function cachedFields(farmId: string): CloudField[] {
+export function cachedFields(userId: string, farmId: string): CloudField[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(window.localStorage.getItem(`farmvoice-fields:${farmId}`) ?? "[]") as CloudField[];
+    return JSON.parse(
+      window.localStorage.getItem(`farmvoice-fields:${userId}:${farmId}`) ?? "[]",
+    ) as CloudField[];
   } catch {
     return [];
   }
@@ -143,7 +145,11 @@ export async function loadCloudFields(
   supabase: SupabaseClient,
   farmId: string,
 ): Promise<CloudField[]> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return cachedFields(farmId);
+  const { data: session } = await supabase.auth.getSession();
+  const userId = session.session?.user.id;
+  if (!userId) return [];
+  if (typeof navigator !== "undefined" && !navigator.onLine)
+    return cachedFields(userId, farmId);
   const { data, error } = await supabase
     .from("fields")
     .select("*")
@@ -155,7 +161,10 @@ export async function loadCloudFields(
   if (error) throw error;
   const rows = (data ?? []) as CloudField[];
   if (typeof window !== "undefined")
-    window.localStorage.setItem(`farmvoice-fields:${farmId}`, JSON.stringify(rows));
+    window.localStorage.setItem(
+      `farmvoice-fields:${userId}:${farmId}`,
+      JSON.stringify(rows),
+    );
   return rows;
 }
 
