@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { collectPages } from "@/src/lib/pagination";
 import {
-  queueEvidence,
+  queueEvidenceWithinLock,
   queuedEvidence,
   syncEvidence,
+  withEvidenceSerialization,
   type QueuedEvidence,
 } from "@/src/lib/evidence-offline";
 
@@ -178,8 +179,8 @@ export default function SmartPhotoEvidence(p: Props) {
     win.location.assign(data.signedUrl);
   }
 
-  async function saveOffline(item: QueuedEvidence) {
-    await queueEvidence(item);
+  async function saveOfflineWithinLock(item: QueuedEvidence) {
+    await queueEvidenceWithinLock(item);
     await refreshPending();
     p.onUploaded?.(item.storagePath);
     p.onMessage?.("Evidence saved on this device. It will upload automatically when service returns.");
@@ -220,12 +221,13 @@ export default function SmartPhotoEvidence(p: Props) {
 
     let uploaded = false;
     try {
-      if (!navigator.onLine) {
-        await saveOffline(item);
-        return;
-      }
+      await withEvidenceSerialization(p.farmId, p.userId, async () => {
+        if (!navigator.onLine) {
+          await saveOfflineWithinLock(item);
+          return;
+        }
 
-      const up = await supabase.storage
+        const up = await supabase.storage
         .from("farm-photo-evidence")
         .upload(path, file, { cacheControl: "3600", upsert: false });
       if (up.error) throw new Error(up.error.message);
@@ -253,20 +255,23 @@ export default function SmartPhotoEvidence(p: Props) {
           gps_captured_at: p.gps?.capturedAt ?? null,
           metadata: p.metadata ?? {},
         });
-      if (row.error) throw new Error(row.error.message);
+        if (row.error) throw new Error(row.error.message);
 
-      p.onUploaded?.(path);
-      p.onMessage?.("Photo filed with this record. Use View files to open it.");
-      setExpanded(true);
-      setRefresh((n) => n + 1);
+        p.onUploaded?.(path);
+        p.onMessage?.("Photo filed with this record. Use View files to open it.");
+        setExpanded(true);
+        setRefresh((n) => n + 1);
+      });
     } catch (e) {
-      if (uploaded) {
-        try {
-          await supabase.storage.from("farm-photo-evidence").remove([path]);
-        } catch {}
-      }
       try {
-        await saveOffline(item);
+        await withEvidenceSerialization(p.farmId, p.userId, async () => {
+          if (uploaded) {
+            try {
+              await supabase.storage.from("farm-photo-evidence").remove([path]);
+            } catch {}
+          }
+          await saveOfflineWithinLock(item);
+        });
       } catch {
         p.onMessage?.(
           e instanceof Error ? e.message : "Unable to save photo evidence.",
