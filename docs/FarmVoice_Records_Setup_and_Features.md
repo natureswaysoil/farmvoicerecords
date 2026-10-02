@@ -14,7 +14,7 @@ This guide describes the current application. It separates working features from
 - An individual email address for each person using the service.
 - Internet access for initial sign-in, joining a farm, scheduling, time-clock requests, photo uploads and syncing records.
 - Microphone permission for voice notes and location permission for GPS capture.
-- Farm Team or Farm Pro for paid crew scheduling, GPS time, job photos and time approvals. Essential is for one user.
+- FarmVoice Core for crew scheduling, GPS time, job photos, time approvals, Ask FarmVoice and inspection packages. Core is $49/month per farm with unlimited workers; H-2A is a separate add-on.
 
 Speech recognition depends on the device and browser. If the microphone feature is unavailable, type the note instead. Opening the website does not continuously track a worker’s location.
 
@@ -211,7 +211,7 @@ Exports include all matching synced records, not just the five displayed in the 
 
 FarmVoice is offered as one farm plan: **$49 per month per farm with unlimited workers**, following a **14-day free trial** with no credit card required. The plan includes the FarmVoice recordkeeping, scheduling, GPS time, Smart Photo Evidence, pesticide, USDA/FSA field, H-2A, housing, payroll-preparation and QuickBooks integration features available in the application.
 
-The plan includes **10 GB of farm photo and document storage**, designed to cover most farms including thousands of job photos and years of workforce and field records. Usage beyond the included storage may require an additional storage plan.
+FarmVoice Core includes **100 GB of farm photo and document storage**, designed to cover most farms including thousands of job photos and years of workforce and field records. Usage beyond the included storage may require an additional storage plan.
 
 Open https://farmvoicerecords.com/billing to review the current offer. Billing should identify Nature’s Way Soil & Vermicompost LLC. If subscription management does not open, contact support rather than starting a second subscription. Trial cutoff enforcement and billing-portal readiness require an owner launch review; do not assume every billing workflow has been verified end to end.
 
@@ -253,7 +253,7 @@ Not currently provided: native app-store installation; full offline operation; f
 | Save button disabled | Stop recording first. For pesticide records, review the treated field and check its confirmation box. |
 | Record stays a draft | Fill the missing required fields; do not invent application details just to clear the warnings. |
 | Record missing on another device | Check the original device’s queue and sync it. Verify you are signed into the same farm. |
-| Crew feature unavailable | Check the farm plan; paid crew features require Farm Team or Farm Pro. |
+| Crew feature unavailable | Check that the farm has an active FarmVoice Core trial or subscription. |
 | Employee cannot join | Check user limits and whether the employee already belongs to another farm. |
 | Billing management fails | Email support. Avoid creating another paid subscription as a workaround. |
 | Page looks outdated | Sync outstanding work first, then refresh or reopen the current website link. Do not clear browser data while unsynced records remain. |
