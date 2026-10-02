@@ -16,16 +16,21 @@ import { cachedFields } from "../src/lib/farm-cloud.ts";
 
 function installStorage() {
   const map = new Map<string,string>();
+  const storage = {
+    get length(){ return map.size; },
+    key(i:number){ return [...map.keys()][i] ?? null; },
+    getItem(k:string){ return map.get(k) ?? null; },
+    setItem(k:string,v:string){ map.set(k,String(v)); },
+    removeItem(k:string){ map.delete(k); },
+    clear(){ map.clear(); },
+  };
   Object.defineProperty(globalThis,"localStorage",{
     configurable:true,
-    value:{
-      get length(){ return map.size; },
-      key(i:number){ return [...map.keys()][i] ?? null; },
-      getItem(k:string){ return map.get(k) ?? null; },
-      setItem(k:string,v:string){ map.set(k,String(v)); },
-      removeItem(k:string){ map.delete(k); },
-      clear(){ map.clear(); },
-    },
+    value:storage,
+  });
+  Object.defineProperty(globalThis,"window",{
+    configurable:true,
+    value:{localStorage:storage},
   });
 }
 
