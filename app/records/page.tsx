@@ -210,7 +210,26 @@ export default function RecordsPage() {
         queuedRecords(current.userId).filter((r) => r.farmId === current.farmId)
           .length,
       );
-      if (!navigator.onLine) return;
+      if (!navigator.onLine) {
+        try {
+          const cachedRecent = JSON.parse(
+            localStorage.getItem(`farmvoice-recent-records:${current.farmId}`) ?? "[]",
+          );
+          const cachedFields = await loadCloudFields(supabase, current.farmId);
+          if (active) {
+            setFields(cachedFields);
+            setRecent(cachedRecent);
+            setMessage(
+              pending
+                ? `Offline mode: ${pending} record(s) waiting to sync.`
+                : "Offline mode: cached fields and recent records are available.",
+            );
+          }
+        } catch {
+          if (active) setMessage("Offline mode is available, but no cached records were found yet.");
+        }
+        return;
+      }
       try {
         try {
           await syncRecords(current.userId, current.farmId);
@@ -234,7 +253,12 @@ export default function RecordsPage() {
         if (active) {
           setFields(f);
           if (r.error) throw r.error;
-          setRecent(r.data ?? []);
+          const recentRows = r.data ?? [];
+          setRecent(recentRows);
+          localStorage.setItem(
+            `farmvoice-recent-records:${current.farmId}`,
+            JSON.stringify(recentRows),
+          );
           setEditing((previous) => {
             if (
               !previous ||
