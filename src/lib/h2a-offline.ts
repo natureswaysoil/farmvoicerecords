@@ -163,7 +163,7 @@ export async function saveH2aDailyRows(
     .in("work_date",workDates);
   if (existingResult.error) throw existingResult.error;
 
-  const existingByKey=new Map(
+  const existingByKey=new Map<string,string>(
     (existingResult.data ?? []).map((row:any)=>[
       `${row.worker_id}:${row.work_date}`,
       String(row.id),
