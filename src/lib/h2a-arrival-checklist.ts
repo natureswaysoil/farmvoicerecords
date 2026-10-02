@@ -46,6 +46,17 @@ function addBusinessDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
+function contractMidpoint(context: WorkerChecklistContext) {
+  if (!context.contractStart || !context.contractEnd) return null;
+  const start = new Date(context.contractStart + "T12:00:00.000Z");
+  const end = new Date(context.contractEnd + "T12:00:00.000Z");
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()))
+    return null;
+  return new Date((start.getTime() + end.getTime()) / 2)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export const WORKER_ARRIVAL_CHECKLIST: ChecklistDefinition[] = [
   {
     key: "work_contract_disclosed",
@@ -229,6 +240,7 @@ export const WORKER_ARRIVAL_CHECKLIST: ChecklistDefinition[] = [
     sourceLabel: "DOL travel/subsistence guidance",
     sourceUrl: DOL_TRAVEL,
     defaultStatus: "due_later",
+    dueOn: (context) => contractMidpoint(context),
   },
   {
     key: "workers_comp",
@@ -300,6 +312,7 @@ export const WORKER_ARRIVAL_CHECKLIST: ChecklistDefinition[] = [
     sourceLabel: "DOL H-2A Worker Rights",
     sourceUrl: DOL_WORKERS,
     defaultStatus: "due_later",
+    dueOn: (context) => context.contractStart ?? context.firstWorkDate ?? null,
   },
 ];
 
