@@ -97,7 +97,13 @@ export async function getFarmContext(
   supabase: SupabaseClient,
   preferredFarmId?: string | null,
 ): Promise<FarmContext | null> {
-  const contexts = await getFarmContexts(supabase);
+  let contexts: FarmContext[];
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    const { data } = await supabase.auth.getSession();
+    contexts = data.session?.user ? cachedFarmContexts(data.session.user.id) : [];
+  } else {
+    contexts = await getFarmContexts(supabase);
+  }
   if (!contexts.length) return null;
 
   const selected =
