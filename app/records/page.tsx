@@ -213,7 +213,9 @@ export default function RecordsPage() {
       if (!navigator.onLine) {
         try {
           const cachedRecent = JSON.parse(
-            localStorage.getItem(`farmvoice-recent-records:${current.farmId}`) ?? "[]",
+            localStorage.getItem(
+              `farmvoice-recent-records:${current.userId}:${current.farmId}`,
+            ) ?? "[]",
           );
           const cachedFields = await loadCloudFields(supabase, current.farmId);
           if (active) {
@@ -256,7 +258,7 @@ export default function RecordsPage() {
           const recentRows = r.data ?? [];
           setRecent(recentRows);
           localStorage.setItem(
-            `farmvoice-recent-records:${current.farmId}`,
+            `farmvoice-recent-records:${current.userId}:${current.farmId}`,
             JSON.stringify(recentRows),
           );
           setEditing((previous) => {
