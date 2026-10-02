@@ -1,5 +1,3 @@
-import { remapQueuedEvidenceRecordId } from "./evidence-offline";
-
 export type H2aDailyRow = Record<string, unknown> & {
   id: string;
   farm_id: string;
@@ -55,11 +53,19 @@ export function isRetryableH2aSyncError(error: unknown) {
   );
 }
 
+export type EvidenceRecordRemapper = (
+  farmId:string,
+  userId:string,
+  fromRecordId:string,
+  toRecordId:string,
+) => Promise<number>;
+
 export async function saveH2aDailyRows(
   supabase:any,
   userId:string,
   farmId:string,
   rows:H2aDailyRow[],
+  remapEvidence?: EvidenceRecordRemapper,
 ) {
   for (const row of rows) {
     const lookup=await supabase
@@ -82,8 +88,8 @@ export async function saveH2aDailyRows(
         .select("id");
       if (update.error) throw update.error;
       if (!update.data?.length) throw new Error("H-2A daily record update could not be reconciled.");
-      if (serverId!==localId)
-        await remapQueuedEvidenceRecordId(farmId,userId,localId,serverId);
+      if (serverId!==localId && remapEvidence)
+        await remapEvidence(farmId,userId,localId,serverId);
     } else {
       const insert=await supabase
         .from("h2a_daily_records")
@@ -95,9 +101,14 @@ export async function saveH2aDailyRows(
   }
 }
 
-export async function syncH2aDailyBatches(supabase:any,userId:string,farmId:string) {
+export async function syncH2aDailyBatches(
+  supabase:any,
+  userId:string,
+  farmId:string,
+  remapEvidence?: EvidenceRecordRemapper,
+) {
   for (const batch of h2aDailyBatches(userId,farmId)) {
-    await saveH2aDailyRows(supabase,userId,farmId,batch.rows);
+    await saveH2aDailyRows(supabase,userId,farmId,batch.rows,remapEvidence);
     removeH2aDailyBatch(batch);
   }
 }
