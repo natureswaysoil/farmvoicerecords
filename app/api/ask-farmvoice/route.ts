@@ -6,8 +6,8 @@ import {
   apiError,
 } from "@/src/lib/access-server";
 import {
-  ASK_FARMVOICE_PROMPTS,
   completedHours,
+  crewEntryHours,
   normalizedField,
   recordReviewProblems,
   scheduledHours,
@@ -127,14 +127,32 @@ export async function POST(request: Request) {
         .limit(2000);
       if (start) timeQuery = timeQuery.gte("clock_in", start);
       if (end) timeQuery = timeQuery.lte("clock_in", end);
-      const { data: timeRows, error: timeError } = await timeQuery;
+      let crewQuery = supabase
+        .from("crew_time_entries")
+        .select("id,clock_in,clock_out,break_minutes,approval_status")
+        .eq("farm_id", body.farmId)
+        .order("clock_in", { ascending: false })
+        .limit(5000);
+      if (start) crewQuery = crewQuery.gte("clock_in", start);
+      if (end) crewQuery = crewQuery.lte("clock_in", end);
+      const [
+        { data: timeRows, error: timeError },
+        { data: crewRows, error: crewError },
+      ] = await Promise.all([timeQuery, crewQuery]);
       if (timeError) throw timeError;
-      const actual = completedHours(timeRows ?? []);
+      if (crewError) throw crewError;
+      const individualHours = completedHours(timeRows ?? []);
+      const onePhoneCrewHours = crewEntryHours(crewRows ?? []);
+      const actual = individualHours + onePhoneCrewHours;
       if (body.promptId === "crew_hours") {
         return Response.json({
           title: "Crew hours",
           answer: `${actual.toFixed(2)} completed crew hours were recorded in ${dateRangeLabel(body.start, body.end)}.`,
-          metrics: [{ label: "Completed hours", value: actual.toFixed(2) }],
+          metrics: [
+            { label: "Total completed", value: actual.toFixed(2) },
+            { label: "Individual clock", value: individualHours.toFixed(2) },
+            { label: "One-phone crew", value: onePhoneCrewHours.toFixed(2) },
+          ],
           note: "Open Team to review pending, approved, or rejected entries before payroll export.",
         });
       }
@@ -208,8 +226,8 @@ export async function POST(request: Request) {
       supabase.from("h2a_daily_records").select("id,work_date,approved_at,locked_at").eq("farm_id", body.farmId).order("work_date", { ascending: false }).limit(500),
       supabase.from("h2a_documents").select("id,title,document_type,expires_on").eq("farm_id", body.farmId),
     ]);
-    if (workerError || housingError || dailyError || documentError)
-      throw workerError ?? housingError ?? dailyError ?? documentError;
+    const dataError = workerError ?? housingError ?? dailyError ?? documentError;
+    if (dataError) throw dataError;
 
     const items: Array<{ id: string; type: string; date?: string | null; detail: string }> = [];
     for (const worker of workers ?? []) {
