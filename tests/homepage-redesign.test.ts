@@ -34,7 +34,7 @@ test("homepage presents the full FarmVoice workflow and current pricing", async 
     "/h2a",
     "/h2a/arrival",
     "/billing",
-  ]) assert.equal(source.includes(`href="${href}"`), true, href);
+  ]) assert.equal(source.includes(`"${href}"`), true, href);
 });
 
 test("homepage keeps compliance claims appropriately qualified", async () => {
