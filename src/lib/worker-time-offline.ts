@@ -52,7 +52,7 @@ export async function syncWorkerTimes(
 ) {
   for (const row of queuedWorkerTimes(userId,farmId)) {
     if (row.mode === "insert") {
-      const { error } = await supabase.from("time_entries").upsert({
+      const { error } = await supabase.from("time_entries").insert({
         id: row.id,
         farm_id: farmId,
         worker_user_id: userId,
@@ -67,8 +67,28 @@ export async function syncWorkerTimes(
         clock_out_lng: row.clockOutLng,
         clock_out_accuracy_m: row.clockOutAccuracyM,
         approval_status: "pending",
-      }, { onConflict: "id" });
-      if (error) throw error;
+      });
+      if (error) {
+        const existing = await supabase.from("time_entries")
+          .select("id,worker_user_id,farm_id,clock_in,clock_out")
+          .eq("id",row.id).maybeSingle();
+        if (
+          existing.error ||
+          !existing.data ||
+          existing.data.worker_user_id !== userId ||
+          existing.data.farm_id !== farmId ||
+          existing.data.clock_in !== row.clockIn
+        ) throw error;
+        if (row.clockOut && !existing.data.clock_out) {
+          const complete = await supabase.from("time_entries").update({
+            clock_out: row.clockOut,
+            clock_out_lat: row.clockOutLat,
+            clock_out_lng: row.clockOutLng,
+            clock_out_accuracy_m: row.clockOutAccuracyM,
+          }).eq("id",row.id).eq("worker_user_id",userId).is("clock_out",null);
+          if (complete.error) throw complete.error;
+        }
+      }
     } else {
       if (!row.clockOut) continue;
       const { data, error } = await supabase
