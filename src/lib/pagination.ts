@@ -17,6 +17,29 @@ export async function collectPages<T>(
     rows.push(...data);
   }
 }
+export async function collectChunkedPages<T, K>(
+  values: K[],
+  fetchPage: (
+    chunk: K[],
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  chunkSize = 100,
+  pageSize = 500,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let offset = 0; offset < values.length; offset += chunkSize) {
+    const chunk = values.slice(offset, offset + chunkSize);
+    rows.push(
+      ...(await collectPages<T>(
+        (from, to) => fetchPage(chunk, from, to),
+        pageSize,
+      )),
+    );
+  }
+  return rows;
+}
+
 export function csvCell(value: unknown) {
   let text = String(value ?? "");
   if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text;
