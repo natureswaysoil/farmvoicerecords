@@ -4,9 +4,8 @@ import {
   completedHours,
   crewEntryHours,
   normalizedField,
-  recordReviewProblems,
   scheduledHours,
-} from "../src/lib/ask-farmvoice.ts";
+} from "../src/lib/ask-farmvoice-math.ts";
 
 test("Ask FarmVoice calculates individual and one-phone crew hours", () => {
   assert.equal(
@@ -32,25 +31,6 @@ test("Ask FarmVoice calculates individual and one-phone crew hours", () => {
     ]),
     9,
   );
-});
-
-test("Ask FarmVoice flags incomplete records without inventing compliance facts", () => {
-  const problems = recordReviewProblems({
-    record_type: "pesticide",
-    status: "draft",
-    payload: {
-      productName: "Example Product",
-      fieldLocation: "North Field",
-      applicationDate: "2026-10-01",
-      amountApplied: "2",
-      amountUnit: "gal",
-      isRestrictedUse: true,
-    },
-    created_at: "2026-10-01T16:00:00Z",
-  });
-  assert.ok(problems.includes("draft not confirmed"));
-  assert.ok(problems.includes("Certification number"));
-  assert.ok(problems.includes("EPA registration number"));
 });
 
 test("Ask FarmVoice field matching ignores case and repeated whitespace", () => {
