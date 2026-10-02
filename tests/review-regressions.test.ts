@@ -5,6 +5,7 @@ import vm from "node:vm";
 import { validCaptureTime } from "../src/lib/records/receipt.ts";
 import { purchaseProblems } from "../src/lib/records/schema.ts";
 import { collectChunkedPages } from "../src/lib/pagination.ts";
+import { withEvidenceSerialization } from "../src/lib/evidence-offline.ts";
 
 test("purchase quantities must be finite and positive", () => {
   for (const quantity of ["Infinity", "-Infinity", "1e999", "NaN", "0", "-1"])
@@ -195,4 +196,49 @@ test("H-2A reconnect holds the shared evidence mutex through reconciliation", as
   assert.match(source, /withEvidenceSerialization/);
   assert.match(source, /syncH2aDailyBatches\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
   assert.match(source, /saveH2aDailyRows\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
+});
+
+
+test("evidence creation cannot interleave with H-2A reconciliation for the same farm/account", async () => {
+  let releaseDatabase!: () => void;
+  const databaseGate = new Promise<void>((resolve) => { releaseDatabase = resolve; });
+  let remapFinished = false;
+  let databaseStarted = false;
+  let databaseFinished = false;
+  let evidenceCreationStarted = false;
+
+  const reconciliation = withEvidenceSerialization("farm-1", "user-1", async () => {
+    remapFinished = true;
+    databaseStarted = true;
+    await databaseGate;
+    databaseFinished = true;
+  });
+
+  await Promise.resolve();
+  assert.equal(remapFinished, true);
+  assert.equal(databaseStarted, true);
+  assert.equal(databaseFinished, false);
+
+  const evidenceCreation = withEvidenceSerialization("farm-1", "user-1", async () => {
+    evidenceCreationStarted = true;
+    assert.equal(databaseFinished, true);
+  });
+
+  await Promise.resolve();
+  assert.equal(evidenceCreationStarted, false);
+
+  releaseDatabase();
+  await reconciliation;
+  await evidenceCreation;
+  assert.equal(evidenceCreationStarted, true);
+});
+
+test("SmartPhotoEvidence serializes both offline queueing and online upload creation", async () => {
+  const source = await readFile(
+    new URL("../src/components/smart-photo-evidence.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /withEvidenceSerialization\(p\.farmId, p\.userId, async \(\) =>/);
+  assert.match(source, /queueEvidenceWithinLock/);
+  assert.match(source, /storage[\s\S]*\.upload\(path, file/);
 });
