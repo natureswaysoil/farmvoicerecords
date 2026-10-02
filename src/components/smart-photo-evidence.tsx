@@ -189,6 +189,12 @@ export default function SmartPhotoEvidence(p: Props) {
 
   async function upload(file?: File) {
     if (!file || busy) return;
+    if (file.size > 10 * 1024 * 1024) {
+      p.onMessage?.("Choose a photo or PDF under 10 MB.");
+      if (camera.current) camera.current.value = "";
+      if (library.current) library.current.value = "";
+      return;
+    }
     setBusy(true);
     const id = crypto.randomUUID();
     const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-") || "photo.jpg";
@@ -214,9 +220,6 @@ export default function SmartPhotoEvidence(p: Props) {
 
     let uploaded = false;
     try {
-      if (file.size > 10 * 1024 * 1024)
-        throw new Error("Choose a photo or PDF under 10 MB.");
-
       if (!navigator.onLine) {
         await saveOffline(item);
         return;
