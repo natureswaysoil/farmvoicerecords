@@ -160,7 +160,7 @@ export const helpItems: HelpItem[] = [
     category: "H-2A",
     question: "What H-2A records can FarmVoice keep?",
     answer:
-      "The H-2A add-on includes contracts, worker rosters, daily crew records, hours offered/worked, piecework, housing, transportation, training, recruitment, separations, wage history, payroll worksheets, acknowledgments, documents, audit exports, and supporting photo evidence. It requires FarmVoice Core.",
+      "The H-2A add-on includes contracts, worker rosters, incoming-worker and farm-readiness checklists, daily crew records, hours offered/worked, piecework, housing, transportation, training, recruitment, separations, wage history, payroll worksheets, acknowledgments, documents, audit exports, and supporting photo evidence. It requires FarmVoice Core.",
     href: "/h2a",
     linkLabel: "Open H-2A",
     keywords: [
