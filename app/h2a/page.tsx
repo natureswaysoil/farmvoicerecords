@@ -66,6 +66,34 @@ type DailyRecord = {
   approved_at: string | null;
 };
 
+function queuedDailyForDisplay(row: H2aDailyRow): DailyRecord {
+  const text = (value: unknown) => {
+    const s = String(value ?? "").trim();
+    return s || null;
+  };
+  const numberOrNull = (value: unknown) =>
+    value == null || value === "" ? null : Number(value);
+  return {
+    id: row.id,
+    worker_id: row.worker_id,
+    work_date: row.work_date,
+    crew_name: text(row.crew_name),
+    worksite: text(row.worksite),
+    field_name: text(row.field_name),
+    job: text(row.job),
+    hours_offered: Number(row.hours_offered ?? 0),
+    hours_worked: Number(row.hours_worked ?? 0),
+    shift_minutes: numberOrNull(row.shift_minutes),
+    paid_break_minutes: numberOrNull(row.paid_break_minutes),
+    break_minutes: Number(row.break_minutes ?? 0),
+    piece_unit: text(row.piece_unit),
+    piece_quantity: numberOrNull(row.piece_quantity),
+    submitted_at: String(row.submitted_at ?? new Date().toISOString()),
+    locked_at: text(row.locked_at),
+    approved_at: text(row.approved_at),
+  };
+}
+
 type Housing = {
   id: string;
   name: string;
@@ -391,11 +419,13 @@ export default function H2APage() {
         queuedAt: new Date().toISOString(),
         rows,
       });
-      const localRows = rows.map((row) => ({
-        ...row,
-        submitted_at: new Date().toISOString(),
-        approved_at: null,
-      })) as DailyRecord[];
+      const localRows = rows.map((row) =>
+        queuedDailyForDisplay({
+          ...row,
+          submitted_at: new Date().toISOString(),
+          approved_at: null,
+        }),
+      );
       setDaily((current) => [...localRows, ...current.filter((x) => !localRows.some((y) => y.worker_id === x.worker_id && y.work_date === x.work_date))]);
       setOfflinePending(h2aDailyBatches(ctx.userId, ctx.farmId).length);
       setSelectedWorkers({});
@@ -429,11 +459,13 @@ export default function H2APage() {
         setSelectedWorkers({});
         setPieceCounts({});
         setDaily((current) => [
-          ...rows.map((row) => ({
-            ...row,
-            submitted_at: new Date().toISOString(),
-            approved_at: null,
-          }) as DailyRecord),
+          ...rows.map((row) =>
+            queuedDailyForDisplay({
+              ...row,
+              submitted_at: new Date().toISOString(),
+              approved_at: null,
+            }),
+          ),
           ...current.filter(
             (x) => !rows.some((row) => row.worker_id === x.worker_id && row.work_date === x.work_date),
           ),
