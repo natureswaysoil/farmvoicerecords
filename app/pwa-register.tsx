@@ -11,6 +11,7 @@ const CACHEABLE = new Set([
   "/team/crew",
   "/worker",
   "/h2a",
+  "/h2a/arrival",
   "/h2a/housing",
   "/offline",
 ]);
