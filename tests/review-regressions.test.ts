@@ -62,3 +62,49 @@ test("concurrent identical record deliveries both succeed", async () => {
   assert.deepEqual(responses.map(response => response.status), [200, 200]);
   assert.equal(inserts, 2);
 });
+
+
+test("offline field shells can be proactively cached after client navigation", async () => {
+  const [sw, register] = await Promise.all([
+    readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/pwa-register.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(sw, /CACHE_SHELL/);
+  assert.match(sw, /addEventListener\("message"/);
+  assert.match(register, /postMessage\(\{ type: "CACHE_SHELL", path: pathname \}\)/);
+  for (const path of ["/fields","/team","/worker","/h2a","/h2a/housing"])
+    assert.ok(register.includes(`"${path}"`));
+});
+
+test("H-2A cache and recent-record cache include the account id", async () => {
+  const [h2a, records] = await Promise.all([
+    readFile(new URL("../app/h2a/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/records/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(h2a, /farmvoice-h2a-cache:\$\{userId\}:\$\{farmId\}/);
+  assert.doesNotMatch(h2a, /farmvoice-h2a-cache:\$\{farmId\}/);
+  assert.match(records, /farmvoice-recent-records:\$\{current\.userId\}:\$\{current\.farmId\}/);
+});
+
+test("offline H-2A daily rows use UUID ids that evidence can reference", async () => {
+  const h2a = await readFile(new URL("../app/h2a/page.tsx", import.meta.url), "utf8");
+  assert.match(h2a, /id: existing\?\.id \?\? crypto\.randomUUID\(\)/);
+  assert.doesNotMatch(h2a, /id: `offline-/);
+});
+
+test("oversized evidence is rejected before offline fallback", async () => {
+  const source = await readFile(new URL("../src/components/smart-photo-evidence.tsx", import.meta.url), "utf8");
+  const sizeGuard = source.indexOf("file.size > 10 * 1024 * 1024");
+  const tryBlock = source.indexOf("try {", sizeGuard);
+  const offlineBranch = source.indexOf("if (!navigator.onLine)", sizeGuard);
+  assert.ok(sizeGuard >= 0);
+  assert.ok(tryBlock > sizeGuard);
+  assert.ok(offlineBranch > tryBlock);
+});
+
+test("evidence synchronization is single-flight per account and farm", async () => {
+  const source = await readFile(new URL("../src/lib/evidence-offline.ts", import.meta.url), "utf8");
+  assert.match(source, /const syncFlights = new Map/);
+  assert.match(source, /const existing=syncFlights\.get\(key\)/);
+  assert.match(source, /syncFlights\.set\(key,flight\)/);
+});
