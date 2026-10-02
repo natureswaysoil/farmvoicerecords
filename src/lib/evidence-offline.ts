@@ -29,7 +29,7 @@ function db():Promise<IDBDatabase>{
   });
 }
 
-function serializeEvidence<T>(
+export function withEvidenceSerialization<T>(
   farmId:string,
   userId:string,
   operation:()=>Promise<T>,
@@ -82,7 +82,7 @@ async function removeEvidence(id:string){
   database.close();
 }
 
-async function remapQueuedEvidenceRecordIdUnlocked(
+export async function remapQueuedEvidenceRecordIdWithinLock(
   farmId:string,
   userId:string,
   fromRecordId:string,
@@ -127,10 +127,10 @@ export function remapQueuedEvidenceRecordId(
   fromRecordId:string,
   toRecordId:string,
 ){
-  return serializeEvidence(
+  return withEvidenceSerialization(
     farmId,
     userId,
-    ()=>remapQueuedEvidenceRecordIdUnlocked(farmId,userId,fromRecordId,toRecordId),
+    ()=>remapQueuedEvidenceRecordIdWithinLock(farmId,userId,fromRecordId,toRecordId),
   );
 }
 
@@ -154,7 +154,7 @@ async function runEvidenceSync(supabase:any,farmId:string,userId:string){
 }
 
 export function syncEvidence(supabase:any,farmId:string,userId:string){
-  return serializeEvidence(
+  return withEvidenceSerialization(
     farmId,
     userId,
     ()=>runEvidenceSync(supabase,farmId,userId),

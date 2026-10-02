@@ -9,7 +9,10 @@ import { createClient } from "@/src/lib/supabase/client";
 import { type FarmContext } from "@/src/lib/farm-cloud";
 import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
 import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
-import { remapQueuedEvidenceRecordId } from "@/src/lib/evidence-offline";
+import {
+  remapQueuedEvidenceRecordIdWithinLock,
+  withEvidenceSerialization,
+} from "@/src/lib/evidence-offline";
 import {
   h2aDailyBatches,
   isRetryableH2aSyncError,
@@ -252,11 +255,16 @@ export default function H2APage() {
       }
 
       try {
-        await syncH2aDailyBatches(
-          supabase,
-          farm.userId,
+        await withEvidenceSerialization(
           farm.farmId,
-          remapQueuedEvidenceRecordId,
+          farm.userId,
+          () =>
+            syncH2aDailyBatches(
+              supabase,
+              farm.userId,
+              farm.farmId,
+              remapQueuedEvidenceRecordIdWithinLock,
+            ),
         );
       } catch (syncError) {
         setMessage(syncError instanceof Error ? syncError.message : "Some H-2A records are still waiting to sync.");
@@ -435,12 +443,17 @@ export default function H2APage() {
     }
 
     try {
-      await saveH2aDailyRows(
-        supabase,
-        ctx.userId,
+      await withEvidenceSerialization(
         ctx.farmId,
-        rows,
-        remapQueuedEvidenceRecordId,
+        ctx.userId,
+        () =>
+          saveH2aDailyRows(
+            supabase,
+            ctx.userId,
+            ctx.farmId,
+            rows,
+            remapQueuedEvidenceRecordIdWithinLock,
+          ),
       );
       setMessage(`Saved and locked ${rows.length} crew records. Later changes require a reason and remain auditable.`);
       setSelectedWorkers({});

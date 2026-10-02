@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import { validCaptureTime } from "../src/lib/records/receipt.ts";
 import { purchaseProblems } from "../src/lib/records/schema.ts";
+import { collectChunkedPages } from "../src/lib/pagination.ts";
 
 test("purchase quantities must be finite and positive", () => {
   for (const quantity of ["Infinity", "-Infinity", "1e999", "NaN", "0", "-1"])
@@ -105,9 +106,9 @@ test("oversized evidence is rejected before offline fallback", async () => {
 test("evidence synchronization and remapping share one account/farm mutex", async () => {
   const source = await readFile(new URL("../src/lib/evidence-offline.ts", import.meta.url), "utf8");
   assert.match(source, /const operationTails = new Map/);
-  assert.match(source, /function serializeEvidence/);
-  assert.match(source, /return serializeEvidence\([\s\S]*remapQueuedEvidenceRecordIdUnlocked/);
-  assert.match(source, /return serializeEvidence\([\s\S]*runEvidenceSync/);
+  assert.match(source, /function withEvidenceSerialization/);
+  assert.match(source, /return withEvidenceSerialization\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
+  assert.match(source, /return withEvidenceSerialization\([\s\S]*runEvidenceSync/);
 });
 
 
@@ -121,7 +122,7 @@ test("Ask FarmVoice validates real dates and pages complete datasets", async () 
 
 test("inspection package uses hardened CSV, complete pagination, printable warning and accessible dates", async () => {
   const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /collectPages, csvCell/);
+  assert.match(source, /collectChunkedPages, collectPages, csvCell/);
   assert.doesNotMatch(source, /function csvCell/);
   assert.doesNotMatch(source, /\.limit\(1000\)/);
   assert.match(source, /<strong>Important:<\/strong> FarmVoice does not certify/);
@@ -158,9 +159,40 @@ test("H-2A follow-up repairs invalid ids, compares payloads, and includes break 
   assert.match(source, /if \(serverId===row\.id && sameMutablePayload\(existing,row\)\) continue/);
 });
 
-test("inspection package fetches evidence only for selected record ids in chunks", async () => {
+test("inspection evidence chunking bounds ids and collects every page", async () => {
+  const ids = Array.from({length:205},(_,i)=>`record-${i}`);
+  const seen = new Map<string,string[]>();
+  const rows = await collectChunkedPages(
+    ids,
+    async (chunk,from,to) => {
+      assert.ok(chunk.length <= 100);
+      const signature = chunk.join(",");
+      if (!seen.has(signature)) seen.set(signature,[...chunk]);
+      return {
+        data: chunk.slice(from,to+1).map((record_id)=>({record_id})),
+        error: null,
+      };
+    },
+    100,
+    37,
+  );
+  assert.equal(seen.size,3);
+  assert.deepEqual([...seen.values()].map((chunk)=>chunk.length),[100,100,5]);
+  assert.equal(rows.length,205);
+  assert.deepEqual(rows.map((row)=>row.record_id),ids);
+});
+
+test("inspection package applies selected ids through the tested chunk helper", async () => {
   const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /const evidenceChunkSize = 100/);
+  assert.match(source, /collectChunkedPages<Evidence, string>/);
   assert.match(source, /\.in\("record_id", ids\)/);
   assert.doesNotMatch(source, /allEvidence/);
+});
+
+
+test("H-2A reconnect holds the shared evidence mutex through reconciliation", async () => {
+  const source = await readFile(new URL("../app/h2a/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /withEvidenceSerialization/);
+  assert.match(source, /syncH2aDailyBatches\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
+  assert.match(source, /saveH2aDailyRows\([\s\S]*remapQueuedEvidenceRecordIdWithinLock/);
 });
