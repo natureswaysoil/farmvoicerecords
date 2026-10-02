@@ -10,6 +10,7 @@ import {
 import {
   h2aDailyBatches,
   isRetryableH2aSyncError,
+  saveH2aDailyRows,
   storeH2aDailyBatch,
 } from "../src/lib/h2a-offline.ts";
 import { cachedFields } from "../src/lib/farm-cloud.ts";
@@ -150,4 +151,65 @@ test("legacy H-2A v1 batches migrate to v2 with stable UUID row ids", () => {
   assert.ok(
     localStorage.getItem(`farmvoice-h2a-daily-v2:${userId}:${farmId}:legacy-batch`),
   );
+});
+
+
+test("H-2A retry treats an identical server UUID as already persisted", async () => {
+  const farmId="22222222-2222-4222-8222-222222222222";
+  const userId="33333333-3333-4333-8333-333333333333";
+  const row={
+    id:"77777777-7777-4777-8777-777777777777",
+    farm_id:farmId,
+    worker_id:"55555555-5555-4555-8555-555555555555",
+    work_date:"2026-10-02",
+    hours_worked:8,
+    locked_at:"2026-10-02T20:00:00.000Z",
+  };
+  let inserts=0, updates=0;
+  const supabase={
+    from(){
+      let mode="";
+      return {
+        select(){mode="select";return this;},
+        eq(){return this;},
+        in(){return this;},
+        insert(){inserts++;return this;},
+        update(){updates++;return this;},
+        then(resolve:(value:any)=>void){
+          if(mode==="select") resolve({data:[{id:row.id,worker_id:row.worker_id,work_date:row.work_date}],error:null});
+          else resolve({data:[],error:null});
+        },
+      };
+    },
+  };
+  await saveH2aDailyRows(supabase,userId,farmId,[row]);
+  assert.equal(inserts,0);
+  assert.equal(updates,0);
+});
+
+test("H-2A reconciliation batches one lookup and one insert for new crew rows", async () => {
+  const farmId="22222222-2222-4222-8222-222222222222";
+  const userId="33333333-3333-4333-8333-333333333333";
+  const rows=[
+    {id:"11111111-1111-4111-8111-111111111111",farm_id:farmId,worker_id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",work_date:"2026-10-02"},
+    {id:"22222222-2222-4222-8222-222222222222",farm_id:farmId,worker_id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",work_date:"2026-10-02"},
+  ];
+  let selects=0,inserts=0;
+  const supabase={
+    from(){
+      let op="";
+      return {
+        select(){if(!op) {op="select";selects++;} return this;},
+        eq(){return this;},
+        in(){return this;},
+        insert(value:any[]){op="insert";inserts++; assert.equal(value.length,2); return this;},
+        then(resolve:(value:any)=>void){
+          resolve(op==="insert" ? {data:rows.map(r=>({id:r.id})),error:null} : {data:[],error:null});
+        },
+      };
+    },
+  };
+  await saveH2aDailyRows(supabase,userId,farmId,rows);
+  assert.equal(selects,2);
+  assert.equal(inserts,1);
 });
