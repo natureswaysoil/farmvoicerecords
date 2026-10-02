@@ -160,7 +160,7 @@ export const helpItems: HelpItem[] = [
     category: "H-2A",
     question: "What H-2A records can FarmVoice keep?",
     answer:
-      "FarmVoice includes H-2A contracts, worker rosters, daily crew records, hours offered/worked, piecework, housing, transportation, training, recruitment, separations, wage history, payroll worksheets, acknowledgments, documents, audit exports, and supporting photo evidence.",
+      "The H-2A add-on includes contracts, worker rosters, daily crew records, hours offered/worked, piecework, housing, transportation, training, recruitment, separations, wage history, payroll worksheets, acknowledgments, documents, audit exports, and supporting photo evidence. It requires FarmVoice Core.",
     href: "/h2a",
     linkLabel: "Open H-2A",
     keywords: [
@@ -196,7 +196,7 @@ export const helpItems: HelpItem[] = [
     category: "Account",
     question: "How much storage is included?",
     answer:
-      "The FarmVoice plan is designed with 10 GB of included farm storage, enough for most farms including thousands of job photos and years of workforce and field records. Uploads pause at the 10 GB allowance. Pricing shows your usage. Additional capacity requires an agreed plan through support; there are no automatic overage charges.",
+      "FarmVoice Core includes 100 GB of farm photo and document storage, enough for most farms including thousands of job photos and years of workforce and field records. Uploads pause at the 100 GB allowance. Pricing shows your usage. Additional capacity requires an agreed plan through support; there are no automatic overage charges.",
     keywords: ["storage", "gb", "100", "photos", "limit", "space"],
   },
   {

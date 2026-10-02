@@ -14,3 +14,5 @@
 
 
 .focus-guard { position: fixed; width: 1px; height: 1px; padding: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+
+@media print{.no-print,.nav,.footer,.help-fab,.help-chat,.section-video-button{display:none!important}body{background:#fff}.container{width:100%;max-width:none}.card{box-shadow:none;break-inside:avoid}a{text-decoration:none}}

@@ -21,6 +21,7 @@ export default function AuthNavigation() {
       {signedIn ? (
         <>
           <Link href="/records">Records</Link>
+          <Link href="/ask-farmvoice">Ask FarmVoice</Link>
           <Link href="/fields">Fields</Link>
           <Link href="/team">Team</Link>
           <Link href="/team/crew">Crew / Cuadrilla</Link>
