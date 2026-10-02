@@ -49,7 +49,7 @@ export function withEvidenceSerialization<T>(
     });
 }
 
-export async function queueEvidence(item:QueuedEvidence){
+export async function queueEvidenceWithinLock(item:QueuedEvidence){
   const database=await db();
   await new Promise<void>((resolve,reject)=>{
     const tx=database.transaction(STORE,"readwrite");
@@ -58,6 +58,14 @@ export async function queueEvidence(item:QueuedEvidence){
     tx.onerror=()=>reject(tx.error);
   });
   database.close();
+}
+
+export function queueEvidence(item:QueuedEvidence){
+  return withEvidenceSerialization(
+    item.farmId,
+    item.userId,
+    ()=>queueEvidenceWithinLock(item),
+  );
 }
 
 export async function queuedEvidence(farmId:string,userId:string){
