@@ -1,4 +1,4 @@
-const CACHE = "farmvoice-offline-v5";
+const CACHE = "farmvoice-offline-v6";
 const INSTALL_SHELLS = ["/records", "/team/crew", "/offline"];
 const CACHEABLE_SHELLS = new Set([
   "/records",
@@ -74,6 +74,21 @@ self.addEventListener("activate", (event) => {
           .map((key) => caches.delete(key)),
       );
       await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  const path = event.data?.type === "CACHE_SHELL" ? event.data.path : null;
+  if (!path || !CACHEABLE_SHELLS.has(path)) return;
+  event.waitUntil(
+    (async () => {
+      try {
+        const response = await fetch(path, { credentials: "include" });
+        if (!response.ok || response.redirected) return;
+        const cache = await caches.open(CACHE);
+        await cacheShell(cache, path, response);
+      } catch {}
     })(),
   );
 });
