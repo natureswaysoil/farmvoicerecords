@@ -728,7 +728,7 @@ export default function H2APage() {
         <h1 style={{fontSize:"clamp(36px,6vw,60px)"}}>Crew records without requiring worker phones</h1>
         <p className="lede">
           Contract records, worker roster, crew-leader daily time, hours offered, piecework, housing, transportation,
-          training, recruitment, separation review, approvals and audit exports. FarmVoice prepares records for review;
+          training, incoming-worker checklists, farm readiness, recruitment, separation review, approvals and audit exports. FarmVoice prepares records for review;
           it does not determine legal compliance.
         </p>
         <div className="actions">
