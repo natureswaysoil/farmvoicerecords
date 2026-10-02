@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { getNamedFarmContexts, rememberFarmSelection, type FarmContext } from "@/src/lib/farm-cloud";
 import { recordReviewProblems } from "@/src/lib/ask-farmvoice";
-import { collectPages, csvCell } from "@/src/lib/pagination";
+import { collectChunkedPages, collectPages, csvCell } from "@/src/lib/pagination";
 
 type RecordRow = {
   id: string;
@@ -72,11 +72,9 @@ export default function InspectionPackagePage() {
       });
 
       const recordIds = recordRows.map((row) => row.id);
-      const evidenceRows: Evidence[] = [];
-      const evidenceChunkSize = 100;
-      for (let offset = 0; offset < recordIds.length; offset += evidenceChunkSize) {
-        const ids = recordIds.slice(offset, offset + evidenceChunkSize);
-        const chunk = await collectPages<Evidence>((from, to) =>
+      const evidenceRows = await collectChunkedPages<Evidence, string>(
+        recordIds,
+        (ids, from, to) =>
           supabase
             .from("farm_photo_evidence")
             .select("id,record_id,file_name,category,captured_at")
@@ -87,9 +85,8 @@ export default function InspectionPackagePage() {
             .order("captured_at", { ascending: false })
             .order("id", { ascending: false })
             .range(from, to),
-        );
-        evidenceRows.push(...chunk);
-      }
+        100,
+      );
 
       setRecords(recordRows);
       setEvidence(evidenceRows);
