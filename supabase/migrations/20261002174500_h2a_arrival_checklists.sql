@@ -133,7 +133,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_item text;
   v_status text;
@@ -256,7 +256,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 revoke all on function private.h2a_seed_worker_arrival_checklist()
 from public,anon,authenticated;
 
@@ -270,7 +270,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_item text;
 begin
@@ -310,7 +310,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 revoke all on function private.h2a_seed_farm_readiness_checklist()
 from public,anon,authenticated;
 
