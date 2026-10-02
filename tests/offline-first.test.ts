@@ -119,3 +119,35 @@ test("field cache is isolated by account as well as farm", () => {
   assert.equal(cachedFields("user-a","farm-1")[0].id,"field-a");
   assert.equal(cachedFields("user-b","farm-1")[0].id,"field-b");
 });
+
+
+test("legacy H-2A v1 batches migrate to v2 with stable UUID row ids", () => {
+  installStorage();
+  const userId="33333333-3333-4333-8333-333333333333";
+  const farmId="22222222-2222-4222-8222-222222222222";
+  localStorage.setItem(
+    `farmvoice-h2a-daily-v1:${userId}:${farmId}:legacy-batch`,
+    JSON.stringify({
+      id:"legacy-batch",
+      farmId,
+      userId,
+      queuedAt:"2026-10-02T12:00:00.000Z",
+      rows:[{
+        farm_id:farmId,
+        worker_id:"55555555-5555-4555-8555-555555555555",
+        work_date:"2026-10-02",
+        hours_worked:8,
+      }],
+    }),
+  );
+  const batches=h2aDailyBatches(userId,farmId);
+  assert.equal(batches.length,1);
+  assert.match(batches[0].rows[0].id,/^[0-9a-f-]{36}$/i);
+  assert.equal(
+    localStorage.getItem(`farmvoice-h2a-daily-v1:${userId}:${farmId}:legacy-batch`),
+    null,
+  );
+  assert.ok(
+    localStorage.getItem(`farmvoice-h2a-daily-v2:${userId}:${farmId}:legacy-batch`),
+  );
+});
