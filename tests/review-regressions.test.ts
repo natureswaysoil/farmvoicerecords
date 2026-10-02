@@ -146,3 +146,21 @@ test("H-2A reconciliation skips identical ids and batches inserts", async () => 
   assert.match(source, /\.insert\(inserts\)/);
   assert.match(source, /Offline reconciliation after reconnect/);
 });
+
+
+test("H-2A follow-up repairs invalid ids, compares payloads, and includes break fields", async () => {
+  const source = await readFile(new URL("../src/lib/h2a-offline.ts", import.meta.url), "utf8");
+  assert.match(source, /uuidPattern/);
+  assert.match(source, /evidenceRemaps/);
+  assert.match(source, /sameMutablePayload/);
+  assert.match(source, /"shift_minutes"/);
+  assert.match(source, /"paid_break_minutes"/);
+  assert.match(source, /if \(serverId===row\.id && sameMutablePayload\(existing,row\)\) continue/);
+});
+
+test("inspection package fetches evidence only for selected record ids in chunks", async () => {
+  const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /const evidenceChunkSize = 100/);
+  assert.match(source, /\.in\("record_id", ids\)/);
+  assert.doesNotMatch(source, /allEvidence/);
+});
