@@ -95,10 +95,10 @@ export default function FarmVoiceHelpShell() {
       {chatOpen && (
         <section id="farmvoice-help-chat" className="help-chat" aria-label="FarmVoice help assistant">
           <div className="help-chat-head">
-            <div><strong>Ask FarmVoice</strong><div className="small muted">Instant help from the FarmVoice guide</div></div>
+            <div><strong>FarmVoice Help</strong><div className="small muted">Product help and getting-started guidance</div></div>
             <button className="text-button" onClick={() => setChatOpen(false)} aria-label="Close help">✕</button>
           </div>
-          <p className="small">Ask how to use a FarmVoice feature. This assistant provides product guidance, not legal or regulatory advice.</p>
+          <p className="small">Ask how to use a FarmVoice feature. For questions about your farm data, open Ask FarmVoice from the main navigation. This help tool provides product guidance, not legal or regulatory advice.</p>
           <form className="form" onSubmit={ask}>
             <div className="field">
               <label htmlFor="farmvoice-question">Your question</label>
