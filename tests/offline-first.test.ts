@@ -210,6 +210,6 @@ test("H-2A reconciliation batches one lookup and one insert for new crew rows", 
     },
   };
   await saveH2aDailyRows(supabase,userId,farmId,rows);
-  assert.equal(selects,2);
+  assert.equal(selects,1);
   assert.equal(inserts,1);
 });
