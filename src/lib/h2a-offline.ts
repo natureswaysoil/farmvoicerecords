@@ -1,4 +1,4 @@
-import { remapQueuedEvidenceRecordId } from "@/src/lib/evidence-offline";
+import { remapQueuedEvidenceRecordId } from "./evidence-offline";
 
 export type H2aDailyRow = Record<string, unknown> & {
   id: string;
