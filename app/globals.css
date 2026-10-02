@@ -47,3 +47,5 @@
 .map-route-list button{border:0;background:transparent;text-decoration:underline;cursor:pointer;color:var(--brand-dark)}
 .table-wrap{overflow:auto}
 @media(max-width:700px){.farm-map-svg{min-height:300px}.map-list-row{align-items:flex-start;flex-direction:column}.map-toolbar{align-items:stretch}}
+
+.progress-bar{height:12px;border-radius:999px;background:#e7ece4;overflow:hidden;border:1px solid var(--line)}.progress-bar span{display:block;height:100%;background:var(--brand);transition:width .2s ease}

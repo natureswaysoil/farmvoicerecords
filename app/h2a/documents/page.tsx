@@ -67,7 +67,7 @@ export default function H2ADocumentsPage(){
  const name=(id:string|null)=>{const w=workers.find(x=>x.id===id);return w?(w.preferred_name||w.legal_name):"General"};
 
  return <main className="container section stack">
-  <div><div className="kicker">H-2A documents</div><h1 style={{fontSize:"clamp(36px,6vw,60px)"}}>Private document vault & acknowledgments</h1><p className="lede">Store worker and contract documents privately and record paper/tablet acknowledgments even when workers do not have phones.</p><p><Link className="btn secondary" href="/h2a">Back to H-2A dashboard</Link></p></div>
+  <div><div className="kicker">H-2A documents</div><h1 style={{fontSize:"clamp(36px,6vw,60px)"}}>Private document vault & acknowledgments</h1><p className="lede">Store worker and contract documents privately and record paper/tablet acknowledgments even when workers do not have phones.</p><div className="notice"><strong>Form I-9:</strong> FarmVoice can store an I-9 reference or copies retained under your established policy, but do not require a worker to present a specific I-9 document. The employee chooses acceptable documentation from the USCIS lists.</div><p><Link className="btn secondary" href="/h2a">Back to H-2A dashboard</Link></p></div>
   {message&&<div className="notice">{message}</div>}
   {farmChoices.length>1&&<section className="card form"><div className="field"><label>Farm</label><select value={ctx?.farmId??""} onChange={e=>{const id=e.target.value;if(!id){setCtx(null);setMessage("Choose the farm whose H-2A documents you want to manage.");return}selectH2aFarm(id);void load(id)}}><option value="">Choose a farm</option>{farmChoices.map(f=><option key={f.farmId} value={f.farmId}>{f.name}</option>)}</select></div></section>}
   <section className="grid-2">

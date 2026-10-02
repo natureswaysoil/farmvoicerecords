@@ -1,4 +1,4 @@
-const CACHE = "farmvoice-offline-v7";
+const CACHE = "farmvoice-offline-v8";
 const INSTALL_SHELLS = ["/records", "/team/crew", "/offline"];
 const CACHEABLE_SHELLS = new Set([
   "/records",
@@ -8,6 +8,7 @@ const CACHEABLE_SHELLS = new Set([
   "/team/crew",
   "/worker",
   "/h2a",
+  "/h2a/arrival",
   "/h2a/housing",
   "/offline",
 ]);

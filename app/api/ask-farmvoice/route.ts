@@ -13,6 +13,11 @@ import {
   scheduledHours,
 } from "@/src/lib/ask-farmvoice";
 import { collectPages } from "@/src/lib/pagination";
+import {
+  CHECKLIST_VERSION,
+  FARM_READINESS_CHECKLIST,
+  WORKER_ARRIVAL_CHECKLIST,
+} from "@/src/lib/h2a-arrival-checklist";
 
 export const runtime = "nodejs";
 
@@ -249,7 +254,15 @@ export async function POST(request: Request) {
     await requirePlan(supabase, body.farmId, "h2a");
     const today = new Date().toISOString().slice(0, 10);
     const soon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-    const [workers, housing, daily, documents] = await Promise.all([
+    const [
+      workers,
+      housing,
+      daily,
+      documents,
+      contracts,
+      arrivalChecklist,
+      readinessChecklist,
+    ] = await Promise.all([
       collectPages<any>((from, to) =>
         supabase
           .from("h2a_workers")
@@ -281,6 +294,32 @@ export async function POST(request: Request) {
           .from("h2a_documents")
           .select("id,title,document_type,expires_on")
           .eq("farm_id", body.farmId)
+          .order("id")
+          .range(from, to),
+      ),
+      collectPages<any>((from, to) =>
+        supabase
+          .from("h2a_contracts")
+          .select("id,name")
+          .eq("farm_id", body.farmId)
+          .order("id")
+          .range(from, to),
+      ),
+      collectPages<any>((from, to) =>
+        supabase
+          .from("h2a_worker_arrival_checklist")
+          .select("id,worker_id,item_key,status,due_on")
+          .eq("farm_id", body.farmId)
+          .eq("checklist_version", CHECKLIST_VERSION)
+          .order("id")
+          .range(from, to),
+      ),
+      collectPages<any>((from, to) =>
+        supabase
+          .from("h2a_farm_readiness_checklist")
+          .select("id,contract_id,item_key,status,due_on")
+          .eq("farm_id", body.farmId)
+          .eq("checklist_version", CHECKLIST_VERSION)
           .order("id")
           .range(from, to),
       ),
@@ -335,6 +374,49 @@ export async function POST(request: Request) {
           date: doc.expires_on,
           detail: `${doc.title} · expires within 30 days`,
         });
+    }
+
+    const workerById = new Map(
+      workers.map((worker) => [worker.id, worker.employee_number]),
+    );
+    const contractById = new Map(
+      contracts.map((contract) => [contract.id, contract.name]),
+    );
+    const arrivalLabel = new Map(
+      WORKER_ARRIVAL_CHECKLIST.map((definition) => [
+        definition.key,
+        definition.title,
+      ]),
+    );
+    const readinessLabel = new Map(
+      FARM_READINESS_CHECKLIST.map((definition) => [
+        definition.key,
+        definition.title,
+      ]),
+    );
+    for (const row of arrivalChecklist) {
+      const needsAttention =
+        row.status === "required_now" ||
+        (row.status === "due_later" && row.due_on && row.due_on <= soon);
+      if (!needsAttention) continue;
+      items.push({
+        id: row.id,
+        type: "arrival checklist",
+        date: row.due_on,
+        detail: `${workerById.get(row.worker_id) ?? "H-2A worker"} · ${arrivalLabel.get(row.item_key) ?? row.item_key}`,
+      });
+    }
+    for (const row of readinessChecklist) {
+      const needsAttention =
+        row.status === "required_now" ||
+        (row.status === "due_later" && row.due_on && row.due_on <= soon);
+      if (!needsAttention) continue;
+      items.push({
+        id: row.id,
+        type: "farm readiness",
+        date: row.due_on,
+        detail: `${contractById.get(row.contract_id) ?? "H-2A contract"} · ${readinessLabel.get(row.item_key) ?? row.item_key}`,
+      });
     }
 
     return Response.json({

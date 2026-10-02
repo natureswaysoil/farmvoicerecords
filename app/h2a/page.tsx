@@ -571,6 +571,8 @@ export default function H2APage() {
         trainingR,
         recruitmentR,
         separationsR,
+        arrivalChecklistR,
+        readinessChecklistR,
         auditR,
       ] = await Promise.all([
         collectPages((from, to) =>
@@ -639,6 +641,24 @@ export default function H2APage() {
         ).then((data) => ({ data })),
         collectPages((from, to) =>
           supabase
+            .from("h2a_worker_arrival_checklist")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("worker_id")
+            .order("item_key")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_farm_readiness_checklist")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("contract_id")
+            .order("item_key")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
             .from("h2a_audit_events")
             .select("*")
             .eq("farm_id", ctx.farmId)
@@ -656,6 +676,8 @@ export default function H2APage() {
         ["training", trainingR.data ?? []],
         ["recruitment", recruitmentR.data ?? []],
         ["separations", separationsR.data ?? []],
+        ["worker_arrival_checklist", arrivalChecklistR.data ?? []],
+        ["farm_readiness_checklist", readinessChecklistR.data ?? []],
         ["audit_events", auditR.data ?? []],
       ];
       const rows: unknown[][] = [
@@ -706,10 +728,11 @@ export default function H2APage() {
         <h1 style={{fontSize:"clamp(36px,6vw,60px)"}}>Crew records without requiring worker phones</h1>
         <p className="lede">
           Contract records, worker roster, crew-leader daily time, hours offered, piecework, housing, transportation,
-          training, recruitment, separation review, approvals and audit exports. FarmVoice prepares records for review;
+          training, incoming-worker checklists, farm readiness, recruitment, separation review, approvals and audit exports. FarmVoice prepares records for review;
           it does not determine legal compliance.
         </p>
         <div className="actions">
+          <Link className="btn secondary" href="/h2a/arrival">Incoming worker checklist</Link>
           <Link className="btn secondary" href="/h2a/payroll">Payroll & guarantee review</Link>
           <Link className="btn secondary" href="/h2a/documents">Documents & acknowledgments</Link>
           <Link className="btn secondary" href="/h2a/housing">Housing compliance</Link>
