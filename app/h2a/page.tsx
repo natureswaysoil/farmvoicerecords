@@ -571,6 +571,8 @@ export default function H2APage() {
         trainingR,
         recruitmentR,
         separationsR,
+        arrivalChecklistR,
+        readinessChecklistR,
         auditR,
       ] = await Promise.all([
         collectPages((from, to) =>
@@ -639,6 +641,24 @@ export default function H2APage() {
         ).then((data) => ({ data })),
         collectPages((from, to) =>
           supabase
+            .from("h2a_worker_arrival_checklist")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("worker_id")
+            .order("item_key")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
+            .from("h2a_farm_readiness_checklist")
+            .select("*")
+            .eq("farm_id", ctx.farmId)
+            .order("contract_id")
+            .order("item_key")
+            .range(from, to),
+        ).then((data) => ({ data })),
+        collectPages((from, to) =>
+          supabase
             .from("h2a_audit_events")
             .select("*")
             .eq("farm_id", ctx.farmId)
@@ -656,6 +676,8 @@ export default function H2APage() {
         ["training", trainingR.data ?? []],
         ["recruitment", recruitmentR.data ?? []],
         ["separations", separationsR.data ?? []],
+        ["worker_arrival_checklist", arrivalChecklistR.data ?? []],
+        ["farm_readiness_checklist", readinessChecklistR.data ?? []],
         ["audit_events", auditR.data ?? []],
       ];
       const rows: unknown[][] = [
