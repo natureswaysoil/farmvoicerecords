@@ -24,6 +24,7 @@ export default function WorkerPage() {
     [busy, setBusy] = useState(false),
     [loadingTime, setLoadingTime] = useState(true),
     [pending, setPending] = useState(0),
+    [online, setOnline] = useState(true),
     [message, setMessage] = useState("");
   const [db] = useState(createClient);
   const t = (en: string, sp: string) => (es ? sp : en);
@@ -42,11 +43,20 @@ export default function WorkerPage() {
   }
 
   useEffect(() => {
+    setOnline(navigator.onLine);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
     void loadFarms().catch(() =>
       setMessage(
         "Could not load farm access. Reconnect and retry. / No se pudo cargar el acceso. Reconecte y reintente.",
       ),
     );
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
   }, [db]);
 
   useEffect(() => {
@@ -321,7 +331,7 @@ export default function WorkerPage() {
       ) : (
         <section className="card form">
           <div className="notice">
-            <strong>{navigator.onLine ? t("Online", "Con conexión") : t("Offline", "Sin conexión")}</strong>
+            <strong>{online ? t("Online", "Con conexión") : t("Offline", "Sin conexión")}</strong>
             {pending > 0 && (
               <span> · {t(`${pending} queued`, `${pending} pendiente(s)`)}</span>
             )}
