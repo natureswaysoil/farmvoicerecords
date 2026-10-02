@@ -211,7 +211,7 @@ export default function FarmMapPage() {
   }
 
   async function loadMap(nextFarmId = farmId) {
-    if (!nextFarmId || !ctx && nextFarmId === farmId) return;
+    if (!nextFarmId) return;
     setLoading(true);
     setMessage("Loading map layers…");
     try {
