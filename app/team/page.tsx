@@ -163,11 +163,11 @@ export default function TeamPage() {
     setFarmName(farmRow.name);
     setTimeZone(farmRow.timezone ?? "UTC");
     setJoinCode(farmRow.join_code);
-    setMembers(nextMembers);
-    setShifts(nextShifts);
     const nextMembers = (memberRows ?? []) as Member[];
     const nextShifts = (shiftRows ?? []) as Shift[];
     const nextTimes = (timeRows ?? []) as TimeEntry[];
+    setMembers(nextMembers);
+    setShifts(nextShifts);
     setTimes(nextTimes);
     localStorage.setItem(cacheKey, JSON.stringify({
       farmName: farmRow.name,
@@ -195,13 +195,6 @@ export default function TeamPage() {
     window.addEventListener("online", refresh);
     return () => window.removeEventListener("online", refresh);
   }, [timeLimit]);
-
-  /*
-      setMessage(
-        error instanceof Error ? error.message : "Unable to load team data.",
-      ),
-    );
-  */
 
   function captureGps(): Promise<Gps> {
     return new Promise((resolve) => {
