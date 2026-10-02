@@ -222,7 +222,7 @@ export default function H2aArrivalChecklistPage() {
         nextWorkers.find(
           (worker) => worker.worker_type === "h2a" && worker.status === "active",
         ) ??
-        nextWorkers[0] ??
+        nextWorkers.find((worker) => worker.worker_type === "h2a") ??
         null;
       const nextContract =
         nextContracts.find((contract) => contract.id === contractId) ??
@@ -254,94 +254,6 @@ export default function H2aArrivalChecklistPage() {
     setDrafts(next);
   }, [workerRows, readinessRows]);
 
-  async function ensureWorkerChecklist() {
-    if (!ctx || !selectedWorker || !canAdmin) return;
-    const existing = new Set(
-      workerRows
-        .filter((row) => row.worker_id === selectedWorker.id)
-        .map((row) => row.item_key),
-    );
-    const missing = WORKER_ARRIVAL_CHECKLIST.filter(
-      (definition) => !existing.has(definition.key),
-    );
-    if (!missing.length) return;
-
-    const contract =
-      contracts.find((item) => item.id === selectedWorker.contract_id) ?? null;
-    const context = {
-      arrivalDate: selectedWorker.arrival_date,
-      firstWorkDate: selectedWorker.first_work_date,
-      contractStart: contract?.start_date,
-      contractEnd: contract?.end_date,
-    };
-    const { error } = await supabase.from("h2a_worker_arrival_checklist").insert(
-      missing.map((definition) => ({
-        farm_id: ctx.farmId,
-        worker_id: selectedWorker.id,
-        contract_id: selectedWorker.contract_id,
-        checklist_version: CHECKLIST_VERSION,
-        item_key: definition.key,
-        status: definition.defaultStatus,
-        due_on: suggestedDueOn(definition, context),
-        created_by: ctx.userId,
-      })),
-    );
-    if (error) throw error;
-  }
-
-  async function ensureReadinessChecklist() {
-    if (!ctx || !selectedContract || !canAdmin) return;
-    const existing = new Set(
-      readinessRows
-        .filter((row) => row.contract_id === selectedContract.id)
-        .map((row) => row.item_key),
-    );
-    const missing = FARM_READINESS_CHECKLIST.filter(
-      (definition) => !existing.has(definition.key),
-    );
-    if (!missing.length) return;
-    const { error } = await supabase.from("h2a_farm_readiness_checklist").insert(
-      missing.map((definition) => ({
-        farm_id: ctx.farmId,
-        contract_id: selectedContract.id,
-        checklist_version: CHECKLIST_VERSION,
-        item_key: definition.key,
-        status: definition.defaultStatus,
-        created_by: ctx.userId,
-      })),
-    );
-    if (error) throw error;
-  }
-
-  useEffect(() => {
-    if (!ctx || !canAdmin || !workerId) return;
-    void (async () => {
-      try {
-        await ensureWorkerChecklist();
-        await load(ctx.farmId);
-      } catch (error) {
-        setMessage(
-          error instanceof Error ? error.message : "Unable to initialize checklist.",
-        );
-      }
-    })();
-  }, [workerId, ctx?.farmId, canAdmin]);
-
-  useEffect(() => {
-    if (!ctx || !canAdmin || !contractId) return;
-    void (async () => {
-      try {
-        await ensureReadinessChecklist();
-        await load(ctx.farmId);
-      } catch (error) {
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to initialize readiness checklist.",
-        );
-      }
-    })();
-  }, [contractId, ctx?.farmId, canAdmin]);
 
   async function saveArrivalFacts() {
     if (!ctx || !selectedWorker || !canAdmin) return;
@@ -427,6 +339,9 @@ export default function H2aArrivalChecklistPage() {
     setBusy(true);
     const completed =
       draft.status === "complete" || draft.status === "exception";
+    const wasCompleted =
+      row.status === "complete" || row.status === "exception";
+    const enteringCompletion = completed && !wasCompleted;
     const update: Record<string, unknown> = {
       status: draft.status,
       due_on: draft.due_on || null,
@@ -434,8 +349,16 @@ export default function H2aArrivalChecklistPage() {
         draft.status === "exception" ? draft.exception_reason.trim() : null,
       evidence_reference: draft.evidence_reference.trim() || null,
       notes: draft.notes.trim() || null,
-      completed_at: completed ? row.completed_at ?? new Date().toISOString() : null,
-      completed_by: completed ? ctx.userId : null,
+      completed_at: completed
+        ? enteringCompletion
+          ? new Date().toISOString()
+          : row.completed_at
+        : null,
+      completed_by: completed
+        ? enteringCompletion
+          ? ctx.userId
+          : row.completed_by
+        : null,
       updated_at: new Date().toISOString(),
     };
     if (table === "h2a_worker_arrival_checklist") {
