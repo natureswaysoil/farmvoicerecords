@@ -137,7 +137,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare v_farm uuid;
 begin
   case
@@ -193,7 +193,7 @@ begin
   end case;
   return v_farm;
 end;
-$;
+$$;
 revoke all on function private.farm_photo_target_farm(text,text,uuid)
 from public,anon,authenticated;
 
@@ -208,7 +208,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_target_farm uuid;
   v_worker uuid;
@@ -268,7 +268,7 @@ begin
   end if;
   return false;
 end;
-$;
+$$;
 revoke all on function private.farm_photo_can_access(uuid,text,text,uuid)
 from public,anon,authenticated;
 grant execute on function private.farm_photo_can_access(uuid,text,text,uuid)
