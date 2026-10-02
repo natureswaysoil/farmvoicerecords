@@ -21,7 +21,7 @@ async function pruneAssets(cache) {
   }
   const extra = (await cache.keys()).filter(request =>
     new URL(request.url).pathname.startsWith("/_next/static/") && !referenced.has(request.url));
-  for (const request of extra.slice(0, Math.max(0, extra.length - 150)))
+  for (const request of extra.slice(0, Math.max(0, extra.length - 100)))
     await cache.delete(request);
 }
 
