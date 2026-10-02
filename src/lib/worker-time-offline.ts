@@ -45,6 +45,38 @@ export function activeQueuedWorkerTime(userId: string, farmId: string) {
   return queuedWorkerTimes(userId,farmId).find((row)=>!row.clockOut) ?? null;
 }
 
+const activeKey = (userId:string,farmId:string) =>
+  `farmvoice-worker-active-v1:${userId}:${farmId}`;
+
+export function cacheCloudActiveWorkerTime(
+  userId:string,
+  farmId:string,
+  active:{id:string;clock_in:string}|null,
+){
+  if (typeof localStorage === "undefined") return;
+  if (!active) {
+    localStorage.removeItem(activeKey(userId,farmId));
+    return;
+  }
+  localStorage.setItem(activeKey(userId,farmId),JSON.stringify(active));
+}
+
+export function cachedCloudActiveWorkerTime(userId:string,farmId:string) {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const active=JSON.parse(localStorage.getItem(activeKey(userId,farmId)) ?? "null") as
+      | {id:string;clock_in:string}
+      | null;
+    if (!active?.id || !active.clock_in) return null;
+    const queuedCompletion=queuedWorkerTimes(userId,farmId).find(
+      (row)=>row.id===active.id && Boolean(row.clockOut),
+    );
+    return queuedCompletion ? null : active;
+  } catch {
+    return null;
+  }
+}
+
 export async function syncWorkerTimes(
   supabase: any,
   userId: string,
