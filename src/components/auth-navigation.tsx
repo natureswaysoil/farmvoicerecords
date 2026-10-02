@@ -23,6 +23,7 @@ export default function AuthNavigation() {
           <Link href="/records">Records</Link>
           <Link href="/ask-farmvoice">Ask FarmVoice</Link>
           <Link href="/fields">Fields</Link>
+          <Link href="/map">Map</Link>
           <Link href="/team">Team</Link>
           <Link href="/team/crew">Crew / Cuadrilla</Link>
           <Link href="/worker">Worker clock / Reloj</Link>
