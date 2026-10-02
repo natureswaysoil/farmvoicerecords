@@ -9,6 +9,11 @@ import { createClient } from "@/src/lib/supabase/client";
 import { type FarmContext } from "@/src/lib/farm-cloud";
 import { loadH2aFarmChoices, pickH2aFarm, selectH2aFarm, type H2aFarmChoice } from "@/src/lib/h2a-farm-context";
 import SmartPhotoEvidence from "@/src/components/smart-photo-evidence";
+import {
+  h2aDailyBatches,
+  storeH2aDailyBatch,
+  syncH2aDailyBatches,
+} from "@/src/lib/h2a-offline";
 
 type Contract = {
   id: string;
@@ -110,6 +115,7 @@ export default function H2APage() {
   const [separationEvidence, setSeparationEvidence] = useState<EvidenceRecord[]>([]);
   const [message, setMessage] = useState("Loading H-2A records...");
   const [gps, setGps] = useState<{lat:number;lng:number;accuracy:number;capturedAt:string}|null>(null);
+  const [offlinePending, setOfflinePending] = useState(0);
 
   const [contractForm, setContractForm] = useState({
     name: "Seasonal H-2A Crew",
@@ -159,6 +165,30 @@ export default function H2APage() {
 
   const workerName = useMemo(() => new Map(workers.map((w) => [w.id, w.preferred_name || w.legal_name])), [workers]);
 
+  function h2aCacheKey(farmId: string) {
+    return `farmvoice-h2a-cache:${farmId}`;
+  }
+
+  function restoreCachedH2a(farmId: string) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(h2aCacheKey(farmId)) ?? "null");
+      if (!cached) return false;
+      setContracts(cached.contracts ?? []);
+      setWorkers(cached.workers ?? []);
+      setDaily(cached.daily ?? []);
+      setHousing(cached.housing ?? []);
+      setRoles(cached.roles ?? []);
+      setFarmMembers(cached.farmMembers ?? []);
+      setTransportEvidence(cached.transportEvidence ?? []);
+      setTrainingEvidence(cached.trainingEvidence ?? []);
+      setRecruitmentEvidence(cached.recruitmentEvidence ?? []);
+      setSeparationEvidence(cached.separationEvidence ?? []);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function load(preferredFarmId?: string) {
     try {
       const choices = await loadH2aFarmChoices(supabase);
@@ -177,6 +207,25 @@ export default function H2APage() {
       }
       selectH2aFarm(farm.farmId);
       setCtx(farm);
+      setOfflinePending(h2aDailyBatches(farm.userId, farm.farmId).length);
+
+      if (!navigator.onLine) {
+        const restored = restoreCachedH2a(farm.farmId);
+        setMessage(
+          restored
+            ? "Offline mode: cached H-2A roster and records are available. New daily crew records will sync later."
+            : "Reconnect once to cache this farm's H-2A roster before using it offline.",
+        );
+        return;
+      }
+
+      try {
+        await syncH2aDailyBatches(supabase, farm.userId, farm.farmId);
+      } catch (syncError) {
+        setMessage(syncError instanceof Error ? syncError.message : "Some H-2A records are still waiting to sync.");
+      }
+      setOfflinePending(h2aDailyBatches(farm.userId, farm.farmId).length);
+
       const [c,w,d,h,r,m] = await Promise.all([
         supabase.from("h2a_contracts").select("id,name,eta_case_number,job_order_number,start_date,end_date,crop_or_commodity,expected_hours_per_day,expected_days_per_week,hourly_wage,active").eq("farm_id",farm.farmId).order("start_date",{ascending:false}),
         supabase.from("h2a_workers").select("id,contract_id,employee_number,legal_name,preferred_name,worker_type,preferred_language,arrival_date,work_authorization_end,status").eq("farm_id",farm.farmId).order("employee_number"),
@@ -204,14 +253,38 @@ export default function H2APage() {
       setTransportEvidence((transportRows.data ?? []).map((x) => ({ id: x.id, label: `${x.travel_date} · ${x.transport_type}`, detail: null })));
       setTrainingEvidence((trainingRows.data ?? []).map((x) => ({ id: x.id, label: `${x.training_date} · ${x.training_type}`, detail: null })));
       setRecruitmentEvidence((recruitmentRows.data ?? []).map((x) => ({ id: x.id, label: x.applicant_name || "Recruitment contact", detail: x.contact_date })));
-      setSeparationEvidence((separationRows.data ?? []).map((x) => ({ id: x.id, label: `${x.separation_date} · ${x.separation_type}`, detail: null })));
+      const nextTransport = (transportRows.data ?? []).map((x) => ({ id: x.id, label: `${x.travel_date} · ${x.transport_type}`, detail: null }));
+      const nextTraining = (trainingRows.data ?? []).map((x) => ({ id: x.id, label: `${x.training_date} · ${x.training_type}`, detail: null }));
+      const nextRecruitment = (recruitmentRows.data ?? []).map((x) => ({ id: x.id, label: x.applicant_name || "Recruitment contact", detail: x.contact_date }));
+      const nextSeparation = (separationRows.data ?? []).map((x) => ({ id: x.id, label: `${x.separation_date} · ${x.separation_type}`, detail: null }));
+      setTransportEvidence(nextTransport);
+      setTrainingEvidence(nextTraining);
+      setRecruitmentEvidence(nextRecruitment);
+      setSeparationEvidence(nextSeparation);
+      localStorage.setItem(h2aCacheKey(farm.farmId), JSON.stringify({
+        contracts: c.data ?? [],
+        workers: w.data ?? [],
+        daily: d.data ?? [],
+        housing: h.data ?? [],
+        roles: r.data ?? [],
+        farmMembers: m.data ?? [],
+        transportEvidence: nextTransport,
+        trainingEvidence: nextTraining,
+        recruitmentEvidence: nextRecruitment,
+        separationEvidence: nextSeparation,
+      }));
       setMessage("");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to load H-2A records.");
     }
   }
 
-  useEffect(() => { void load(); }, [supabase]);
+  useEffect(() => {
+    void load();
+    const reconnect = () => void load(ctx?.farmId);
+    window.addEventListener("online", reconnect);
+    return () => window.removeEventListener("online", reconnect);
+  }, [supabase, ctx?.farmId]);
 
   async function createContract(e: FormEvent) {
     e.preventDefault();
@@ -295,6 +368,28 @@ export default function H2APage() {
       crew_leader_attested_at: new Date().toISOString(),
       locked_at: new Date().toISOString(),
     }));
+    if (!navigator.onLine) {
+      storeH2aDailyBatch({
+        id: crypto.randomUUID(),
+        farmId: ctx.farmId,
+        userId: ctx.userId,
+        queuedAt: new Date().toISOString(),
+        rows,
+      });
+      const localRows = rows.map((row) => ({
+        ...row,
+        id: `offline-${row.worker_id}-${row.work_date}`,
+        submitted_at: new Date().toISOString(),
+        approved_at: null,
+      })) as DailyRecord[];
+      setDaily((current) => [...localRows, ...current.filter((x) => !localRows.some((y) => y.worker_id === x.worker_id && y.work_date === x.work_date))]);
+      setOfflinePending(h2aDailyBatches(ctx.userId, ctx.farmId).length);
+      setSelectedWorkers({});
+      setPieceCounts({});
+      setMessage(`Saved ${rows.length} H-2A crew record(s) on this device. They will sync when service returns.`);
+      return;
+    }
+
     const { error } = await supabase.from("h2a_daily_records").upsert(rows,{onConflict:"farm_id,worker_id,work_date"});
     setMessage(error ? error.message : `Saved and locked ${rows.length} crew records. Later changes require a reason and remain auditable.`);
     if (!error) {
