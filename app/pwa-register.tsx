@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const CACHEABLE = new Set([
   "/records",
   "/fields",
+  "/map",
   "/team",
   "/team/crew",
   "/worker",

@@ -27,6 +27,7 @@ async function setup() {
     "20260929202500_subscription_delete_enforcement.sql",
     "20260930010056_review_workflow_integrity.sql",
     "20260930010706_core_crew_records.sql",
+    "20261002160000_farm_map_module.sql",
   ])
     await db.exec(
       await readFile(new URL(`supabase/migrations/${file}`, root), "utf8"),
@@ -337,4 +338,56 @@ test("receipt timestamp cannot be forged; capture bounds and legacy times are ho
   await as(db,worker);
   assert.equal((await db.query("select * from quickbooks_crew_mappings")).rows.length,0);
  } finally { await db.close(); }
+});
+
+
+test("Farm Map RLS isolates POIs, tracks, points and route plans by farm", async () => {
+  const db = await setup();
+  try {
+    await as(db, owner);
+    await db.exec(
+      `insert into farm_map_pois(id,farm_id,name,category,lat,lng,created_by)
+       values('77777777-7777-4777-8777-777777777777','${farm}','North gate','gate',35.5001,-77.6001,'${owner}');
+       insert into farm_map_route_plans(id,farm_id,name,travel_mode,waypoints,created_by)
+       values('88888888-8888-4888-8888-888888888888','${farm}','Water route','driving',
+       '[{"lat":35.5,"lng":-77.6},{"lat":35.51,"lng":-77.61}]','${owner}');`,
+    );
+
+    await as(db, worker);
+    assert.equal((await db.query("select * from farm_map_pois")).rows.length, 1);
+    assert.equal((await db.query("select * from farm_map_route_plans")).rows.length, 1);
+    await db.exec(
+      `insert into farm_map_pois(farm_id,name,category,lat,lng,created_by)
+       values('${farm}','Water point','water',35.5002,-77.6002,'${worker}');
+       insert into farm_map_track_sessions(id,farm_id,user_id,mode,started_at,start_lat,start_lng)
+       values('99999999-9999-4999-8999-999999999999','${farm}','${worker}','walking',now(),35.5,-77.6);
+       insert into farm_map_track_points(session_id,farm_id,user_id,sequence_no,recorded_at,lat,lng)
+       values('99999999-9999-4999-8999-999999999999','${farm}','${worker}',0,now(),35.5,-77.6);`,
+    );
+    await assert.rejects(
+      db.exec(
+        `insert into farm_map_pois(farm_id,name,category,lat,lng,created_by)
+         values('${farm}','Forged','other',35.5,-77.6,'${owner}')`,
+      ),
+      /row-level security|policy/i,
+    );
+    assert.equal((await db.query("select * from farm_map_track_sessions")).rows.length, 1);
+    assert.equal((await db.query("select * from farm_map_track_points")).rows.length, 1);
+    assert.equal(
+      (
+        await db.query(
+          "update farm_map_route_plans set name='Worker edit' returning id",
+        )
+      ).rows.length,
+      0,
+    );
+
+    await as(db, stranger);
+    assert.equal((await db.query("select * from farm_map_pois")).rows.length, 0);
+    assert.equal((await db.query("select * from farm_map_track_sessions")).rows.length, 0);
+    assert.equal((await db.query("select * from farm_map_track_points")).rows.length, 0);
+    assert.equal((await db.query("select * from farm_map_route_plans")).rows.length, 0);
+  } finally {
+    await db.close();
+  }
 });
