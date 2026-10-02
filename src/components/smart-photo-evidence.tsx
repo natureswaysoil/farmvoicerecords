@@ -2,6 +2,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { collectPages } from "@/src/lib/pagination";
+import {
+  queueEvidence,
+  queuedEvidence,
+  syncEvidence,
+  type QueuedEvidence,
+} from "@/src/lib/evidence-offline";
+
 type Props = {
   farmId: string;
   userId: string;
@@ -28,48 +35,113 @@ type Evidence = {
   captured_by: string;
   storage_bucket: string;
   storage_path: string;
+  queued?: boolean;
 };
+
 export default function SmartPhotoEvidence(p: Props) {
   const [supabase] = useState(createClient),
     [busy, setBusy] = useState(false),
     [expanded, setExpanded] = useState(false),
     [files, setFiles] = useState<Evidence[]>([]),
+    [pending, setPending] = useState(0),
     [refresh, setRefresh] = useState(0),
     [error, setError] = useState("");
   const camera = useRef<HTMLInputElement>(null),
     library = useRef<HTMLInputElement>(null);
+
+  async function refreshPending() {
+    try {
+      const rows = await queuedEvidence(p.farmId, p.userId);
+      setPending(rows.length);
+      return rows;
+    } catch {
+      return [] as QueuedEvidence[];
+    }
+  }
+
   useEffect(() => {
     setExpanded(false);
     setFiles([]);
     setError("");
-  }, [p.farmId, p.recordId]);
+    void refreshPending();
+  }, [p.farmId, p.recordId, p.userId]);
+
+  useEffect(() => {
+    const reconnect = async () => {
+      try {
+        const count = await syncEvidence(supabase, p.farmId, p.userId);
+        await refreshPending();
+        if (count) {
+          p.onMessage?.(`Synced ${count} queued evidence file(s).`);
+          setRefresh((n) => n + 1);
+        }
+      } catch {
+        p.onMessage?.("Some evidence files are still waiting to sync.");
+      }
+    };
+    window.addEventListener("online", reconnect);
+    if (navigator.onLine) void reconnect();
+    return () => window.removeEventListener("online", reconnect);
+  }, [p.farmId, p.userId, supabase]);
+
   useEffect(() => {
     if (!expanded) return;
     let active = true;
-    void collectPages<Evidence>((from, to) =>
-      supabase
-        .from("farm_photo_evidence")
-        .select(
-          "id,file_name,captured_at,captured_by,storage_bucket,storage_path",
+    const load = async () => {
+      const pendingRows = await refreshPending();
+      const localFiles: Evidence[] = pendingRows
+        .filter(
+          (x) =>
+            x.recordId === p.recordId &&
+            x.recordType === p.recordType &&
+            x.module === p.module,
         )
-        .eq("farm_id", p.farmId)
-        .eq("module", p.module)
-        .eq("record_type", p.recordType)
-        .eq("record_id", p.recordId)
-        .order("captured_at", { ascending: false })
-        .order("id")
-        .range(from, to),
-    )
-      .then((rows) => {
+        .map((x) => ({
+          id: x.id,
+          file_name: x.fileName,
+          captured_at: x.capturedAt,
+          captured_by: x.userId,
+          storage_bucket: "farm-photo-evidence",
+          storage_path: x.storagePath,
+          queued: true,
+        }));
+
+      if (!navigator.onLine) {
         if (active) {
-          setFiles(rows);
+          setFiles(localFiles);
           setError("");
         }
-      })
-      .catch(() => {
-        if (active)
-          setError("Could not load files. Close and reopen to retry.");
-      });
+        return;
+      }
+
+      try {
+        const rows = await collectPages<Evidence>((from, to) =>
+          supabase
+            .from("farm_photo_evidence")
+            .select(
+              "id,file_name,captured_at,captured_by,storage_bucket,storage_path",
+            )
+            .eq("farm_id", p.farmId)
+            .eq("module", p.module)
+            .eq("record_type", p.recordType)
+            .eq("record_id", p.recordId)
+            .order("captured_at", { ascending: false })
+            .order("id")
+            .range(from, to),
+        );
+        if (active) {
+          const ids = new Set(rows.map((x) => x.id));
+          setFiles([...localFiles.filter((x) => !ids.has(x.id)), ...rows]);
+          setError("");
+        }
+      } catch {
+        if (active) {
+          setFiles(localFiles);
+          setError("Cloud files could not be loaded. Queued files remain on this device.");
+        }
+      }
+    };
+    void load();
     return () => {
       active = false;
     };
@@ -80,10 +152,15 @@ export default function SmartPhotoEvidence(p: Props) {
     p.module,
     p.recordType,
     p.recordId,
+    p.userId,
     supabase,
   ]);
+
   async function open(file: Evidence) {
-    // Open synchronously to avoid mobile popup blockers after the signed-URL request.
+    if (file.queued) {
+      p.onMessage?.("This file is still on this device and will be available from the cloud after sync.");
+      return;
+    }
     const win = window.open("", "_blank");
     if (!win) {
       p.onMessage?.("Allow pop-ups to view the file.");
@@ -100,24 +177,61 @@ export default function SmartPhotoEvidence(p: Props) {
     }
     win.location.assign(data.signedUrl);
   }
+
+  async function saveOffline(item: QueuedEvidence) {
+    await queueEvidence(item);
+    await refreshPending();
+    p.onUploaded?.(item.storagePath);
+    p.onMessage?.("Evidence saved on this device. It will upload automatically when service returns.");
+    setExpanded(true);
+    setRefresh((n) => n + 1);
+  }
+
   async function upload(file?: File) {
     if (!file || busy) return;
     setBusy(true);
-    let path = "";
+    const id = crypto.randomUUID();
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-") || "photo.jpg";
+    const path = `${p.farmId}/${p.module}/${p.recordType}/${p.recordId}/${id}-${safe}`;
+    const capturedAt = new Date().toISOString();
+    const item: QueuedEvidence = {
+      id,
+      farmId: p.farmId,
+      userId: p.userId,
+      module: p.module,
+      recordType: p.recordType,
+      recordId: p.recordId,
+      parentRecordId: p.parentRecordId ?? null,
+      category: p.category ?? "general",
+      storagePath: path,
+      fileName: file.name,
+      mimeType: file.type || "",
+      capturedAt,
+      gps: p.gps ?? null,
+      metadata: p.metadata ?? {},
+      blob: file,
+    };
+
     let uploaded = false;
     try {
       if (file.size > 10 * 1024 * 1024)
         throw new Error("Choose a photo or PDF under 10 MB.");
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-") || "photo.jpg";
-      path = `${p.farmId}/${p.module}/${p.recordType}/${p.recordId}/${crypto.randomUUID()}-${safe}`;
+
+      if (!navigator.onLine) {
+        await saveOffline(item);
+        return;
+      }
+
       const up = await supabase.storage
         .from("farm-photo-evidence")
         .upload(path, file, { cacheControl: "3600", upsert: false });
       if (up.error) throw new Error(up.error.message);
       uploaded = true;
+
       const row = await supabase
         .from("farm_photo_evidence")
         .insert({
+          id,
           farm_id: p.farmId,
           module: p.module,
           record_type: p.recordType,
@@ -128,7 +242,7 @@ export default function SmartPhotoEvidence(p: Props) {
           storage_path: path,
           file_name: file.name,
           mime_type: file.type || null,
-          captured_at: new Date().toISOString(),
+          captured_at: capturedAt,
           captured_by: p.userId,
           gps_lat: p.gps?.lat ?? null,
           gps_lng: p.gps?.lng ?? null,
@@ -137,79 +251,57 @@ export default function SmartPhotoEvidence(p: Props) {
           metadata: p.metadata ?? {},
         });
       if (row.error) throw new Error(row.error.message);
+
       p.onUploaded?.(path);
       p.onMessage?.("Photo filed with this record. Use View files to open it.");
       setExpanded(true);
       setRefresh((n) => n + 1);
     } catch (e) {
-      if (uploaded)
-        await supabase.storage.from("farm-photo-evidence").remove([path]);
-      p.onMessage?.(
-        e instanceof Error ? e.message : "Unable to save photo evidence.",
-      );
+      if (uploaded) {
+        try {
+          await supabase.storage.from("farm-photo-evidence").remove([path]);
+        } catch {}
+      }
+      try {
+        await saveOffline(item);
+      } catch {
+        p.onMessage?.(
+          e instanceof Error ? e.message : "Unable to save photo evidence.",
+        );
+      }
     } finally {
       setBusy(false);
       if (camera.current) camera.current.value = "";
       if (library.current) library.current.value = "";
     }
   }
+
   return (
     <div className="stack">
       <div className="inline">
-        <button
-          type="button"
-          className="btn secondary"
-          disabled={busy}
-          onClick={() => camera.current?.click()}
-        >
-          {busy ? "Uploading…" : (p.label ?? "Take photo")}
+        <button type="button" className="btn secondary" disabled={busy} onClick={() => camera.current?.click()}>
+          {busy ? "Saving…" : (p.label ?? "Take photo")}
         </button>
-        <button
-          type="button"
-          className="btn secondary"
-          disabled={busy}
-          onClick={() => library.current?.click()}
-        >
+        <button type="button" className="btn secondary" disabled={busy} onClick={() => library.current?.click()}>
           Choose photo / PDF
         </button>
-        <button
-          type="button"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
-        >
+        <button type="button" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
           {expanded ? "Hide files" : "View files"}
         </button>
+        {pending > 0 && <span className="badge">{pending} evidence file(s) queued</span>}
       </div>
-      <input
-        ref={camera}
-        hidden
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => void upload(e.target.files?.[0])}
-      />
-      <input
-        ref={library}
-        hidden
-        type="file"
-        accept="image/*,application/pdf"
-        onChange={(e) => void upload(e.target.files?.[0])}
-      />
+      <input ref={camera} hidden type="file" accept="image/*" capture="environment" onChange={(e) => void upload(e.target.files?.[0])} />
+      <input ref={library} hidden type="file" accept="image/*,application/pdf" onChange={(e) => void upload(e.target.files?.[0])} />
       {expanded && (
         <div>
-          {error ? (
-            <p role="status">{error}</p>
-          ) : files.length ? (
+          {error && <p role="status">{error}</p>}
+          {files.length ? (
             <ul>
               {files.map((f) => (
                 <li key={f.id}>
-                  <button onClick={() => void open(f)}>
-                    {f.file_name ?? "Open attachment"}
-                  </button>{" "}
-                  · {new Date(f.captured_at).toLocaleString()} ·{" "}
-                  {f.captured_by === p.userId
-                    ? "Uploaded by you"
-                    : `Uploader ${f.captured_by.slice(0, 8)}`}
+                  <button onClick={() => void open(f)}>{f.file_name ?? "Open attachment"}</button>
+                  {" "}· {new Date(f.captured_at).toLocaleString()} ·{" "}
+                  {f.queued ? "Waiting to sync" : f.captured_by === p.userId ? "Uploaded by you" : `Uploader ${f.captured_by.slice(0, 8)}`}
                 </li>
               ))}
             </ul>

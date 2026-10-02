@@ -1,9 +1,19 @@
-const CACHE = "farmvoice-offline-v4";
-// Keep shell references plus at most 100 dynamically loaded chunks. Replacing
-// a shell prunes chunks from previous releases, even when this worker is unchanged.
+const CACHE = "farmvoice-offline-v5";
+const INSTALL_SHELLS = ["/records", "/team/crew", "/offline"];
+const CACHEABLE_SHELLS = new Set([
+  "/records",
+  "/fields",
+  "/team",
+  "/team/crew",
+  "/worker",
+  "/h2a",
+  "/h2a/housing",
+  "/offline",
+]);
+
 async function pruneAssets(cache) {
   const referenced = new Set();
-  for (const path of ["/records", "/team/crew", "/offline"]) {
+  for (const path of CACHEABLE_SHELLS) {
     const shell = await cache.match(path);
     if (!shell) continue;
     for (const match of (await shell.text()).matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g))
@@ -14,76 +24,87 @@ async function pruneAssets(cache) {
   for (const request of extra.slice(0, Math.max(0, extra.length - 100)))
     await cache.delete(request);
 }
+
 async function storeResponse(cache, key, response) {
   await cache.put(key, response);
   await pruneAssets(cache);
 }
+
+async function cacheShell(cache, path, response) {
+  const html = await response.clone().text();
+  await cache.put(path, response);
+  const assets = [
+    ...new Set(
+      [...html.matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g)]
+        .map((m) => m[1].replace(/&amp;/g, "&")),
+    ),
+  ];
+  await Promise.all(
+    assets.map(async (asset) => {
+      try {
+        const res = await fetch(asset);
+        if (res.ok) await cache.put(asset, res);
+      } catch {}
+    }),
+  );
+  await pruneAssets(cache);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      for (const path of ["/records", "/team/crew", "/offline"]) {
+      for (const path of INSTALL_SHELLS) {
         const response = await fetch(path);
         if (!response.ok || response.redirected)
           throw new Error("Offline shell unavailable");
-        const html = await response.clone().text();
-        await cache.put(path, response);
-        const assets = [
-          ...new Set(
-            [
-              ...html.matchAll(
-                /(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g,
-              ),
-            ].map((m) => m[1].replace(/&amp;/g, "&")),
-          ),
-        ];
-        await cache.addAll(assets);
+        await cacheShell(cache, path, response);
       }
     })(),
   );
 });
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith("farmvoice-") && key !== CACHE)
-            .map((key) => caches.delete(key)),
-        ),
-      ),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith("farmvoice-") && key !== CACHE)
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
   );
 });
+
 self.addEventListener("fetch", (event) => {
-  const request = event.request,
-    url = new URL(request.url);
+  const request = event.request;
+  const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
+
   const staticAsset = url.pathname.startsWith("/_next/static/");
-  const shell =
-    request.mode === "navigate" &&
-    ["/records", "/team/crew", "/offline"].includes(url.pathname);
+  const shell = request.mode === "navigate" && CACHEABLE_SHELLS.has(url.pathname);
   if (!staticAsset && !shell) return;
+
   event.respondWith(
     fetch(request)
       .then((response) => {
         if (response.ok && !response.redirected) {
           const copy = response.clone();
           event.waitUntil(
-            caches
-              .open(CACHE)
-              .then((cache) => storeResponse(cache, shell ? url.pathname : request, copy)),
+            caches.open(CACHE).then((cache) =>
+              shell
+                ? cacheShell(cache, url.pathname, copy)
+                : storeResponse(cache, request, copy),
+            ),
           );
         }
         return response;
       })
       .catch(async () => {
         const cached = await caches.match(shell ? url.pathname : request);
-        return (
-          cached ||
-          (shell ? await caches.match("/offline") : null) ||
-          Response.error()
-        );
+        return cached || (shell ? await caches.match("/offline") : null) || Response.error();
       }),
   );
 });

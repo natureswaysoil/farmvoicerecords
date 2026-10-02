@@ -93,6 +93,24 @@ export default function TeamPage() {
       return;
     }
     setCtx(farm);
+    const cacheKey = `farmvoice-team-cache:${farm.farmId}:${farm.userId}`;
+    if (!navigator.onLine) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) ?? "null");
+        if (!cached) throw new Error("No cached team data");
+        setFarmName(cached.farmName ?? "Farm");
+        setTimeZone(cached.timeZone ?? "UTC");
+        setJoinCode(cached.joinCode ?? "");
+        setMembers(cached.members ?? []);
+        setShifts(cached.shifts ?? []);
+        setTimes(cached.times ?? []);
+        setMessage("Offline mode: cached roster, schedule and recent time are available.");
+        return;
+      } catch {
+        setMessage("Reconnect once to cache this farm's roster and schedule.");
+        return;
+      }
+    }
 
     const memberQuery = supabase
       .from("farm_members")
@@ -145,9 +163,20 @@ export default function TeamPage() {
     setFarmName(farmRow.name);
     setTimeZone(farmRow.timezone ?? "UTC");
     setJoinCode(farmRow.join_code);
-    setMembers((memberRows ?? []) as Member[]);
-    setShifts((shiftRows ?? []) as Shift[]);
-    setTimes((timeRows ?? []) as TimeEntry[]);
+    const nextMembers = (memberRows ?? []) as Member[];
+    const nextShifts = (shiftRows ?? []) as Shift[];
+    const nextTimes = (timeRows ?? []) as TimeEntry[];
+    setMembers(nextMembers);
+    setShifts(nextShifts);
+    setTimes(nextTimes);
+    localStorage.setItem(cacheKey, JSON.stringify({
+      farmName: farmRow.name,
+      timeZone: farmRow.timezone ?? "UTC",
+      joinCode: farmRow.join_code,
+      members: nextMembers,
+      shifts: nextShifts,
+      times: nextTimes,
+    }));
     setShift((s) => ({
       ...s,
       workerUserId:
@@ -159,11 +188,12 @@ export default function TeamPage() {
   }
 
   useEffect(() => {
-    load().catch((error) =>
-      setMessage(
-        error instanceof Error ? error.message : "Unable to load team data.",
-      ),
+    const refresh = () => load().catch((error) =>
+      setMessage(error instanceof Error ? error.message : "Unable to load team data.")
     );
+    refresh();
+    window.addEventListener("online", refresh);
+    return () => window.removeEventListener("online", refresh);
   }, [timeLimit]);
 
   function captureGps(): Promise<Gps> {
