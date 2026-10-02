@@ -710,6 +710,7 @@ export default function H2APage() {
           it does not determine legal compliance.
         </p>
         <div className="actions">
+          <Link className="btn secondary" href="/h2a/arrival">Incoming worker checklist</Link>
           <Link className="btn secondary" href="/h2a/payroll">Payroll & guarantee review</Link>
           <Link className="btn secondary" href="/h2a/documents">Documents & acknowledgments</Link>
           <Link className="btn secondary" href="/h2a/housing">Housing compliance</Link>
