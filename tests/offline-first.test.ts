@@ -176,7 +176,13 @@ test("H-2A retry treats an identical server UUID as already persisted", async ()
         insert(){inserts++;return this;},
         update(){updates++;return this;},
         then(resolve:(value:any)=>void){
-          if(mode==="select") resolve({data:[{id:row.id,worker_id:row.worker_id,work_date:row.work_date}],error:null});
+          if(mode==="select") resolve({data:[{
+            id:row.id,
+            worker_id:row.worker_id,
+            work_date:row.work_date,
+            hours_worked:8,
+            locked_at:"2026-10-02T20:00:00+00:00",
+          }],error:null});
           else resolve({data:[],error:null});
         },
       };
@@ -212,4 +218,107 @@ test("H-2A reconciliation batches one lookup and one insert for new crew rows", 
   await saveH2aDailyRows(supabase,userId,farmId,rows);
   assert.equal(selects,1);
   assert.equal(inserts,1);
+});
+
+
+test("legacy non-UUID H-2A ids are repaired and preserve an evidence remap", () => {
+  installStorage();
+  const userId="33333333-3333-4333-8333-333333333333";
+  const farmId="22222222-2222-4222-8222-222222222222";
+  const oldId="offline-worker-2026-10-02";
+  localStorage.setItem(
+    `farmvoice-h2a-daily-v1:${userId}:${farmId}:legacy-invalid`,
+    JSON.stringify({
+      id:"legacy-invalid",
+      farmId,
+      userId,
+      queuedAt:"2026-10-02T12:00:00.000Z",
+      rows:[{
+        id:oldId,
+        farm_id:farmId,
+        worker_id:"55555555-5555-4555-8555-555555555555",
+        work_date:"2026-10-02",
+      }],
+    }),
+  );
+  const batch=h2aDailyBatches(userId,farmId)[0];
+  assert.notEqual(batch.rows[0].id,oldId);
+  assert.match(batch.rows[0].id,/^[0-9a-f]{8}-[0-9a-f-]{27}$/i);
+  assert.deepEqual(batch.evidenceRemaps,[{
+    fromRecordId:oldId,
+    toRecordId:batch.rows[0].id,
+  }]);
+});
+
+test("already-v2 invalid H-2A ids are repaired on read", () => {
+  installStorage();
+  const userId="33333333-3333-4333-8333-333333333333";
+  const farmId="22222222-2222-4222-8222-222222222222";
+  const key=`farmvoice-h2a-daily-v2:${userId}:${farmId}:v2-invalid`;
+  localStorage.setItem(key,JSON.stringify({
+    id:"v2-invalid",
+    farmId,
+    userId,
+    queuedAt:"2026-10-02T12:00:00.000Z",
+    rows:[{
+      id:"offline-old",
+      farm_id:farmId,
+      worker_id:"55555555-5555-4555-8555-555555555555",
+      work_date:"2026-10-02",
+    }],
+  }));
+  const batch=h2aDailyBatches(userId,farmId)[0];
+  assert.notEqual(batch.rows[0].id,"offline-old");
+  assert.equal(batch.evidenceRemaps?.[0].fromRecordId,"offline-old");
+  const persisted=JSON.parse(localStorage.getItem(key)!);
+  assert.equal(persisted.rows[0].id,batch.rows[0].id);
+});
+
+test("same H-2A UUID with changed payload reconciles instead of silently skipping", async () => {
+  const farmId="22222222-2222-4222-8222-222222222222";
+  const userId="33333333-3333-4333-8333-333333333333";
+  const row={
+    id:"77777777-7777-4777-8777-777777777777",
+    farm_id:farmId,
+    worker_id:"55555555-5555-4555-8555-555555555555",
+    work_date:"2026-10-02",
+    hours_worked:8,
+    shift_minutes:480,
+    paid_break_minutes:30,
+    break_minutes:45,
+    locked_at:"2026-10-02T20:00:00.000Z",
+  };
+  let updatePayload:any=null;
+  const supabase={
+    from(){
+      let op="select";
+      return {
+        select(){return this;},
+        eq(){return this;},
+        in(){return this;},
+        update(value:any){op="update";updatePayload=value;return this;},
+        insert(){op="insert";return this;},
+        then(resolve:(value:any)=>void){
+          if(op==="select") resolve({data:[{
+            id:row.id,
+            worker_id:row.worker_id,
+            work_date:row.work_date,
+            hours_worked:7,
+            shift_minutes:420,
+            paid_break_minutes:15,
+            break_minutes:30,
+            locked_at:"2026-10-02T20:00:00+00:00",
+          }],error:null});
+          else if(op==="update") resolve({data:[{id:row.id}],error:null});
+          else resolve({data:[],error:null});
+        },
+      };
+    },
+  };
+  await saveH2aDailyRows(supabase,userId,farmId,[row]);
+  assert.equal(updatePayload.hours_worked,8);
+  assert.equal(updatePayload.shift_minutes,480);
+  assert.equal(updatePayload.paid_break_minutes,30);
+  assert.equal(updatePayload.break_minutes,45);
+  assert.equal(updatePayload.change_reason,"Offline reconciliation after reconnect");
 });

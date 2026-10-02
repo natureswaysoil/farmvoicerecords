@@ -138,11 +138,29 @@ test("legacy H-2A v1 queues remain discoverable for migration", async () => {
   assert.match(source, /crypto\.randomUUID\(\)/);
 });
 
-test("H-2A reconciliation skips identical ids and batches inserts", async () => {
+test("H-2A reconciliation skips only identical ids with identical payloads and batches inserts", async () => {
   const source = await readFile(new URL("../src/lib/h2a-offline.ts", import.meta.url), "utf8");
-  assert.match(source, /if \(serverId===row\.id\) continue/);
+  assert.match(source, /if \(serverId===row\.id && sameMutablePayload\(existing,row\)\) continue/);
   assert.match(source, /\.in\("worker_id",workerIds\)/);
   assert.match(source, /\.in\("work_date",workDates\)/);
   assert.match(source, /\.insert\(inserts\)/);
   assert.match(source, /Offline reconciliation after reconnect/);
+});
+
+
+test("H-2A follow-up repairs invalid ids, compares payloads, and includes break fields", async () => {
+  const source = await readFile(new URL("../src/lib/h2a-offline.ts", import.meta.url), "utf8");
+  assert.match(source, /uuidPattern/);
+  assert.match(source, /evidenceRemaps/);
+  assert.match(source, /sameMutablePayload/);
+  assert.match(source, /"shift_minutes"/);
+  assert.match(source, /"paid_break_minutes"/);
+  assert.match(source, /if \(serverId===row\.id && sameMutablePayload\(existing,row\)\) continue/);
+});
+
+test("inspection package fetches evidence only for selected record ids in chunks", async () => {
+  const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /const evidenceChunkSize = 100/);
+  assert.match(source, /\.in\("record_id", ids\)/);
+  assert.doesNotMatch(source, /allEvidence/);
 });
