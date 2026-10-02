@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import { validCaptureTime } from "../src/lib/records/receipt.ts";
 import { purchaseProblems } from "../src/lib/records/schema.ts";
+import { collectChunkedPages } from "../src/lib/pagination.ts";
 
 test("purchase quantities must be finite and positive", () => {
   for (const quantity of ["Infinity", "-Infinity", "1e999", "NaN", "0", "-1"])
@@ -158,9 +159,32 @@ test("H-2A follow-up repairs invalid ids, compares payloads, and includes break 
   assert.match(source, /if \(serverId===row\.id && sameMutablePayload\(existing,row\)\) continue/);
 });
 
-test("inspection package fetches evidence only for selected record ids in chunks", async () => {
+test("inspection evidence chunking bounds ids and collects every page", async () => {
+  const ids = Array.from({length:205},(_,i)=>`record-${i}`);
+  const seen = new Map<string,string[]>();
+  const rows = await collectChunkedPages(
+    ids,
+    async (chunk,from,to) => {
+      assert.ok(chunk.length <= 100);
+      const signature = chunk.join(",");
+      if (!seen.has(signature)) seen.set(signature,[...chunk]);
+      return {
+        data: chunk.slice(from,to+1).map((record_id)=>({record_id})),
+        error: null,
+      };
+    },
+    100,
+    37,
+  );
+  assert.equal(seen.size,3);
+  assert.deepEqual([...seen.values()].map((chunk)=>chunk.length),[100,100,5]);
+  assert.equal(rows.length,205);
+  assert.deepEqual(rows.map((row)=>row.record_id),ids);
+});
+
+test("inspection package applies selected ids through the tested chunk helper", async () => {
   const source = await readFile(new URL("../app/inspection-package/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /const evidenceChunkSize = 100/);
+  assert.match(source, /collectChunkedPages<Evidence, string>/);
   assert.match(source, /\.in\("record_id", ids\)/);
   assert.doesNotMatch(source, /allEvidence/);
 });
