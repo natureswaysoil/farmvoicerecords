@@ -29,6 +29,7 @@ type Worker = {
   legal_name: string;
   preferred_name: string | null;
   preferred_language: string | null;
+  worker_type: string;
   arrival_date: string | null;
   work_authorization_start: string | null;
   work_authorization_end: string | null;
@@ -171,7 +172,7 @@ export default function H2aArrivalChecklistPage() {
           supabase
             .from("h2a_workers")
             .select(
-              "id,contract_id,employee_number,legal_name,preferred_name,preferred_language,arrival_date,work_authorization_start,work_authorization_end,first_work_date,emergency_contact,status",
+              "id,contract_id,employee_number,legal_name,preferred_name,preferred_language,worker_type,arrival_date,work_authorization_start,work_authorization_end,first_work_date,emergency_contact,status",
             )
             .eq("farm_id", farm.farmId)
             .order("employee_number"),
@@ -225,8 +226,12 @@ export default function H2aArrivalChecklistPage() {
 
       const nextWorker =
         nextWorkers.find((worker) => worker.id === workerId) ??
-        nextWorkers.find((worker) => worker.status === "expected") ??
-        nextWorkers.find((worker) => worker.status === "active") ??
+        nextWorkers.find(
+          (worker) => worker.worker_type === "h2a" && worker.status === "expected",
+        ) ??
+        nextWorkers.find(
+          (worker) => worker.worker_type === "h2a" && worker.status === "active",
+        ) ??
         nextWorkers[0] ??
         null;
       const nextContract =
@@ -363,8 +368,40 @@ export default function H2aArrivalChecklistPage() {
       })
       .eq("id", selectedWorker.id)
       .eq("farm_id", ctx.farmId);
+    if (!error) {
+      const contract =
+        contracts.find((item) => item.id === selectedWorker.contract_id) ?? null;
+      const context = {
+        arrivalDate: selectedWorker.arrival_date,
+        firstWorkDate: selectedWorker.first_work_date,
+        contractStart: contract?.start_date,
+        contractEnd: contract?.end_date,
+      };
+      const rows = workerRows.filter(
+        (row) =>
+          row.worker_id === selectedWorker.id &&
+          row.status !== "complete" &&
+          row.status !== "exception",
+      );
+      await Promise.all(
+        rows.map(async (row) => {
+          const definition = WORKER_ARRIVAL_CHECKLIST.find(
+            (item) => item.key === row.item_key,
+          );
+          if (!definition) return;
+          const dueOn = suggestedDueOn(definition, context);
+          if (dueOn === row.due_on) return;
+          const result = await supabase
+            .from("h2a_worker_arrival_checklist")
+            .update({ due_on: dueOn, updated_at: new Date().toISOString() })
+            .eq("id", row.id)
+            .eq("farm_id", ctx.farmId);
+          if (result.error) throw result.error;
+        }),
+      );
+    }
     setBusy(false);
-    setMessage(error ? error.message : "Worker arrival facts saved.");
+    setMessage(error ? error.message : "Worker arrival facts and suggested deadlines saved.");
     if (!error) void load(ctx.farmId);
   }
 
@@ -671,7 +708,7 @@ export default function H2aArrivalChecklistPage() {
                   }}
                 >
                   <option value="">Choose worker</option>
-                  {workers.map((worker) => (
+                  {workers.filter((worker) => worker.worker_type === "h2a").map((worker) => (
                     <option key={worker.id} value={worker.id}>
                       {worker.employee_number} ·{" "}
                       {worker.preferred_name || worker.legal_name}
