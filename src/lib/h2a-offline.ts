@@ -149,6 +149,7 @@ export async function saveH2aDailyRows(
   farmId:string,
   rows:H2aDailyRow[],
   remapEvidence?: EvidenceRecordRemapper,
+  conflictRetry = false,
 ) {
   if (!rows.length) return;
 
@@ -193,7 +194,7 @@ export async function saveH2aDailyRows(
       .insert(inserts)
       .select("id");
     if (inserted.error) {
-      if (inserted.error.code!=="23505") throw inserted.error;
+      if (inserted.error.code!=="23505" || conflictRetry) throw inserted.error;
       // A concurrent/uncertain insert may have committed. Re-run once through
       // reconciliation rather than duplicating or permanently stranding a batch.
       return saveH2aDailyRows(
@@ -202,6 +203,7 @@ export async function saveH2aDailyRows(
         farmId,
         rows,
         remapEvidence,
+        true,
       );
     }
     if ((inserted.data?.length ?? 0)!==inserts.length)
