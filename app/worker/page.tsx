@@ -5,6 +5,8 @@ import { createClient } from "@/src/lib/supabase/client";
 import { getNamedFarmContexts, type FarmContext } from "@/src/lib/farm-cloud";
 import {
   activeQueuedWorkerTime,
+  cacheCloudActiveWorkerTime,
+  cachedCloudActiveWorkerTime,
   queuedWorkerTimes,
   removeWorkerTime,
   storeWorkerTime,
@@ -69,12 +71,13 @@ export default function WorkerPage() {
       const queued = queuedWorkerTimes(ctx.userId, ctx.farmId);
       if (keep) setPending(queued.length);
       const queuedActive = activeQueuedWorkerTime(ctx.userId, ctx.farmId);
+      const cachedActive = cachedCloudActiveWorkerTime(ctx.userId, ctx.farmId);
       if (!navigator.onLine) {
         if (keep) {
           setActive(
             queuedActive
               ? { id: queuedActive.id, clock_in: queuedActive.clockIn, queued: true }
-              : null,
+              : cachedActive,
           );
           setLoadingTime(false);
           setMessage(
@@ -100,7 +103,9 @@ export default function WorkerPage() {
           .maybeSingle();
         if (error) throw error;
         if (keep) {
-          setActive(data as Active | null);
+          const cloudActive = data as Active | null;
+          cacheCloudActiveWorkerTime(ctx.userId, ctx.farmId, cloudActive);
+          setActive(cloudActive);
           setPending(queuedWorkerTimes(ctx.userId, ctx.farmId).length);
           setLoadingTime(false);
           setMessage("");
@@ -110,7 +115,7 @@ export default function WorkerPage() {
           setActive(
             queuedActive
               ? { id: queuedActive.id, clock_in: queuedActive.clockIn, queued: true }
-              : null,
+              : cachedActive,
           );
           setLoadingTime(false);
           setMessage(
@@ -208,7 +213,9 @@ export default function WorkerPage() {
           return;
         }
 
-        setActive(result.data[0] as Active);
+        const cloudActive = result.data[0] as Active;
+        cacheCloudActiveWorkerTime(ctx.userId, ctx.farmId, cloudActive);
+        setActive(cloudActive);
         setMessage(
           t("Clock-in saved.", "Entrada guardada.") +
             (gps ? "" : t(" GPS was unavailable.", " GPS no disponible.")),
@@ -234,6 +241,7 @@ export default function WorkerPage() {
             await syncWorkerTimes(db, ctx.userId, ctx.farmId);
           } catch {}
         }
+        cacheCloudActiveWorkerTime(ctx.userId, ctx.farmId, null);
         setActive(null);
         setPending(queuedWorkerTimes(ctx.userId, ctx.farmId).length);
         setMessage(
@@ -267,6 +275,7 @@ export default function WorkerPage() {
 
       if (!navigator.onLine) {
         storeWorkerTime(updateRow);
+        cacheCloudActiveWorkerTime(ctx.userId, ctx.farmId, null);
         setActive(null);
         setPending(queuedWorkerTimes(ctx.userId, ctx.farmId).length);
         setMessage(
@@ -302,6 +311,7 @@ export default function WorkerPage() {
         );
       } else {
         removeWorkerTime(updateRow);
+        cacheCloudActiveWorkerTime(ctx.userId, ctx.farmId, null);
         setMessage(t("Clock-out saved.", "Salida guardada."));
       }
       setActive(null);
