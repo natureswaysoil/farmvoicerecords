@@ -23,7 +23,8 @@ create table public.h2a_worker_arrival_checklist (
   foreign key (farm_id, worker_id)
     references public.h2a_workers(farm_id, id) on delete cascade,
   foreign key (farm_id, contract_id)
-    references public.h2a_contracts(farm_id, id) on delete set null,
+    references public.h2a_contracts(farm_id, id)
+    on delete set null (contract_id),
   check (status <> 'exception' or nullif(trim(coalesce(exception_reason,'')),'') is not null),
   check (status <> 'complete' or completed_at is not null)
 );
@@ -125,6 +126,302 @@ create trigger h2a_farm_readiness_checklist_audit
 after insert or update or delete on public.h2a_farm_readiness_checklist
 for each row execute function private.h2a_audit_trigger();
 
+
+-- Provision checklist rows for every H-2A worker and every H-2A contract.
+create or replace function private.h2a_seed_worker_arrival_checklist()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_item text;
+  v_status text;
+begin
+  if new.worker_type <> 'h2a' then
+    return new;
+  end if;
+
+  foreach v_item in array array[
+    'work_contract_disclosed',
+    'wage_terms_reviewed',
+    'deductions_disclosed',
+    'worker_rights_notice',
+    'i9_section1',
+    'i9_section2',
+    'work_authorization_dates',
+    'tin_ssn_status',
+    'federal_withholding_election',
+    'payroll_setup',
+    'housing_assignment',
+    'housing_no_charge',
+    'housing_rules',
+    'daily_transportation',
+    'inbound_costs_recorded',
+    'recruitment_fee_interview',
+    'fee_reimbursement_review',
+    'inbound_reimbursement_50pct',
+    'workers_comp',
+    'tools_equipment',
+    'meal_arrangement',
+    'safety_orientation',
+    'emergency_contact',
+    'first_work_date',
+    'three_fourths_tracking'
+  ]
+  loop
+    v_status := case
+      when v_item in (
+        'tin_ssn_status',
+        'fee_reimbursement_review',
+        'inbound_reimbursement_50pct',
+        'three_fourths_tracking'
+      ) then 'due_later'
+      else 'required_now'
+    end;
+
+    insert into public.h2a_worker_arrival_checklist(
+      farm_id,
+      worker_id,
+      contract_id,
+      checklist_version,
+      item_key,
+      status,
+      due_on,
+      created_by
+    )
+    values (
+      new.farm_id,
+      new.id,
+      new.contract_id,
+      'federal-2026-v1',
+      v_item,
+      v_status,
+      case
+        when v_item='i9_section1' then new.first_work_date
+        when v_item='i9_section2' and new.first_work_date is not null then
+          (
+            select d::date
+            from generate_series(
+              new.first_work_date + interval '1 day',
+              new.first_work_date + interval '10 days',
+              interval '1 day'
+            ) d
+            where extract(isodow from d) < 6
+            order by d
+            offset 2
+            limit 1
+          )
+        when v_item='first_work_date' then
+          coalesce(
+            new.first_work_date,
+            (
+              select c.start_date
+              from public.h2a_contracts c
+              where c.farm_id=new.farm_id and c.id=new.contract_id
+            )
+          )
+        when v_item='inbound_reimbursement_50pct' and new.contract_id is not null then
+          (
+            select (
+              c.start_date
+              + ((c.end_date - c.start_date) / 2)
+            )::date
+            from public.h2a_contracts c
+            where c.farm_id=new.farm_id and c.id=new.contract_id
+          )
+        when v_item='three_fourths_tracking' then
+          coalesce(
+            (
+              select c.start_date
+              from public.h2a_contracts c
+              where c.farm_id=new.farm_id and c.id=new.contract_id
+            ),
+            new.first_work_date
+          )
+        else null
+      end,
+      coalesce(new.created_by, (select auth.uid()))
+    )
+    on conflict (farm_id,worker_id,checklist_version,item_key)
+    do update set
+      contract_id=excluded.contract_id,
+      due_on=case
+        when public.h2a_worker_arrival_checklist.status in ('complete','exception')
+          then public.h2a_worker_arrival_checklist.due_on
+        else excluded.due_on
+      end,
+      updated_at=now();
+  end loop;
+
+  return new;
+end;
+$;
+revoke all on function private.h2a_seed_worker_arrival_checklist()
+from public,anon,authenticated;
+
+drop trigger if exists h2a_worker_arrival_seed on public.h2a_workers;
+create trigger h2a_worker_arrival_seed
+after insert or update of worker_type,contract_id,first_work_date on public.h2a_workers
+for each row execute function private.h2a_seed_worker_arrival_checklist();
+
+create or replace function private.h2a_seed_farm_readiness_checklist()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_item text;
+begin
+  foreach v_item in array array[
+    'certified_job_order',
+    'rights_poster_english',
+    'rights_poster_other_languages',
+    'housing_certification',
+    'workers_comp_current',
+    'daily_transport_plan',
+    'wage_rate_verified',
+    'pay_statement_setup',
+    'recruiter_fee_controls',
+    'meal_arrangement_ready',
+    'record_retention_process'
+  ]
+  loop
+    insert into public.h2a_farm_readiness_checklist(
+      farm_id,
+      contract_id,
+      checklist_version,
+      item_key,
+      status,
+      created_by
+    )
+    values (
+      new.farm_id,
+      new.id,
+      'federal-2026-v1',
+      v_item,
+      'required_now',
+      coalesce(new.created_by, (select auth.uid()))
+    )
+    on conflict (farm_id,contract_id,checklist_version,item_key)
+    do nothing;
+  end loop;
+
+  return new;
+end;
+$;
+revoke all on function private.h2a_seed_farm_readiness_checklist()
+from public,anon,authenticated;
+
+drop trigger if exists h2a_contract_readiness_seed on public.h2a_contracts;
+create trigger h2a_contract_readiness_seed
+after insert on public.h2a_contracts
+for each row execute function private.h2a_seed_farm_readiness_checklist();
+
+
+-- Backfill existing contracts.
+insert into public.h2a_farm_readiness_checklist(
+  farm_id,contract_id,checklist_version,item_key,status,created_by
+)
+select
+  c.farm_id,
+  c.id,
+  'federal-2026-v1',
+  item_key,
+  'required_now',
+  c.created_by
+from public.h2a_contracts c
+cross join unnest(array[
+  'certified_job_order',
+  'rights_poster_english',
+  'rights_poster_other_languages',
+  'housing_certification',
+  'workers_comp_current',
+  'daily_transport_plan',
+  'wage_rate_verified',
+  'pay_statement_setup',
+  'recruiter_fee_controls',
+  'meal_arrangement_ready',
+  'record_retention_process'
+]) as item_key
+on conflict (farm_id,contract_id,checklist_version,item_key) do nothing;
+
+-- Backfill existing H-2A workers.
+insert into public.h2a_worker_arrival_checklist(
+  farm_id,worker_id,contract_id,checklist_version,item_key,status,due_on,created_by
+)
+select
+  w.farm_id,
+  w.id,
+  w.contract_id,
+  'federal-2026-v1',
+  item_key,
+  case
+    when item_key in (
+      'tin_ssn_status',
+      'fee_reimbursement_review',
+      'inbound_reimbursement_50pct',
+      'three_fourths_tracking'
+    ) then 'due_later'
+    else 'required_now'
+  end,
+  case
+    when item_key='i9_section1' then w.first_work_date
+    when item_key='i9_section2' and w.first_work_date is not null then
+      (
+        select d::date
+        from generate_series(
+          w.first_work_date + interval '1 day',
+          w.first_work_date + interval '10 days',
+          interval '1 day'
+        ) d
+        where extract(isodow from d) < 6
+        order by d
+        offset 2
+        limit 1
+      )
+    when item_key='first_work_date' then coalesce(w.first_work_date,c.start_date)
+    when item_key='inbound_reimbursement_50pct'
+      and c.start_date is not null and c.end_date is not null
+      then (c.start_date + ((c.end_date-c.start_date)/2))::date
+    when item_key='three_fourths_tracking'
+      then coalesce(c.start_date,w.first_work_date)
+    else null
+  end,
+  w.created_by
+from public.h2a_workers w
+left join public.h2a_contracts c
+  on c.farm_id=w.farm_id and c.id=w.contract_id
+cross join unnest(array[
+  'work_contract_disclosed',
+  'wage_terms_reviewed',
+  'deductions_disclosed',
+  'worker_rights_notice',
+  'i9_section1',
+  'i9_section2',
+  'work_authorization_dates',
+  'tin_ssn_status',
+  'federal_withholding_election',
+  'payroll_setup',
+  'housing_assignment',
+  'housing_no_charge',
+  'housing_rules',
+  'daily_transportation',
+  'inbound_costs_recorded',
+  'recruitment_fee_interview',
+  'fee_reimbursement_review',
+  'inbound_reimbursement_50pct',
+  'workers_comp',
+  'tools_equipment',
+  'meal_arrangement',
+  'safety_orientation',
+  'emergency_contact',
+  'first_work_date',
+  'three_fourths_tracking'
+]) as item_key
+where w.worker_type='h2a'
+on conflict (farm_id,worker_id,checklist_version,item_key) do nothing;
 
 -- Allow Smart Photo Evidence to attach directly to checklist items.
 create or replace function private.farm_photo_target_farm(
