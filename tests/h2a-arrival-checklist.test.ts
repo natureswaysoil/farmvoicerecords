@@ -87,7 +87,7 @@ test("arrival checklist migration enforces admin RLS, audit and evidence targets
   );
   assert.match(source, /enable row level security/);
   assert.match(source, /h2a arrival checklist admin manage/);
-  assert.match(source, /h2a_farm_readiness_checklist admin manage/);
+  assert.match(source, /h2a readiness checklist admin manage/);
   assert.match(source, /private\.h2a_has_role\(farm_id,array\['h2a_admin'\]\)/);
   assert.match(source, /h2a_worker_arrival_checklist_audit/);
   assert.match(source, /h2a_farm_readiness_checklist_audit/);
@@ -109,7 +109,7 @@ test("arrival workspace is linked, cached and keeps the I-9 disclaimer", async (
     readFile(new URL("../app/api/ask-farmvoice/route.ts", import.meta.url), "utf8"),
   ]);
   assert.match(dashboard, /href="\/h2a\/arrival"/);
-  assert.match(page, /does not replace Form I-9/);
+  assert.match(page, /does\s+not replace Form I-9/);
   assert.match(page, /Exception \/ not applicable/);
   assert.match(page, /SmartPhotoEvidence/);
   assert.match(pwa, /"\/h2a\/arrival"/);
