@@ -194,13 +194,42 @@ const existingSelect = [
   ...mutableDailyFields,
 ].join(",");
 
-function normalizedComparable(value: unknown) {
-  return value == null ? "" : String(value);
+const numericDailyFields = new Set<string>([
+  "hours_offered",
+  "shift_minutes",
+  "paid_break_minutes",
+  "break_minutes",
+  "hours_worked",
+  "piece_quantity",
+  "piece_rate",
+  "gps_lat",
+  "gps_lng",
+  "gps_accuracy_m",
+]);
+const timestampDailyFields = new Set<string>([
+  "gps_captured_at",
+  "locked_at",
+  "crew_leader_attested_at",
+]);
+
+function normalizedComparable(key:string,value: unknown) {
+  if (value == null || value === "") return "";
+  if (numericDailyFields.has(key)) {
+    const number=Number(value);
+    return Number.isFinite(number) ? String(number) : String(value);
+  }
+  if (timestampDailyFields.has(key)) {
+    const time=Date.parse(String(value));
+    return Number.isFinite(time) ? String(time) : String(value);
+  }
+  return String(value);
 }
 
 function sameMutablePayload(server:Record<string,unknown>,row:H2aDailyRow) {
   return mutableDailyFields.every(
-    (key)=>normalizedComparable(server[key])===normalizedComparable(row[key]),
+    (key)=>
+      normalizedComparable(key,server[key])===
+      normalizedComparable(key,row[key]),
   );
 }
 
