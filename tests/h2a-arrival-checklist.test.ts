@@ -92,6 +92,10 @@ test("arrival checklist migration enforces admin RLS, audit and evidence targets
   assert.match(source, /h2a_worker_arrival_checklist_audit/);
   assert.match(source, /h2a_farm_readiness_checklist_audit/);
   assert.match(source, /require_farm_write_plan/);
+  assert.match(source, /h2a_worker_arrival_seed/);
+  assert.match(source, /h2a_contract_readiness_seed/);
+  assert.match(source, /where w\.worker_type='h2a'/);
+  assert.match(source, /on delete set null \(contract_id\)/);
   assert.match(source, /p_record_type='arrival_checklist'/);
   assert.match(source, /p_record_type='readiness_checklist'/);
 });
@@ -112,4 +116,45 @@ test("arrival workspace is linked, cached and keeps the I-9 disclaimer", async (
   assert.match(sw, /"\/h2a\/arrival"/);
   assert.match(ask, /h2a_worker_arrival_checklist/);
   assert.match(ask, /h2a_farm_readiness_checklist/);
+});
+
+
+test("arrival workspace never falls back to a non-H-2A worker", async () => {
+  const source = await readFile(
+    new URL("../app/h2a/arrival/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    source,
+    /nextWorkers\.find\(\(worker\) => worker\.worker_type === "h2a"\) \?\?\s*null/,
+  );
+  assert.doesNotMatch(source, /nextWorkers\[0\]/);
+  assert.doesNotMatch(source, /ensureWorkerChecklist/);
+  assert.doesNotMatch(source, /ensureReadinessChecklist/);
+});
+
+test("editing a completed checklist row preserves its original completion actor and timestamp", async () => {
+  const source = await readFile(
+    new URL("../app/h2a/arrival/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /const wasCompleted =/);
+  assert.match(source, /const enteringCompletion = completed && !wasCompleted/);
+  assert.match(source, /: row\.completed_at/);
+  assert.match(source, /: row\.completed_by/);
+});
+
+test("checklist migration provisions all existing and future H-2A workers and contracts", async () => {
+  const source = await readFile(
+    new URL(
+      "../supabase/migrations/20261002174500_h2a_arrival_checklists.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(source, /after insert or update of worker_type,contract_id,first_work_date on public\.h2a_workers/);
+  assert.match(source, /after insert on public\.h2a_contracts/);
+  assert.match(source, /insert into public\.h2a_worker_arrival_checklist/);
+  assert.match(source, /insert into public\.h2a_farm_readiness_checklist/);
+  assert.match(source, /cross join unnest\(array\[/);
 });
