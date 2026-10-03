@@ -4,6 +4,18 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 
 type Farm = { id: string; name: string };
 
+type JohnDeereStatus = {
+  configured: boolean;
+  connected: boolean;
+  status: string;
+  organizations: Array<{ id: string; name: string }>;
+  selectedOrgId?: string | null;
+  selectedOrgName?: string | null;
+  connectionsUrl?: string | null;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+};
+
 type EquipmentRow = {
   source: string;
   machine: string;
@@ -172,6 +184,8 @@ export default function EquipmentIntegrationPage() {
   const [message, setMessage] = useState("Loading farm access...");
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
+  const [deere, setDeere] = useState<JohnDeereStatus | null>(null);
+  const [deereBusy, setDeereBusy] = useState(false);
 
   useEffect(() => {
     fetch("/api/farms/owned", { cache: "no-store" })
@@ -193,6 +207,112 @@ export default function EquipmentIntegrationPage() {
         ),
       );
   }, []);
+
+  async function refreshDeereStatus(targetFarmId = farmId) {
+    if (!targetFarmId) return;
+    try {
+      const response = await fetch(
+        `/api/john-deere/status?farmId=${encodeURIComponent(targetFarmId)}`,
+        { cache: "no-store" },
+      );
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to load John Deere status.");
+      setDeere(body as JohnDeereStatus);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to load John Deere status.");
+    }
+  }
+
+  useEffect(() => {
+    if (farmId) void refreshDeereStatus(farmId);
+  }, [farmId]);
+
+  async function refreshDeereOrganizations() {
+    if (!farmId) return;
+    setDeereBusy(true);
+    try {
+      const response = await fetch("/api/john-deere/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to refresh John Deere organizations.");
+      await refreshDeereStatus();
+      setMessage("John Deere organization access refreshed.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to refresh John Deere organizations.");
+    } finally {
+      setDeereBusy(false);
+    }
+  }
+
+  async function selectDeereOrganization(orgId: string) {
+    if (!farmId || !orgId) return;
+    setDeereBusy(true);
+    try {
+      const response = await fetch("/api/john-deere/organization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId, orgId }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to select John Deere organization.");
+      await refreshDeereStatus();
+      setMessage("John Deere organization selected.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to select John Deere organization.");
+    } finally {
+      setDeereBusy(false);
+    }
+  }
+
+  async function syncJohnDeere() {
+    if (!farmId) return;
+    setDeereBusy(true);
+    setMessage("Syncing the last 7 days of John Deere field operations...");
+    try {
+      const response = await fetch("/api/john-deere/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "John Deere sync failed.");
+      await refreshDeereStatus();
+      const unmatched = Array.isArray(body.unmatchedFields) ? body.unmatchedFields : [];
+      setMessage(
+        `John Deere sync complete: ${body.imported} record${body.imported === 1 ? "" : "s"} imported, ${body.skippedDuplicates} duplicate${body.skippedDuplicates === 1 ? "" : "s"} skipped.` +
+          (unmatched.length
+            ? ` ${unmatched.length} Deere field${unmatched.length === 1 ? "" : "s"} need matching: ${unmatched.slice(0, 4).map((field: { name: string }) => field.name).join(", ")}.`
+            : ""),
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "John Deere sync failed.");
+    } finally {
+      setDeereBusy(false);
+    }
+  }
+
+  async function disconnectJohnDeere() {
+    if (!farmId) return;
+    setDeereBusy(true);
+    try {
+      const response = await fetch("/api/john-deere/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to disconnect John Deere.");
+      await refreshDeereStatus();
+      setMessage("John Deere disconnected from this FarmVoice farm.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to disconnect John Deere.");
+    } finally {
+      setDeereBusy(false);
+    }
+  }
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -289,22 +409,105 @@ export default function EquipmentIntegrationPage() {
             <span className="badge">Primary connector</span>
             <h3 style={{ marginTop: 12 }}>John Deere Operations Center</h3>
             <p className="muted">
-              FarmVoice is being prepared to request each farmer's permission
-              and then read organization, equipment, field-operation and work
-              result data for that farmer's account.
+              Connect the farmer's Operations Center account and bring actual
+              application-rate and harvest-yield results into FarmVoice field history.
             </p>
           </div>
-          <div className="notice">
-            <strong>API connection status:</strong> developer access setup.
-            The interface is ready for OAuth and live synchronization after
-            John Deere approves the required API products.
-          </div>
+
+          {!deere?.configured ? (
+            <div className="notice">
+              <strong>API connection status:</strong> waiting for approved John Deere
+              application credentials. The Connect button will enable automatically
+              after the required server-side environment values are configured.
+            </div>
+          ) : !deere.connected ? (
+            <div className="notice">
+              <strong>Ready to connect.</strong> The farmer will sign in to John Deere
+              and choose which Operations Center organizations FarmVoice may access.
+            </div>
+          ) : (
+            <div className="notice">
+              <strong>Connected.</strong>{" "}
+              {deere.selectedOrgName
+                ? `Using ${deere.selectedOrgName}.`
+                : "Choose the Deere organization that belongs to this FarmVoice farm."}
+              {deere.lastSyncAt
+                ? ` Last sync: ${new Date(deere.lastSyncAt).toLocaleString()}.`
+                : ""}
+              {deere.lastError ? ` Last error: ${deere.lastError}` : ""}
+            </div>
+          )}
+
+          {deere?.connected && deere.organizations.length > 0 && (
+            <div className="field">
+              <label htmlFor="deere-org">John Deere organization</label>
+              <select
+                id="deere-org"
+                value={deere.selectedOrgId ?? ""}
+                onChange={(event) => void selectDeereOrganization(event.target.value)}
+                disabled={deereBusy}
+              >
+                <option value="">Select an organization</option>
+                {deere.organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name || organization.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="inline">
-            <button className="btn" type="button" disabled>
-              Connect John Deere
-            </button>
-            <span className="muted small">Enabled after API credentials are approved.</span>
+            {!deere?.connected ? (
+              <button
+                className="btn"
+                type="button"
+                disabled={!farmId || !deere?.configured || deereBusy}
+                onClick={() => {
+                  window.location.href =
+                    `/api/john-deere/connect?farmId=${encodeURIComponent(farmId)}`;
+                }}
+              >
+                Connect John Deere
+              </button>
+            ) : (
+              <>
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={!deere.selectedOrgId || deereBusy}
+                  onClick={() => void syncJohnDeere()}
+                >
+                  {deereBusy ? "Working..." : "Sync last 7 days"}
+                </button>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  disabled={deereBusy}
+                  onClick={() => void refreshDeereOrganizations()}
+                >
+                  Refresh organizations
+                </button>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  disabled={deereBusy}
+                  onClick={() => void disconnectJohnDeere()}
+                >
+                  Disconnect
+                </button>
+              </>
+            )}
           </div>
+
+          {deere?.connected && deere.connectionsUrl && (
+            <p className="small muted">
+              Deere organization permissions may need approval in Operations Center.{" "}
+              <a href={deere.connectionsUrl} target="_blank" rel="noreferrer">
+                Manage John Deere access
+              </a>
+            </p>
+          )}
         </article>
 
         <article className="card stack">

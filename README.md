@@ -72,3 +72,38 @@ For an Intuit sandbox, set `QBO_ENVIRONMENT=sandbox` and register the correspond
 ## Historical note
 
 This repository began as a reconstruction of an earlier FarmVoice Site projection. The README previously described backend services as unconnected. That description is obsolete: the repository now contains the production Supabase, storage, H-2A, QuickBooks, MFA and related backend integrations.
+
+
+## John Deere Operations Center integration
+
+Farm owners can connect John Deere from `/integrations/equipment`. FarmVoice
+stores Deere OAuth credentials encrypted server-side, lets the owner select the
+authorized Operations Center organization, matches Deere fields to FarmVoice
+fields, and imports the previous seven days of application and harvest field
+operations.
+
+The live connector uses:
+
+- `ApplicationRateResult` for actual application rates
+- `HarvestYieldResult` for actual harvest yield and moisture
+- `Accept-UOM-System: ENGLISH` for U.S. sync requests
+- John Deere organization connections/permissions rather than assuming OAuth
+  grants access to every organization
+
+Required Vercel environment variables after John Deere approves the application:
+
+```text
+JOHN_DEERE_CLIENT_ID=
+JOHN_DEERE_CLIENT_SECRET=
+JOHN_DEERE_AUTH_URL=
+JOHN_DEERE_TOKEN_URL=
+JOHN_DEERE_API_BASE_URL=
+JOHN_DEERE_TOKEN_ENCRYPTION_KEY=
+JOHN_DEERE_REDIRECT_URI=https://farmvoicerecords.com/api/john-deere/callback
+JOHN_DEERE_SCOPES=
+```
+
+`JOHN_DEERE_TOKEN_ENCRYPTION_KEY` must decode from base64 to exactly 32 random
+bytes. OAuth endpoints, API base URL, and approved scopes must come from the
+John Deere Developer Portal for FarmVoice's registered application; they are
+not hardcoded because they may differ by environment/application approval.
