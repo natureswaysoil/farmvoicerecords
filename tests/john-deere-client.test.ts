@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildJohnDeereOrganizationAccessUrl,
   deereLink,
   johnDeereConfigured,
   johnDeereTokenExpiry,
@@ -49,4 +50,31 @@ test("John Deere token expiry subtracts a safety window", () => {
   const after = Date.now();
   assert.ok(expires >= before + 3539_000);
   assert.ok(expires <= after + 3541_000);
+});
+
+
+test("builds Deere organization selection URL from configured client and redirect", () => {
+  const oldClient = process.env.JOHN_DEERE_CLIENT_ID;
+  const oldRedirect = process.env.JOHN_DEERE_REDIRECT_URI;
+  process.env.JOHN_DEERE_CLIENT_ID = "client-123";
+  process.env.JOHN_DEERE_REDIRECT_URI =
+    "https://farmvoicerecords.com/api/integrations/john-deere/callback";
+
+  try {
+    const url = new URL(buildJohnDeereOrganizationAccessUrl());
+    assert.equal(url.origin, "https://connections.deere.com");
+    assert.equal(
+      url.pathname,
+      "/connections/client-123/select-organizations",
+    );
+    assert.equal(
+      url.searchParams.get("redirect_uri"),
+      "https://farmvoicerecords.com/api/integrations/john-deere/callback",
+    );
+  } finally {
+    if (oldClient === undefined) delete process.env.JOHN_DEERE_CLIENT_ID;
+    else process.env.JOHN_DEERE_CLIENT_ID = oldClient;
+    if (oldRedirect === undefined) delete process.env.JOHN_DEERE_REDIRECT_URI;
+    else process.env.JOHN_DEERE_REDIRECT_URI = oldRedirect;
+  }
 });
