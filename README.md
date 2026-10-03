@@ -99,7 +99,7 @@ JOHN_DEERE_AUTH_URL=
 JOHN_DEERE_TOKEN_URL=
 JOHN_DEERE_API_BASE_URL=
 JOHN_DEERE_TOKEN_ENCRYPTION_KEY=
-JOHN_DEERE_REDIRECT_URI=https://farmvoicerecords.com/api/john-deere/callback
+JOHN_DEERE_REDIRECT_URI=https://farmvoicerecords.com/api/integrations/john-deere/callback
 JOHN_DEERE_SCOPES=
 ```
 

@@ -26,7 +26,7 @@ export function getJohnDeereConfig() {
     apiBaseUrl: requireEnv("JOHN_DEERE_API_BASE_URL").replace(/\/$/, ""),
     redirectUri:
       process.env.JOHN_DEERE_REDIRECT_URI ??
-      "https://farmvoicerecords.com/api/john-deere/callback",
+      "https://farmvoicerecords.com/api/integrations/john-deere/callback",
     scopes:
       process.env.JOHN_DEERE_SCOPES ??
       "ag1 ag2 ag3 eq1 org1 offline_access",
