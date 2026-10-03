@@ -50,41 +50,6 @@ const TEMPLATE_HEADERS = [
   "moisture",
 ];
 
-const SAMPLE_ROWS: EquipmentRow[] = [
-  {
-    source: "John Deere",
-    machine: "Sprayer 1",
-    operation: "Spraying",
-    field: "North Field",
-    startedAt: "2026-09-18T08:15:00-04:00",
-    endedAt: "2026-09-18T09:02:00-04:00",
-    product: "Example herbicide",
-    rate: "15",
-    rateUnit: "gal/ac",
-    area: "12.4",
-    areaUnit: "ac",
-    yieldValue: "",
-    yieldUnit: "",
-    moisture: "",
-  },
-  {
-    source: "John Deere",
-    machine: "Combine 1",
-    operation: "Harvest",
-    field: "South Field",
-    startedAt: "2026-09-28T13:10:00-04:00",
-    endedAt: "2026-09-28T15:45:00-04:00",
-    product: "",
-    rate: "",
-    rateUnit: "",
-    area: "18.7",
-    areaUnit: "ac",
-    yieldValue: "176",
-    yieldUnit: "bu/ac",
-    moisture: "15.2%",
-  },
-];
-
 function clean(value: string | undefined) {
   return (value ?? "").trim();
 }
@@ -180,7 +145,7 @@ function downloadTemplate() {
 export default function EquipmentIntegrationPage() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmId, setFarmId] = useState("");
-  const [rows, setRows] = useState<EquipmentRow[]>(SAMPLE_ROWS);
+  const [rows, setRows] = useState<EquipmentRow[]>([]);
   const [message, setMessage] = useState("Loading farm access...");
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
@@ -430,7 +395,9 @@ export default function EquipmentIntegrationPage() {
               <strong>Connected.</strong>{" "}
               {deere.selectedOrgName
                 ? `Using ${deere.selectedOrgName}.`
-                : "Choose the Deere organization that belongs to this FarmVoice farm."}
+                : deere.status === "needs_organization_access"
+                  ? "Choose which John Deere Operations Center organization FarmVoice may access."
+                  : "Choose the Deere organization that belongs to this FarmVoice farm."}
               {deere.lastSyncAt
                 ? ` Last sync: ${new Date(deere.lastSyncAt).toLocaleString()}.`
                 : ""}
@@ -472,6 +439,19 @@ export default function EquipmentIntegrationPage() {
               </button>
             ) : (
               <>
+                {deere.status === "needs_organization_access" && (
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={deereBusy}
+                    onClick={() => {
+                      window.location.href =
+                        `/api/john-deere/organization-access?farmId=${encodeURIComponent(farmId)}`;
+                    }}
+                  >
+                    Choose John Deere organization
+                  </button>
+                )}
                 <button
                   className="btn"
                   type="button"
