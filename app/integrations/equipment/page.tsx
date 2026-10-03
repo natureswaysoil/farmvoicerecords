@@ -171,6 +171,7 @@ export default function EquipmentIntegrationPage() {
   const [rows, setRows] = useState<EquipmentRow[]>(SAMPLE_ROWS);
   const [message, setMessage] = useState("Loading farm access...");
   const [fileName, setFileName] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetch("/api/farms/owned", { cache: "no-store" })
@@ -204,6 +205,36 @@ export default function EquipmentIntegrationPage() {
         ? `${parsed.length} equipment record${parsed.length === 1 ? "" : "s"} ready for review. Nothing has been saved yet.`
         : "No data rows were found. Use the FarmVoice template and try again.",
     );
+  }
+
+  async function importReviewedRecords() {
+    if (!farmId || !rows.length) return;
+    setImporting(true);
+    setMessage("Importing reviewed equipment records...");
+    try {
+      const response = await fetch("/api/equipment/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmId, rows }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        const issueText = Array.isArray(body.issues)
+          ? " " + body.issues.slice(0, 3).map((issue: { row: number; field?: string; error: string }) =>
+              `Row ${issue.row}${issue.field ? ` (${issue.field})` : ""}: ${issue.error}`,
+            ).join(" ")
+          : "";
+        throw new Error((body.error ?? "Equipment import failed.") + issueText);
+      }
+      setMessage(
+        `Imported ${body.imported} equipment record${body.imported === 1 ? "" : "s"} into FarmVoice field history.` +
+          (body.skippedDuplicates ? ` ${body.skippedDuplicates} duplicate${body.skippedDuplicates === 1 ? "" : "s"} skipped.` : ""),
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Equipment import failed.");
+    } finally {
+      setImporting(false);
+    }
   }
 
   const summary = useMemo(() => {
@@ -364,14 +395,10 @@ export default function EquipmentIntegrationPage() {
           <button
             className="btn"
             type="button"
-            disabled={!farmId || rows.length === 0}
-            onClick={() =>
-              setMessage(
-                "Review interface is working. Database save will be enabled with the equipment-record migration and API normalization layer.",
-              )
-            }
+            disabled={!farmId || rows.length === 0 || importing}
+            onClick={importReviewedRecords}
           >
-            Import reviewed records
+            {importing ? "Importing..." : "Import reviewed records"}
           </button>
         </div>
 
