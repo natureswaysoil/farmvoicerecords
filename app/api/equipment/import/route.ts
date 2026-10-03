@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireFarmOwner } from "@/src/lib/quickbooks-server";
+import { requireOwnerFarmId } from "@/src/lib/farm-owner-server";
+import { createClient } from "@/src/lib/supabase/server";
 import {
   normalizeEquipmentImportRow,
   normalizeFieldName,
@@ -32,7 +33,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const { supabase, farmId, user } = await requireFarmOwner(requestedFarmId);
+    const supabase = await createClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) throw new Error("Sign in is required.");
+    const farmId = await requireOwnerFarmId(
+      supabase,
+      userData.user.id,
+      requestedFarmId,
+    );
+    const user = userData.user;
     const { data: fields, error: fieldError } = await supabase
       .from("fields")
       .select("id,name")
