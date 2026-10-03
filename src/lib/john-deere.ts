@@ -217,7 +217,10 @@ export async function collectDeerePages<T>(
   let pages = 0;
 
   while (next && pages < 100) {
-    const response = await johnDeereRequest<DeereCollection<T>>(
+    const response: {
+      data: DeereCollection<T>;
+      signature: string | null;
+    } = await johnDeereRequest<DeereCollection<T>>(
       accessToken,
       next,
       options,
