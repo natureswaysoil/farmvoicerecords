@@ -15,12 +15,29 @@ export async function GET(request: NextRequest) {
   const destination = new URL("/integrations/equipment", request.url);
 
   try {
+    const orgAccessCookie = request.cookies.get("farmvoice_jd_org_access")?.value;
     const code = request.nextUrl.searchParams.get("code");
     const state = request.nextUrl.searchParams.get("state");
     const errorParam = request.nextUrl.searchParams.get("error");
     const rawCookie = request.cookies.get("farmvoice_jd_oauth")?.value;
 
     if (errorParam) throw new Error(`John Deere authorization: ${errorParam}`);
+
+    if (!code && orgAccessCookie) {
+      const saved = JSON.parse(
+        Buffer.from(orgAccessCookie, "base64url").toString("utf8"),
+      ) as { farmId: string };
+      await requireJohnDeereFarmOwner(saved.farmId);
+      const organizations = await refreshJohnDeereOrganizations(saved.farmId);
+      destination.searchParams.set("organizationAccess", "refreshed");
+      if (organizations.organizations.length === 0) {
+        destination.searchParams.set("organizationAccess", "required");
+      }
+      const response = NextResponse.redirect(destination);
+      response.cookies.delete("farmvoice_jd_org_access");
+      return response;
+    }
+
     if (!code || !state || !rawCookie) {
       throw new Error("Incomplete John Deere callback.");
     }
@@ -69,6 +86,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(destination);
     response.cookies.delete("farmvoice_jd_oauth");
+    response.cookies.delete("farmvoice_jd_org_access");
     return response;
   } catch (error) {
     destination.searchParams.set(
@@ -77,6 +95,7 @@ export async function GET(request: NextRequest) {
     );
     const response = NextResponse.redirect(destination);
     response.cookies.delete("farmvoice_jd_oauth");
+    response.cookies.delete("farmvoice_jd_org_access");
     return response;
   }
 }

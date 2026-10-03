@@ -71,6 +71,18 @@ export function decryptJohnDeereSecret(value: string) {
   ]).toString("utf8");
 }
 
+export function buildJohnDeereOrganizationAccessUrl() {
+  const clientId = requireEnv("JOHN_DEERE_CLIENT_ID");
+  const redirectUri =
+    process.env.JOHN_DEERE_REDIRECT_URI ??
+    "https://farmvoicerecords.com/api/integrations/john-deere/callback";
+  const url = new URL(
+    `https://connections.deere.com/connections/${encodeURIComponent(clientId)}/select-organizations`,
+  );
+  url.searchParams.set("redirect_uri", redirectUri);
+  return url.toString();
+}
+
 export function buildJohnDeereAuthorizeUrl(state: string) {
   const config = getJohnDeereConfig();
   const url = new URL(config.authUrl);
