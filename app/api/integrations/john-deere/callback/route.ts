@@ -1,1 +1,3 @@
-export { GET, runtime } from "@/app/api/john-deere/callback/route";
+export const runtime = "nodejs";
+
+export { GET } from "@/app/api/john-deere/callback/route";
