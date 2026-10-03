@@ -30,6 +30,7 @@ export default function AuthNavigation() {
           <Link href="/h2a">H-2A</Link>
           <Link href="/h2a/housing">Housing</Link>
           <Link href="/integrations/quickbooks">QuickBooks</Link>
+          <Link href="/integrations/equipment">Equipment data</Link>
           <Link href="/join">Join farm</Link>
         </>
       ) : (
