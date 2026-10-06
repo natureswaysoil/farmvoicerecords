@@ -1,0 +1,38 @@
+{
+  "slug": "h2a-worker-departure-checklist",
+  "title": "H-2A Worker Departure Checklist: What to Document Before Your Crew Leaves for the Season",
+  "date": "2026-10-06",
+  "excerpt": "As harvest wraps up and your H-2A crew heads home, a missed signature or missing record can turn into a DOL audit finding months later. Here's exactly what to capture before the last bus leaves.",
+  "author": "FarmVoice Records",
+  "tags": ["H-2A", "farm compliance", "harvest", "workforce records", "DOL audit"],
+  "sections": [
+    {
+      "heading": "Why Departure Documentation Is the Most Overlooked H-2A Risk",
+      "body": "Most farms handle H-2A arrival paperwork well — job orders are filed, housing is inspected, contracts are signed. But departure documentation often gets skipped in the chaos of harvest close-out. That's a problem, because Department of Labor auditors don't just review arrival records. They look at the full employment cycle, and missing departure records are one of the most common findings in post-audit enforcement actions. A worker who left with a verbal good-bye and no signed final pay record is a liability that can surface 18 months later."
+    },
+    {
+      "heading": "1. Final Wage Statement and Earnings Summary",
+      "body": "Every departing H-2A worker must receive a written statement of all wages earned, deductions taken, and the final net pay. This includes any housing or transportation deductions that were authorized in the job order. Keep a signed copy in the worker's personnel file. If your payroll is handled by a third party, get confirmation that the final check was issued and logged before the worker's departure date. A worker who was underpaid — even by an hour — can file a wage complaint from their home country. A clean, signed final wage statement is your best protection."
+    },
+    {
+      "heading": "2. Housing Departure Inspection",
+      "body": "The same housing standards that apply at arrival apply at departure. Walk the housing unit with workers present, note any damage (with photos), and document the condition of each unit. If deductions for damage are being made from final pay, those must be itemized, pre-authorized in the contract, and not exceed actual repair cost. Complete a written housing departure form for each unit. Without it, any damage claim you make later will be difficult to enforce and may be treated as an unauthorized deduction in a DOL review."
+    },
+    {
+      "heading": "3. Transportation Records",
+      "body": "H-2A regulations require employers to pay or arrange transportation between the worker's home country and the worksite. At the season's end, you must document that you provided or reimbursed the worker's transportation home — or that the worker voluntarily declined the offered transportation in writing. Keep bus tickets, receipts, or written declinations in each worker's file. If a worker decides to stay in the United States after the season, they must sign a statement declining your transportation offer. That signature protects you."
+    },
+    {
+      "heading": "4. Equipment and PPE Return",
+      "body": "Any equipment or personal protective equipment issued to workers — gloves, respirators, harnesses, tablets — should be returned and logged at the end of the season. Create a simple checklist with item descriptions and serial numbers if applicable. Have each worker sign it on return. Equipment losses are not deductible from wages under H-2A unless the worker signed a specific authorization, so a clean return log prevents disputes and documents actual losses separately."
+    },
+    {
+      "heading": "5. Final Crew Record and GPS Hours Summary",
+      "body": "Before your crew departs, generate a final hours summary for each worker covering the entire season. This should include total days worked, total hours, any overtime, and a GPS work location log if your operation tracks field assignments. This summary serves two purposes: it gives workers a full accounting of their season (which reduces disputes) and it creates your audit trail for the three-year record retention requirement under 29 CFR 501.42. Store these records digitally — paper binders from three seasons ago have a way of disappearing."
+    },
+    {
+      "heading": "Capture It While They're Still on Site",
+      "body": "The most common reason departure records are incomplete is simple: supervisors don't do them in the field on the last day. By the time the final bus has left, it's too late. Use a voice-first app to capture housing inspection notes, equipment return confirmations, and final crew records directly in the field — no laptop required. FarmVoice Records lets you speak a crew record, housing note, or departure note from your phone, and it generates a timestamped, GPS-tagged document ready for your audit package. Start your free 14-day trial at farmvoicerecords.com."
+    }
+  ]
+}
