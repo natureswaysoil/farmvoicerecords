@@ -42,55 +42,99 @@ jobs:
             CREDS_JSON="${GOOGLE_SERVICE_ACCOUNT_JSON:-}"
           fi
           if [ -z "$CREDS_JSON" ]; then
-            echo "::warning::No GCP credentials found — will use OPENAI_API_KEY secret directly if set."
+            echo "::warning::No GCP credentials found — will use direct Actions secrets."
             exit 0
           fi
           CREDS_PATH="$RUNNER_TEMP/gcp-sa.json"
           printf '%s' "$CREDS_JSON" > "$CREDS_PATH"
           chmod 600 "$CREDS_PATH"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDS_PATH" >> "$GITHUB_ENV"
-          echo "GOOGLE_CLOUD_PROJECT=$DEFAULT_GOOGLE_CLOUD_PROJECT"  >> "$GITHUB_ENV"
+          echo "GOOGLE_CLOUD_PROJECT=$DEFAULT_GOOGLE_CLOUD_PROJECT" >> "$GITHUB_ENV"
           GCLOUD_PROJECT=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("project_id",""))' "$CREDS_PATH" || true)
           [ -n "$GCLOUD_PROJECT" ] && echo "GCLOUD_PROJECT=$GCLOUD_PROJECT" >> "$GITHUB_ENV"
 
-      # ── Load OPENAI_API_KEY from GCP Secret Manager ───────────────────────
-      # Reads from the same GCP project as the video repo (natureswaysoil-video).
-      # Falls back to the OPENAI_API_KEY Actions secret if GCP is not configured.
-      - name: Load OPENAI_API_KEY from Secret Manager
+      # ── Load all API keys from GCP Secret Manager (or direct Actions secrets) ─
+      - name: Load API keys from Secret Manager
         env:
-          OPENAI_API_KEY_FALLBACK: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY_FB: ${{ secrets.OPENAI_API_KEY }}
+          FACEBOOK_ACCESS_TOKEN_FB: ${{ secrets.FACEBOOK_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID_FB: ${{ secrets.FACEBOOK_PAGE_ID }}
+          INSTAGRAM_ACCESS_TOKEN_FB: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID_FB: ${{ secrets.INSTAGRAM_USER_ID }}
+          TWITTER_API_KEY_FB: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET_FB: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN_FB: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET_FB: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
         run: |
           set -euo pipefail
-          if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
-            KEY=$(node -e "
-              const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
-              const c = new SecretManagerServiceClient();
-              const names = ['OPENAI_API_KEY', 'openai-api-key', 'openai_api_key'];
-              (async () => {
-                for (const n of names) {
-                  try {
-                    const [v] = await c.accessSecretVersion({ name: \`projects/${DEFAULT_GOOGLE_CLOUD_PROJECT}/secrets/\${n}/versions/latest\` });
-                    const val = v.payload?.data?.toString().trim();
-                    if (val) { process.stdout.write(val); break; }
-                  } catch(e) { /* not found */ }
-                }
-              })();
-            " 2>/dev/null || true)
-            if [ -n "$KEY" ]; then
-              echo "::add-mask::$KEY"
-              echo "OPENAI_API_KEY=$KEY" >> "$GITHUB_ENV"
-              echo "Loaded OPENAI_API_KEY from GCP Secret Manager."
-              exit 0
+          GCP="${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          PROJECT="${DEFAULT_GOOGLE_CLOUD_PROJECT}"
+
+          gcp_secret() {
+            # $1 = env var name to set, $2... = candidate secret names in GCP
+            local VARNAME="$1"; shift
+            [ -z "$GCP" ] && return 0
+            local VAL
+            VAL=$(node --input-type=module <<JSEOF 2>/dev/null || true
+          import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+          const c = new SecretManagerServiceClient();
+          const names = [$(printf '"%s",' "$@" | sed 's/,$//')]
+          for (const n of names) {
+            try {
+              const [v] = await c.accessSecretVersion({ name: \`projects/${PROJECT}/secrets/\${n}/versions/latest\` });
+              const val = v.payload?.data?.toString().trim();
+              if (val) { process.stdout.write(val); break; }
+            } catch(e) {}
+          }
+          JSEOF
+            )
+            if [ -n "$VAL" ]; then
+              echo "::add-mask::$VAL"
+              echo "${VARNAME}=${VAL}" >> "$GITHUB_ENV"
+              echo "Loaded ${VARNAME} from GCP Secret Manager."
             fi
-          fi
-          # Fallback: use direct Actions secret
-          if [ -n "${OPENAI_API_KEY_FALLBACK:-}" ]; then
-            echo "OPENAI_API_KEY=$OPENAI_API_KEY_FALLBACK" >> "$GITHUB_ENV"
-            echo "Using OPENAI_API_KEY Actions secret."
-          else
-            echo "::error::No OPENAI_API_KEY available. Add GOOGLE_CREDENTIALS (GCP Secret Manager) or OPENAI_API_KEY to this repo's Actions secrets."
-            exit 1
-          fi
+          }
+
+          set_or_fallback() {
+            # If env var not already set by gcp_secret, fall back to Actions secret value
+            local VARNAME="$1"
+            local FALLBACK="$2"
+            if [ -z "${!VARNAME:-}" ] && [ -n "$FALLBACK" ]; then
+              echo "::add-mask::$FALLBACK"
+              echo "${VARNAME}=${FALLBACK}" >> "$GITHUB_ENV"
+              echo "Using ${VARNAME} from Actions secret."
+            fi
+          }
+
+          gcp_secret OPENAI_API_KEY          OPENAI_API_KEY openai-api-key openai_api_key
+          set_or_fallback OPENAI_API_KEY     "$OPENAI_API_KEY_FB"
+
+          gcp_secret FACEBOOK_ACCESS_TOKEN   FACEBOOK_ACCESS_TOKEN facebook-access-token facebook_access_token
+          set_or_fallback FACEBOOK_ACCESS_TOKEN "$FACEBOOK_ACCESS_TOKEN_FB"
+
+          gcp_secret FACEBOOK_PAGE_ID        FACEBOOK_PAGE_ID facebook-page-id facebook_page_id
+          set_or_fallback FACEBOOK_PAGE_ID   "$FACEBOOK_PAGE_ID_FB"
+
+          gcp_secret INSTAGRAM_ACCESS_TOKEN  INSTAGRAM_ACCESS_TOKEN instagram-access-token instagram_access_token
+          set_or_fallback INSTAGRAM_ACCESS_TOKEN "$INSTAGRAM_ACCESS_TOKEN_FB"
+
+          gcp_secret INSTAGRAM_USER_ID       INSTAGRAM_USER_ID instagram-user-id instagram_user_id
+          set_or_fallback INSTAGRAM_USER_ID  "$INSTAGRAM_USER_ID_FB"
+
+          gcp_secret TWITTER_API_KEY         TWITTER_API_KEY twitter-api-key twitter_api_key
+          set_or_fallback TWITTER_API_KEY    "$TWITTER_API_KEY_FB"
+
+          gcp_secret TWITTER_API_SECRET      TWITTER_API_SECRET twitter-api-secret twitter_api_secret
+          set_or_fallback TWITTER_API_SECRET "$TWITTER_API_SECRET_FB"
+
+          gcp_secret TWITTER_ACCESS_TOKEN    TWITTER_ACCESS_TOKEN twitter-access-token twitter_access_token
+          set_or_fallback TWITTER_ACCESS_TOKEN "$TWITTER_ACCESS_TOKEN_FB"
+
+          gcp_secret TWITTER_ACCESS_TOKEN_SECRET TWITTER_ACCESS_TOKEN_SECRET twitter-access-token-secret twitter_access_token_secret
+          set_or_fallback TWITTER_ACCESS_TOKEN_SECRET "$TWITTER_ACCESS_TOKEN_SECRET_FB"
+
+          # OpenAI is required — fail fast
+          [ -n "${OPENAI_API_KEY:-}" ] || { echo "::error::No OPENAI_API_KEY available. Add GOOGLE_CREDENTIALS or OPENAI_API_KEY to Actions secrets."; exit 1; }
 
       - name: Generate blog post
         env:
@@ -98,13 +142,20 @@ jobs:
         run: npx tsx scripts/generate-blog-post.ts
 
       - name: Commit new post
+        id: commit
         run: |
           git config user.name "FarmVoice Bot"
           git config user.email "bot@farmvoicerecords.com"
           git add content/blog/
           if git diff --staged --quiet; then
             echo "No new post generated"
+            echo "new_post=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "blog: auto-publish weekly article"
             git push
+            echo "new_post=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Post to social media
+        if: steps.commit.outputs.new_post == 'true'
+        run: npx tsx scripts/post-blog-to-social.ts
