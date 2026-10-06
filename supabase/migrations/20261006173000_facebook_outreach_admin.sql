@@ -1,22 +1,6 @@
 -- FarmVoice Facebook outreach admin workspace.
 -- Restricted to FarmVoice operator accounts at both the UI and RLS layers.
 
-create or replace function public.is_farmvoice_outreach_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select lower(coalesce(auth.jwt() ->> 'email', '')) in (
-    'natureswaysoil@gmail.com',
-    'james@farmvoicerecords.com'
-  );
-$$;
-
-revoke all on function public.is_farmvoice_outreach_admin() from public;
-grant execute on function public.is_farmvoice_outreach_admin() to authenticated;
-
 create table if not exists public.outreach_groups (
   id uuid primary key default gen_random_uuid(),
   platform text not null default 'facebook' check (platform in ('facebook')),
@@ -91,31 +75,59 @@ create index if not exists outreach_posts_status_schedule_idx
 alter table public.outreach_groups enable row level security;
 alter table public.outreach_posts enable row level security;
 
+revoke all on table public.outreach_groups from anon;
+revoke all on table public.outreach_posts from anon;
+grant select, insert, update, delete on table public.outreach_groups to authenticated;
+grant select, insert, update, delete on table public.outreach_posts to authenticated;
+
 drop policy if exists "FarmVoice outreach admins manage groups" on public.outreach_groups;
 create policy "FarmVoice outreach admins manage groups"
 on public.outreach_groups
 for all
 to authenticated
-using (public.is_farmvoice_outreach_admin())
-with check (public.is_farmvoice_outreach_admin());
+using (
+  lower(coalesce((select auth.jwt()) ->> 'email', '')) in (
+    'natureswaysoil@gmail.com',
+    'james@farmvoicerecords.com'
+  )
+)
+with check (
+  lower(coalesce((select auth.jwt()) ->> 'email', '')) in (
+    'natureswaysoil@gmail.com',
+    'james@farmvoicerecords.com'
+  )
+);
 
 drop policy if exists "FarmVoice outreach admins manage posts" on public.outreach_posts;
 create policy "FarmVoice outreach admins manage posts"
 on public.outreach_posts
 for all
 to authenticated
-using (public.is_farmvoice_outreach_admin())
-with check (public.is_farmvoice_outreach_admin());
+using (
+  lower(coalesce((select auth.jwt()) ->> 'email', '')) in (
+    'natureswaysoil@gmail.com',
+    'james@farmvoicerecords.com'
+  )
+)
+with check (
+  lower(coalesce((select auth.jwt()) ->> 'email', '')) in (
+    'natureswaysoil@gmail.com',
+    'james@farmvoicerecords.com'
+  )
+);
 
 create or replace function public.touch_outreach_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = now();
   return new;
 end;
 $$;
+
+revoke all on function public.touch_outreach_updated_at() from public;
 
 drop trigger if exists touch_outreach_groups_updated_at on public.outreach_groups;
 create trigger touch_outreach_groups_updated_at
