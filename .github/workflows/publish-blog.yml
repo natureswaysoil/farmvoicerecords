@@ -17,6 +17,10 @@ permissions:
 jobs:
   generate-and-commit:
     runs-on: ubuntu-latest
+
+    env:
+      DEFAULT_GOOGLE_CLOUD_PROJECT: natureswaysoil-video
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,10 +30,70 @@ jobs:
 
       - run: npm ci
 
+      # ── GCP auth (same pattern as natureswaysoil/video) ──────────────────
+      - name: Prepare Google ADC credentials
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          CREDS_JSON="${GOOGLE_CREDENTIALS:-}"
+          if [ -z "$CREDS_JSON" ]; then
+            CREDS_JSON="${GOOGLE_SERVICE_ACCOUNT_JSON:-}"
+          fi
+          if [ -z "$CREDS_JSON" ]; then
+            echo "::warning::No GCP credentials found — will use OPENAI_API_KEY secret directly if set."
+            exit 0
+          fi
+          CREDS_PATH="$RUNNER_TEMP/gcp-sa.json"
+          printf '%s' "$CREDS_JSON" > "$CREDS_PATH"
+          chmod 600 "$CREDS_PATH"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDS_PATH" >> "$GITHUB_ENV"
+          echo "GOOGLE_CLOUD_PROJECT=$DEFAULT_GOOGLE_CLOUD_PROJECT"  >> "$GITHUB_ENV"
+          GCLOUD_PROJECT=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("project_id",""))' "$CREDS_PATH" || true)
+          [ -n "$GCLOUD_PROJECT" ] && echo "GCLOUD_PROJECT=$GCLOUD_PROJECT" >> "$GITHUB_ENV"
+
+      # ── Load OPENAI_API_KEY from GCP Secret Manager ───────────────────────
+      # Reads from the same GCP project as the video repo (natureswaysoil-video).
+      # Falls back to the OPENAI_API_KEY Actions secret if GCP is not configured.
+      - name: Load OPENAI_API_KEY from Secret Manager
+        env:
+          OPENAI_API_KEY_FALLBACK: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
+            KEY=$(node -e "
+              const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+              const c = new SecretManagerServiceClient();
+              const names = ['OPENAI_API_KEY', 'openai-api-key', 'openai_api_key'];
+              (async () => {
+                for (const n of names) {
+                  try {
+                    const [v] = await c.accessSecretVersion({ name: \`projects/${DEFAULT_GOOGLE_CLOUD_PROJECT}/secrets/\${n}/versions/latest\` });
+                    const val = v.payload?.data?.toString().trim();
+                    if (val) { process.stdout.write(val); break; }
+                  } catch(e) { /* not found */ }
+                }
+              })();
+            " 2>/dev/null || true)
+            if [ -n "$KEY" ]; then
+              echo "::add-mask::$KEY"
+              echo "OPENAI_API_KEY=$KEY" >> "$GITHUB_ENV"
+              echo "Loaded OPENAI_API_KEY from GCP Secret Manager."
+              exit 0
+            fi
+          fi
+          # Fallback: use direct Actions secret
+          if [ -n "${OPENAI_API_KEY_FALLBACK:-}" ]; then
+            echo "OPENAI_API_KEY=$OPENAI_API_KEY_FALLBACK" >> "$GITHUB_ENV"
+            echo "Using OPENAI_API_KEY Actions secret."
+          else
+            echo "::error::No OPENAI_API_KEY available. Add GOOGLE_CREDENTIALS (GCP Secret Manager) or OPENAI_API_KEY to this repo's Actions secrets."
+            exit 1
+          fi
+
       - name: Generate blog post
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
           TOPIC: ${{ github.event.inputs.topic }}
         run: npx tsx scripts/generate-blog-post.ts
 
