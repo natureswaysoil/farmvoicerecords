@@ -64,7 +64,7 @@ set requirement_label = case r.requirement_code
   when 'OSHA_WINDOW_AREA' then 'Living-quarter windows total at least 10% of floor area.'
   when 'OSHA_WINDOW_OPENING' then 'At least one-half of each window can be opened for ventilation.'
   when 'OSHA_WATER_QUANTITY' then 'Water supply delivers at least 35 gallons per person per day at a peak rate of 2.5 times the average hourly demand.'
-  when 'OSHA_YARD_HYDRANT' then 'If water is not piped to shelters, no shelter is more than 100 ft from a yard hydrant; distribution lines support simultaneous fixture use at normal pressure.'
+  when 'OSHA_YARD_HYDRANT' then 'If water is not piped to shelters, no shelter is more than 100 ft from a yard hydrant.'
   when 'OSHA_DRINKING_FOUNTAINS' then 'Where water under pressure is available, at least one drinking fountain is provided for each 100 occupants or fraction thereof.'
   when 'OSHA_TOILET_RATIO' then 'Shared toilet facilities provide at least 1 water closet/privy seat per 15 persons of each sex, with at least 2 units for any shared facility.'
   when 'OSHA_URINALS' then 'Urinals provide at least 1 unit or 2 linear ft of trough per 25 men; the splash-area floor is moisture-impervious for at least 15 in, and pressure-water urinals have adequate flushing.'
@@ -183,3 +183,122 @@ where r.template_version_id=tv.id
 
 comment on table public.compliance_template_versions is
   'Versioned compliance content. Superseded versions remain for historical inspection snapshots; active versions drive new inspections.';
+
+
+-- Preserve structured applicability and measurable validation criteria in the immutable
+-- inspection snapshot used for all new housing inspections.
+create or replace function public.h2a_create_housing_inspection_v2(
+  p_farm_id uuid,
+  p_housing_id uuid,
+  p_inspection_type text,
+  p_inspection_date date,
+  p_template_version_id uuid,
+  p_authority_or_inspector text default null,
+  p_occupancy_observed integer default null,
+  p_gps_lat double precision default null,
+  p_gps_lng double precision default null,
+  p_gps_accuracy_m double precision default null,
+  p_gps_captured_at timestamptz default null,
+  p_summary text default null
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, private, auth
+as $$
+declare
+  v_inspection_id uuid;
+  v_standard_basis text;
+  v_housing_type text;
+  v_template_hash text;
+  v_template_housing_type text;
+  v_item_count integer;
+  v_snapshot jsonb;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+
+  if not (
+    private.h2a_is_owner(p_farm_id)
+    or private.h2a_has_role(p_farm_id,array['h2a_admin','housing_manager'])
+  ) then raise exception 'Not authorized'; end if;
+
+  select h.standard_basis,h.housing_type
+    into v_standard_basis,v_housing_type
+  from public.h2a_housing h
+  where h.id=p_housing_id and h.farm_id=p_farm_id and h.active=true
+  for share;
+
+  if not found then raise exception 'Active housing not found for this farm'; end if;
+
+  select tv.content_hash,tv.housing_type
+    into v_template_hash,v_template_housing_type
+  from public.compliance_template_versions tv
+  where tv.id=p_template_version_id
+    and tv.module='h2a_housing'
+    and tv.status='active'
+    and tv.standard_basis in (v_standard_basis,'mixed')
+    and p_inspection_date >= tv.effective_from
+    and (tv.effective_to is null or p_inspection_date <= tv.effective_to);
+
+  if not found then raise exception 'Template does not apply to housing/date'; end if;
+  if v_template_housing_type is not null and v_template_housing_type <> v_housing_type then
+    raise exception 'Template does not apply to this housing type';
+  end if;
+
+  select jsonb_build_object(
+    'template_version_id',p_template_version_id,
+    'content_hash',v_template_hash,
+    'requirements',jsonb_agg(jsonb_build_object(
+      'code',r.requirement_code,
+      'category',r.category,
+      'label',r.requirement_label,
+      'basis',r.legal_basis,
+      'kind',r.requirement_kind,
+      'applicability',r.applicability,
+      'validation_rule',r.validation_rule,
+      'sort_order',r.sort_order
+    ) order by r.sort_order)
+  ) into v_snapshot
+  from public.compliance_requirements r
+  where r.template_version_id=p_template_version_id and r.active=true;
+
+  if v_snapshot->'requirements' is null then raise exception 'Template has no active requirements'; end if;
+
+  insert into public.h2a_housing_inspections(
+    farm_id,housing_id,inspection_type,inspection_date,status,standard_basis,
+    authority_or_inspector,occupancy_observed,gps_lat,gps_lng,gps_accuracy_m,
+    gps_captured_at,summary,template_version_id,rules_snapshot_hash,created_by
+  ) values (
+    p_farm_id,p_housing_id,p_inspection_type,p_inspection_date,'in_progress',v_standard_basis,
+    nullif(p_authority_or_inspector,''),p_occupancy_observed,p_gps_lat,p_gps_lng,p_gps_accuracy_m,
+    p_gps_captured_at,nullif(p_summary,''),p_template_version_id,v_template_hash,auth.uid()
+  ) returning id into v_inspection_id;
+
+  insert into public.h2a_housing_inspection_items(
+    farm_id,inspection_id,requirement_code,category,requirement_label,legal_basis,
+    requirement_kind,result,sort_order,created_by
+  )
+  select p_farm_id,v_inspection_id,r.requirement_code,r.category,r.requirement_label,
+         r.legal_basis,r.requirement_kind,'not_checked',r.sort_order,auth.uid()
+  from public.compliance_requirements r
+  where r.template_version_id=p_template_version_id and r.active=true
+  order by r.sort_order;
+
+  get diagnostics v_item_count = row_count;
+  if v_item_count=0 then raise exception 'Template has no active requirements'; end if;
+
+  insert into public.h2a_inspection_template_snapshots(
+    farm_id,inspection_id,template_version_id,content_hash,template_snapshot
+  ) values (p_farm_id,v_inspection_id,p_template_version_id,v_template_hash,v_snapshot);
+
+  return v_inspection_id;
+end;
+$$;
+
+revoke all on function public.h2a_create_housing_inspection_v2(
+ uuid,uuid,text,date,uuid,text,integer,double precision,double precision,double precision,timestamptz,text
+) from public,anon;
+
+grant execute on function public.h2a_create_housing_inspection_v2(
+ uuid,uuid,text,date,uuid,text,integer,double precision,double precision,double precision,timestamptz,text
+) to authenticated;
