@@ -62,6 +62,10 @@ export default function RootLayout({
             ·{" "}
             <Link className="footer-link" href="/support">
               Support
+            </Link>{" "}
+            ·{" "}
+            <Link className="footer-link" href="/blog">
+              Blog
             </Link>
           </div>
         </footer>

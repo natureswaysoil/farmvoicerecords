@@ -1,0 +1,46 @@
+name: Auto-publish blog post
+
+on:
+  schedule:
+    # Every Monday at 8 AM ET (12:00 UTC)
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Blog topic (leave blank for random)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - name: Generate blog post
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          TOPIC: ${{ github.event.inputs.topic }}
+        run: npx tsx scripts/generate-blog-post.ts
+
+      - name: Commit new post
+        run: |
+          git config user.name "FarmVoice Bot"
+          git config user.email "bot@farmvoicerecords.com"
+          git add content/blog/
+          if git diff --staged --quiet; then
+            echo "No new post generated"
+          else
+            git commit -m "blog: auto-publish weekly article"
+            git push
+          fi

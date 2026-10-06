@@ -1,0 +1,34 @@
+{
+  "slug": "farm-payroll-prep-tips",
+  "title": "5 Ways Farms Lose Time on Payroll Every Week (and How to Fix Them)",
+  "date": "2026-09-22",
+  "excerpt": "Farm payroll preparation pulls managers away from field work every week. Here are the five most common time drains and practical fixes for each.",
+  "author": "FarmVoice Records",
+  "tags": ["payroll", "crew management", "QuickBooks", "time tracking"],
+  "sections": [
+    {
+      "heading": "1. Reconstructing hours after the fact",
+      "body": "The biggest time drain in farm payroll is reconstructing time entries from memory, text messages, or handwritten notes two days after the work happened. Crew foremen often have the correct numbers in their heads, but getting those numbers into a reviewable record takes effort that multiplies with crew size. The fix is GPS-supported clock-in at the job site, captured at the time of the work, not after."
+    },
+    {
+      "heading": "2. Manually converting crew entries to individual records",
+      "body": "When a foreman records a single crew entry — eight workers, six hours each — someone has to manually split that into eight individual payroll records. For a crew of fifteen working five days a week, that is 75 individual time entries per week created by hand. Systems that automatically expand crew entries to individual records eliminate this step entirely."
+    },
+    {
+      "heading": "3. Chasing down missing clock-outs",
+      "body": "Missed clock-outs are a normal part of field operations. The fix is a manager review workflow that surfaces incomplete entries before payroll runs. A list of time entries pending approval, sorted by missing information, takes minutes to review. A stack of time cards missing end times takes hours to reconstruct."
+    },
+    {
+      "heading": "4. Rekeying approved time into QuickBooks",
+      "body": "Many farm accountants receive approved time from a manager via spreadsheet or email and rekey it into QuickBooks manually. For farms with 10+ workers, this takes two to three hours per payroll cycle. A direct integration that sends approved individual TimeActivity records to QuickBooks — matched to the correct employee — removes the rekeying step completely."
+    },
+    {
+      "heading": "5. Tracking H-2A hours separately from domestic workers",
+      "body": "H-2A contracts specify guaranteed hours, piece-rate rules, and AEWR minimums that differ from domestic worker calculations. Tracking H-2A hours in a separate spreadsheet to calculate payroll conformance, then reconciling with general payroll records, creates a second parallel process every week. A system that tracks H-2A contract terms alongside crew time records handles the conformance calculation automatically."
+    },
+    {
+      "heading": "How FarmVoice Records addresses all five",
+      "body": "FarmVoice captures GPS-supported time at the moment of work, expands crew entries to individual records automatically, flags missing clock-outs for manager review, sends approved time to QuickBooks as individual TimeActivity records, and tracks H-2A contract hours alongside domestic crew records. The 14-day free trial includes all payroll features plus the H-2A module."
+    }
+  ]
+}
