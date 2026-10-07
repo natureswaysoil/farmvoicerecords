@@ -1,6 +1,6 @@
 # FarmVoice Records
 
-FarmVoice Records is a production Next.js farm recordkeeping and workforce application for **farmvoicerecords.com**.
+FarmVoice Records is a Next.js farm recordkeeping and workforce application for **farmvoicerecords.com**.
 
 ## Current architecture
 
@@ -35,7 +35,7 @@ The publishable key is intended for the browser and relies on Supabase Auth and 
 ## Run
 
 ```bash
-npm install
+npm ci
 npm test
 npm run dev
 ```
@@ -68,6 +68,10 @@ QBO_ENVIRONMENT=production
 `QBO_TOKEN_ENCRYPTION_KEY` must decode from base64 to exactly 32 random bytes. Keep all QuickBooks credentials server-side; never expose them with a `NEXT_PUBLIC_` prefix.
 
 For an Intuit sandbox, set `QBO_ENVIRONMENT=sandbox` and register the corresponding callback URL in the Intuit developer app.
+
+## Installation and handover
+
+See [Production handover](docs/PRODUCTION-HANDOVER.md) for fresh database installation, existing-project upgrades, worker authorization, release verification and buyer acceptance gates. The public app is deployed; passing repository tests does not verify all hosted payment/OAuth/device flows.
 
 ## Historical note
 

@@ -111,7 +111,7 @@ create unique index if not exists time_entries_one_open_per_worker_farm_idx
   on public.time_entries (farm_id, worker_user_id)
   where clock_out is null;
 
-do $
+do $$
 begin
   if not exists (
     select 1 from pg_constraint
@@ -121,7 +121,7 @@ begin
     alter table public.shifts
       add constraint shifts_positive_duration check (ends_at > starts_at);
   end if;
-end $;
+end $$;
 
 create or replace function public.claim_quickbooks_refresh(p_farm_id uuid, p_token uuid)
 returns boolean

@@ -51,41 +51,51 @@ export async function getValidJohnDeereAccessToken(
     };
   }
 
-  if (!ctx.connection.refresh_token_ciphertext) {
-    throw new Error("John Deere authorization expired. Reconnect John Deere.");
-  }
-
-  const refreshed = await refreshJohnDeereAccessToken(
-    decryptJohnDeereSecret(ctx.connection.refresh_token_ciphertext),
+  const lockToken = crypto.randomUUID();
+  const { data: claimed, error: claimError } = await ctx.supabase.rpc(
+    "claim_john_deere_refresh", { p_farm_id: ctx.farmId, p_token: lockToken },
   );
-
-  const updates = {
-    access_token_ciphertext: encryptJohnDeereSecret(refreshed.access_token),
-    refresh_token_ciphertext: refreshed.refresh_token
-      ? encryptJohnDeereSecret(refreshed.refresh_token)
-      : ctx.connection.refresh_token_ciphertext,
-    access_token_expires_at: johnDeereTokenExpiry(refreshed.expires_in),
-    scopes: refreshed.scope
-      ? refreshed.scope.split(/\s+/).filter(Boolean)
-      : ctx.connection.scopes,
-    status: "connected",
-    last_error: null,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: saved, error } = await ctx.supabase
-    .from("john_deere_connections")
-    .update(updates)
-    .eq("farm_id", ctx.farmId)
-    .select("*")
-    .single();
-  if (error) throw error;
-
-  return {
-    ...ctx,
-    connection: saved,
-    accessToken: refreshed.access_token,
-  };
+  if (claimError) throw claimError;
+  if (!claimed) {
+    // Another request owns the refresh; never spend the same rotating token twice.
+    throw new Error("John Deere token refresh is in progress. Please retry.");
+  }
+  try {
+    const { data: current, error: readError } = await ctx.supabase
+      .from("john_deere_connections").select("*")
+      .eq("farm_id", ctx.farmId).eq("refresh_lock_token", lockToken).maybeSingle();
+    if (readError) throw readError;
+    if (!current) throw new Error("John Deere refresh lock was lost.");
+    if (new Date(current.access_token_expires_at).getTime() > Date.now() + 90_000)
+      return { ...ctx, connection: current, accessToken: decryptJohnDeereSecret(current.access_token_ciphertext) };
+    if (!current.refresh_token_ciphertext)
+      throw new Error("John Deere authorization expired. Reconnect John Deere.");
+    const refreshed = await refreshJohnDeereAccessToken(
+      decryptJohnDeereSecret(current.refresh_token_ciphertext),
+    );
+    const { data: saved, error } = await ctx.supabase
+      .from("john_deere_connections")
+      .update({
+        access_token_ciphertext: encryptJohnDeereSecret(refreshed.access_token),
+        refresh_token_ciphertext: refreshed.refresh_token
+          ? encryptJohnDeereSecret(refreshed.refresh_token) : current.refresh_token_ciphertext,
+        access_token_expires_at: johnDeereTokenExpiry(refreshed.expires_in),
+        scopes: refreshed.scope ? refreshed.scope.split(/\s+/).filter(Boolean) : current.scopes,
+        status: "connected", last_error: null, updated_at: new Date().toISOString(),
+        refresh_lock_token: null, refresh_lock_expires_at: null,
+      })
+      .eq("farm_id", ctx.farmId).eq("refresh_lock_token", lockToken)
+      .eq("refresh_token_ciphertext", current.refresh_token_ciphertext)
+      .select("*").maybeSingle();
+    if (error) throw error;
+    if (!saved) throw new Error("John Deere connection changed during refresh. Please retry.");
+    return { ...ctx, connection: saved, accessToken: refreshed.access_token };
+  } finally {
+    // Conditional release cannot remove a later request's lease.
+    await ctx.supabase.from("john_deere_connections")
+      .update({ refresh_lock_token: null, refresh_lock_expires_at: null })
+      .eq("farm_id", ctx.farmId).eq("refresh_lock_token", lockToken);
+  }
 }
 
 export async function refreshJohnDeereOrganizations(

@@ -1,3 +1,4 @@
+import { logBillingFailure } from "@/src/lib/billing/diagnostics";
 import Stripe from "stripe";
 import { stripeClient, billingAdmin } from "@/src/lib/billing/server";
 import { subscriptionAccess } from "@/src/lib/billing/subscription";
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Invalid signature." }, { status: 400 });
   }
+  let stage = "identify_subscription";
   try {
     let subscriptionId: string | null = null;
     if (event.type.startsWith("customer.subscription."))
@@ -42,11 +44,13 @@ export async function POST(request: Request) {
     }
     if (!subscriptionId) return Response.json({ received: true });
     // Read current Stripe state; delayed events cannot restore a canceled subscription.
+    stage = "retrieve_subscription";
     let subscription = await stripe.subscriptions.retrieve(subscriptionId);
     const customerId =
       typeof subscription.customer === "string"
         ? subscription.customer
         : subscription.customer.id;
+    stage = "find_billing";
     const db = billingAdmin();
     const { data, error } = await db
       .from("farm_billing")
@@ -55,6 +59,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (error) throw error;
     if (!data) return Response.json({ received: true });
+    stage = "claim_lease";
     const until = new Date(Date.now() + 120000).toISOString();
     const lease = await db
       .from("farm_billing")
@@ -66,6 +71,7 @@ export async function POST(request: Request) {
       throw new Error("Subscription update in progress");
     lock = { farmId: data.farm_id, until };
     // Retrieve after obtaining the lease, so parallel events cannot reorder writes.
+    stage = "reconcile_subscription";
     subscription = await stripe.subscriptions.retrieve(subscriptionId);
     const latest = await db
       .from("farm_billing")
@@ -85,6 +91,7 @@ export async function POST(request: Request) {
       if (!["canceled", "incomplete_expired"].includes(current.status))
         return Response.json({ received: true });
     }
+    stage = "persist_access";
     const update = await db
       .from("farm_billing")
       .update(
@@ -103,7 +110,8 @@ export async function POST(request: Request) {
       .eq("farm_id", data.farm_id);
     if (update.error) throw update.error;
     return Response.json({ received: true });
-  } catch {
+  } catch (error) {
+    logBillingFailure("webhook", stage, error, event);
     return Response.json(
       { error: "Webhook processing failed; retry required." },
       { status: 500 },
