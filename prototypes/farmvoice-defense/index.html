@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FarmVoice Defense | Concept Demonstration</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#e9f3f2;background:#091b24}*{box-sizing:border-box}body{margin:0}
+header{padding:24px 5%;background:#112b37;border-bottom:1px solid #38606a;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+h1{margin:0;font-size:1.7rem}h2{font-size:1.15rem;margin:0 0 12px}p{color:#bcd2d5}small{color:#a3c5c8}
+main{max-width:1260px;margin:auto;padding:25px 5%}nav{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}
+button{background:#173b48;border:1px solid #4b7982;border-radius:9px;padding:12px 16px;color:white;cursor:pointer;font-weight:600}
+button[aria-selected=true]{background:#2b8278;border-color:#77dec4}button:focus-visible{outline:3px solid #ffd27d}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.panel{background:#102c39;border:1px solid #305563;border-radius:12px;padding:19px;margin-bottom:14px}
+.metric{font-size:2rem;font-weight:800;margin:8px 0}.warning{color:#ffca8b}.ok{color:#8ae0bb}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 0;border-top:1px solid #31505a}
+.tag{font-size:.78rem;background:#264951;padding:5px 9px;border-radius:50px}
+.notice{border-left:4px solid #f4c27c;padding:12px 18px;background:#3a3125;color:#ffe9bd}
+.hidden{display:none}footer{padding:15px 5%;border-top:1px solid #305563;color:#bcd2d5}
+@media(max-width:700px){.grid{grid-template-columns:1fr}header{align-items:start}}
+</style></head><body>
+<header><div><small>FARMVOICE DEFENSE / NON-OPERATIONAL CONCEPT</small><h1>Personnel & Operations Accountability</h1></div><span class="tag">SIMULATED DATA ONLY</span></header>
+<main><div class="notice" role="note">Demonstration only. No GPS is collected; no identities, location services, APIs, or government systems are connected. Not approved for operational or controlled information.</div>
+<nav aria-label="Prototype modules"><button data-tab="accountability" aria-selected="true">Personnel & Muster</button><button data-tab="maintenance" aria-selected="false">Maintenance Operations</button><button data-tab="training" aria-selected="false">Training Exercises</button></nav>
+<section id="accountability" class="tab"><div class="grid">
+<div class="panel"><small>Assigned personnel</small><div class="metric">40</div><small>Illustrative unit roster</small></div>
+<div class="panel"><small>Accounted for</small><div class="metric ok" id="accounted">37</div><small>Training scenario</small></div>
+<div class="panel"><small>Needs follow-up</small><div class="metric warning" id="missing">3</div><small>No automated location inference</small></div></div>
+<div class="panel"><h2>Emergency muster drill</h2><p>Operator-initiated fictional drill. Acknowledgements are simulated in this browser session and are not recorded.</p><button id="simulate">Simulate one safe acknowledgement</button><button id="reset">Reset drill</button><div id="muster-status" role="status" aria-live="polite">3 fictional people awaiting acknowledgement.</div></div>
+<div class="panel"><h2>Duty status</h2><div class="row"><span>Unit A / Maintenance</span><span class="tag">24 assigned</span></div><div class="row"><span>Unit B / Logistics</span><span class="tag">16 assigned</span></div></div></section>
+<section id="maintenance" class="tab hidden"><div class="grid"><div class="panel"><small>Open work orders</small><div class="metric">12</div></div><div class="panel"><small>Due today</small><div class="metric">4</div></div><div class="panel"><small>Awaiting approval</small><div class="metric">2</div></div></div><div class="panel"><h2>Illustrative work orders</h2><div class="row"><span>WO-101 / Generator preventive inspection</span><span class="tag">Assigned</span></div><div class="row"><span>WO-102 / Facility ventilation check</span><span class="tag">Review</span></div><div class="row"><span>WO-103 / Vehicle service documentation</span><span class="tag">Pending</span></div></div></section>
+<section id="training" class="tab hidden"><div class="panel"><h2>Optional exercise accountability</h2><p>Planned functions: designated check-in windows, attendance, exercise safety acknowledgements, and offline-ready records subject to a security review. No continuous tracking, live maps or geofences are enabled in this prototype.</p><div class="row"><span>Exercise readiness checklist</span><span class="tag">Concept only</span></div><div class="row"><span>Supervisor-led roster confirmation</span><span class="tag">Concept only</span></div></div></section>
+<div class="panel"><h2>Build status</h2><p>This interface is a user-experience prototype only. Production requires independent deployment, tenant isolation, identity authorization, device security, data retention policy, accessibility/security testing and an applicable government authorization.</p></div>
+</main><footer>FarmVoice Defense — conceptual software evaluation only. No endorsement, procurement relationship, or certification is implied.</footer>
+<script>
+const tabs=[...document.querySelectorAll('[data-tab]')];
+tabs.forEach(button=>button.addEventListener('click',()=>{tabs.forEach(b=>b.setAttribute('aria-selected',String(b===button)));document.querySelectorAll('.tab').forEach(section=>section.classList.toggle('hidden',section.id!==button.dataset.tab));}));
+let count=37;function draw(){document.getElementById('accounted').textContent=String(count);document.getElementById('missing').textContent=String(40-count);document.getElementById('muster-status').textContent=(40-count)+' fictional people awaiting acknowledgement.';}
+document.getElementById('simulate').addEventListener('click',()=>{count=Math.min(count+1,40);draw();});
+document.getElementById('reset').addEventListener('click',()=>{count=37;draw();});
+</script></body></html>
