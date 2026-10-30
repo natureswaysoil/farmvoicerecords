@@ -1,7 +1,7 @@
 # FarmVoice Records
 ## Installation, setup and feature guide
 
-Nature’s Way Soil & Vermicompost LLC • September 19, 2026
+Nature’s Way Soil & Vermicompost LLC • Updated October 3, 2026
 
 Website: https://farmvoicerecords.com  
 Setup and support: james@farmvoicerecords.com
@@ -169,7 +169,7 @@ The owner sees the current week’s calendar; workers see their own upcoming ass
 6. At the end of work, tap **Clock out with GPS** and wait for confirmation.
 7. Review your recorded entry and approval status.
 
-Time is captured at clock-in/out; it is not continuous GPS tracking. GPS failure can still allow a time entry with location unavailable. A jobsite radius provides an inside/outside comparison, not an automatic prohibition on working outside the radius. The current table shows the clock-in location indicator. Photos are attached to time entries; pesticide-record photo attachments are not currently a separate feature. A time entry has one stored photo reference, rather than a multi-photo gallery.
+Time is captured at clock-in/out; it is not continuous GPS tracking. GPS failure can still allow a time entry with location unavailable. A jobsite radius provides an inside/outside comparison, not an automatic prohibition on working outside the radius. The current table shows the clock-in location indicator. Smart Photo Evidence supports attachments on pesticide/purchase records and other supported modules; wait for upload/sync confirmation before relying on a photo being stored online. The time-entry photo reference is separate from Smart Photo Evidence attachments available on supported farm and H-2A records.
 
 ## 10. Owner review and payroll preparation
 
@@ -196,7 +196,7 @@ Successfully synced records are stored online and available after signing into t
 3. Reconnect and select **Sync queued record(s)** if needed; reconnecting can also trigger syncing.
 4. Confirm the queue clears and the record appears online before clearing browser data or changing devices.
 
-Voice recognition may need internet. Sign-in, team joining, scheduling, the time clock and photo uploads are not promised to work offline. This is not a fully offline application.
+Voice processing may need internet. Smart Photo Evidence has a device-local retry queue on supported workflows; uploads complete after reconnection. Sign-in, team joining, scheduling and time-clock requests require service access. Keep queued records/photos on the same device until sync is confirmed.
 
 ### Download farm records
 
@@ -230,7 +230,7 @@ Open https://farmvoicerecords.com/billing to review the current offer. Billing s
 | GPS time clock | Location captured at clock-in and clock-out when available |
 | Optional radius | Compares location to a configured jobsite center/radius |
 | Hours comparison | Scheduled versus actual elapsed hours |
-| Photos | Job photo attached to a time entry |
+| Photos | Time-entry photo references and Smart Photo Evidence attachments on supported records |
 | Approval workflow | Owner approves/rejects completed time entries |
 | Reminders | On-page upcoming-shift reminder and shift-creation email attempt |
 | Farm record export | Date-filtered CSV including synced recording GPS fields |
@@ -240,7 +240,7 @@ Open https://farmvoicerecords.com/billing to review the current offer. Billing s
 | USDA/FSA field import | Owner can upload farmers.gov shapefile ZIP/GeoJSON; supported installed PWAs can also receive the downloaded file through Share → FarmVoice |
 | Field boundary geofences | Imported USDA/FSA polygons are stored with Farm / Tract / Field / CLU identifiers for reuse by field-location features |
 
-Not currently provided: native app-store installation; full offline operation; full payroll processing or tax calculation; continuous employee tracking; guaranteed timed SMS/push reminders; pesticide-record photo galleries; automatic record downloads; a separate manager role; or a verified general workflow for editing/deleting saved records. QuickBooks Online transfer requires the farm owner to connect and map employees first. Contact support for corrections to saved records.
+Not currently provided: native app-store installation; full offline operation; full payroll processing or tax calculation; continuous employee tracking; guaranteed timed SMS/push reminders; automatic record downloads; a separate manager role; or unrestricted record editing/deletion. Owners can review/edit saved records; confirmed changes require a reason and retain revision history. Deletion and writes follow the current plan/access rules. QuickBooks Online transfer requires the farm owner to connect and map employees first.
 
 ## 14. Troubleshooting
 

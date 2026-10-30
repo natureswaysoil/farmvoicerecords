@@ -1,3 +1,4 @@
+import { logBillingFailure } from "@/src/lib/billing/diagnostics";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { authorizeFarm, AccessError, apiError } from "@/src/lib/access-server";
@@ -14,6 +15,7 @@ const schema = z.object({
   h2a: z.boolean(),
 });
 export async function POST(request: Request) {
+  let stage = "authorize";
   let lock: { farmId: string; until: string } | null = null;
   try {
     checkOrigin(request);
@@ -21,9 +23,11 @@ export async function POST(request: Request) {
     if (!input.success) throw new AccessError("Choose a farm and plan.", 400);
     const { farmId, interval, h2a } = input.data;
     const { user } = await authorizeFarm(farmId, true);
+    stage = "configure";
     const stripe = stripeClient();
     const db = billingAdmin();
     const lineItems = prices(interval, h2a);
+    stage = "find_billing";
     const { data: billing, error } = await db
       .from("farm_billing")
       .select("*")
@@ -31,6 +35,7 @@ export async function POST(request: Request) {
       .single();
     if (error || !billing)
       throw new AccessError("Farm billing is unavailable.", 503);
+    stage = "claim_lease";
     const until = new Date(Date.now() + 300000).toISOString();
     const lease = await db
       .from("farm_billing")
@@ -44,6 +49,7 @@ export async function POST(request: Request) {
         409,
       );
     lock = { farmId, until };
+    stage = "ensure_customer";
     let customerId: string = billing.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create(
@@ -58,6 +64,7 @@ export async function POST(request: Request) {
       if (saved.error)
         throw new AccessError("Could not initialize billing.", 503);
     }
+    stage = "check_subscriptions";
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "all",
@@ -73,6 +80,7 @@ export async function POST(request: Request) {
         409,
       );
     // Reuse a pending checkout even if another browser tab requests a different plan.
+    stage = "reuse_checkout";
     const sessions = await stripe.checkout.sessions.list({
       customer: customerId,
       status: "open",
@@ -87,6 +95,7 @@ export async function POST(request: Request) {
       createHash("sha256").update(farmId).digest().subarray(0, 8),
       (n) => String.fromCharCode(97 + (n % 26)),
     ).join("");
+    stage = "create_checkout";
     const session = await stripe.checkout.sessions.create(
       {
         mode: "subscription",
@@ -105,6 +114,8 @@ export async function POST(request: Request) {
     );
     return Response.json({ url: session.url });
   } catch (error) {
+    if (!(error instanceof AccessError) || error.status >= 500)
+      logBillingFailure("checkout", stage, error);
     return apiError(error);
   } finally {
     if (lock)

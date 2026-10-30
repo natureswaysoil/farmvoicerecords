@@ -18,6 +18,8 @@ function message(e:any){
 async function rpc(fn:string,args:any={}){const {data,error}=await db.rpc(fn,args);if(error)throw error;return data;}
 Deno.serve(async req=>{
  if(req.method!=="POST") return Response.json({error:"POST required"},{status:405});
+ const {data:authorized,error:authError}=await db.rpc("notification_worker_authorize",{p_token:req.headers.get("x-farmvoice-cron-secret")});
+ if(authError||authorized!==true) return Response.json({error:"Unauthorized"},{status:401});
  if(!resend) return Response.json({error:"RESEND_API_KEY is not configured"},{status:503});
  try{
   await rpc("notification_worker_release_stale");

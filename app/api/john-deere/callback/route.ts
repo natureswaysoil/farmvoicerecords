@@ -63,6 +63,8 @@ export async function GET(request: NextRequest) {
         farm_id: farmId,
         connected_by: user.id,
         status: "connected",
+        refresh_lock_token: null,
+        refresh_lock_expires_at: null,
         access_token_ciphertext: encryptJohnDeereSecret(tokens.access_token),
         refresh_token_ciphertext: tokens.refresh_token
           ? encryptJohnDeereSecret(tokens.refresh_token)
