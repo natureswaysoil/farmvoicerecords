@@ -1,34 +1,39 @@
 {
   "slug": "rup-pesticide-record-requirements",
-  "title": "RUP Pesticide Record Requirements: What Every Private Applicator Must Know",
+  "title": "RUP Pesticide Records After the 2025 Federal Change: What Private Applicators Still Need",
   "date": "2026-10-06",
-  "excerpt": "Federal law requires private applicators to keep restricted-use pesticide records for two years after each application. Here is exactly what must be in every record and how to keep them inspection-ready.",
+  "excerpt": "USDA's federal restricted-use pesticide recordkeeping rule ended on July 11, 2025. Here is what changed, what still applies through your state, the label and the Worker Protection Standard, and how to keep records inspection-ready.",
   "author": "FarmVoice Records",
-  "tags": ["pesticide", "compliance", "RUP", "recordkeeping"],
+  "tags": [
+    "pesticide",
+    "compliance",
+    "RUP",
+    "recordkeeping"
+  ],
   "sections": [
     {
-      "heading": "Who must keep RUP records?",
-      "body": "Any certified private applicator who purchases or applies a restricted-use pesticide (RUP) in the United States must keep records of every application. This includes farmers, ranchers, and any person applying pesticides on their own agricultural property. The federal requirement under FIFRA Section 11 applies regardless of farm size."
+      "heading": "What changed in 2025?",
+      "body": "Until 2025, a USDA regulation (7 CFR Part 110) required certified private applicators to keep records of every restricted-use pesticide (RUP) application. USDA removed that regulation effective July 11, 2025, saying the federal program had been unfunded since the early 2010s. The federal two-year recordkeeping rule therefore no longer applies on its own."
     },
     {
-      "heading": "What must every RUP record include?",
-      "body": "Federal regulations require six pieces of information in every RUP application record: (1) the brand name and EPA registration number of the pesticide, (2) the total amount applied, (3) the location of the application, (4) the crop, commodity, stored product, or site to which the pesticide was applied, (5) the date of application, and (6) the name of the certified applicator responsible for the application. Missing any one of these elements leaves the record incomplete."
+      "heading": "What still applies?",
+      "body": "State pesticide laws, which often require RUP or general-use records of their own, still apply, and the product label is still the law. Farms with agricultural employees must follow the EPA Worker Protection Standard, which has its own requirements for application information. Your state department of agriculture or extension service can tell you exactly what applies to your operation."
     },
     {
-      "heading": "How long must you keep the records?",
-      "body": "Federal law requires RUP records to be kept for two years from the date of application. Many state agencies require longer retention — three to five years in some states. Storing digital records in a system that exports inspection packages on demand is the most reliable way to meet retention requirements without managing physical binders."
+      "heading": "What should a good RUP record include?",
+      "body": "The former federal list is still a sound checklist: the brand name and EPA registration number, the total amount applied, the location and size of the area treated, the crop, commodity or site, the date, and the certified applicator's name and certification number. Recording these within a day or two of each application, while details are fresh, keeps records accurate."
     },
     {
-      "heading": "What happens if records are incomplete?",
-      "body": "An inspector who finds an incomplete RUP record can issue a Notice of Warning or a civil penalty. Federal penalties for recordkeeping violations can reach $500 per offense for first violations. State penalties vary. Incomplete records also complicate insurance claims, neighbor disputes, and worker protection situations where application details are contested."
+      "heading": "How long should you keep records?",
+      "body": "Follow your state's retention period; where none applies, keeping records for at least two to three years is a common, conservative practice. Incomplete or missing records make inspections, insurance claims, neighbor disputes and worker-protection questions much harder to resolve."
     },
     {
-      "heading": "State rule extensions",
-      "body": "Several states add requirements beyond the federal baseline. California, for example, requires pesticide use reports filed with the County Agricultural Commissioner. New York requires additional application detail for certain product categories. Florida requires records to include the application method. Always verify the specific requirements for your state with your extension service or state department of agriculture."
+      "heading": "Check your state's rules",
+      "body": "Requirements differ by state: some require use reports, some require records for general-use products too, and retention periods vary. Always confirm the current rules with your state department of agriculture or extension service rather than relying on a general article."
     },
     {
       "heading": "How FarmVoice Records helps",
-      "body": "FarmVoice Records checks federal RUP record completeness on every saved application and flags missing fields before you close the record. GPS coordinates, application rates, and applicator information are captured at entry time. Inspection packages can be exported as a PDF in under a minute. Voice capture in English and Spanish makes it practical to record applications immediately after they happen — before details are forgotten."
+      "body": "FarmVoice Records checks every saved application for the standard RUP record fields and flags missing ones before you close the record. GPS coordinates, application rates and applicator information are captured at entry time, and inspection packages can be exported as a PDF in under a minute. Voice capture in English and Spanish makes it practical to record applications right after they happen."
     }
   ]
 }

@@ -2,26 +2,25 @@
   "slug": "pesticide-record-keeping-for-small-and-hobby-farms",
   "title": "Pesticide Record-Keeping for Small and Hobby Farms",
   "date": "2026-10-30",
-  "excerpt": "Learn essential tips and best practices for pesticide record-keeping on small and hobby farms to ensure compliance and promote safety.",
+  "excerpt": "The federal USDA rule for restricted-use pesticide records ended in July 2025, but state rules, product labels and worker-protection requirements still apply. Here is what small and hobby farms should keep, and why good spray records still pay off.",
   "author": "FarmVoice Records",
   "tags": [
     "pesticide record-keeping",
     "small farms",
-    "farm compliance",
-    "H-2A"
+    "farm compliance"
   ],
   "sections": [
     {
       "heading": "Importance of Pesticide Record-Keeping",
-      "body": "Pesticide record-keeping is crucial for small and hobby farms to comply with federal and state regulations. Proper documentation helps track the use of chemicals, ensuring that farmers adhere to safety guidelines and application rates. Additionally, records can provide valuable insights for improving pest management strategies."
+      "body": "Good spray records protect small and hobby farms in an inspection, an insurance claim or a dispute with a neighbor. They also show what worked: which product, how much, and when. Even where no rule requires a record, writing it down right after you spray is the cheapest insurance a farm can have."
     },
     {
-      "heading": "Regulatory Requirements",
-      "body": "In the United States, the Environmental Protection Agency (EPA) requires private pesticide applicators to maintain records of any pesticide applications for at least two years. These records must include details such as the product name, application date, location, target pests, and the amount used. States may have additional requirements, so it's essential for farmers to familiarize themselves with local regulations."
+      "heading": "What the Rules Require Now",
+      "body": "For years, a federal USDA rule (7 CFR Part 110) required certified private applicators to keep restricted-use pesticide (RUP) records for two years. USDA removed that rule effective July 11, 2025. That does not mean records are optional: many states have their own pesticide recordkeeping rules, the product label is the law, and farms with agricultural employees must follow the EPA Worker Protection Standard, which has its own application-information requirements. Check with your state department of agriculture or extension office for what applies to you."
     },
     {
       "heading": "Key Components of a Pesticide Record",
-      "body": "Essential components of pesticide records include the applicator's name and license number, product label information, method of application, and environmental conditions at the time of application. It's also important to document any adverse effects observed and any follow-up actions taken. This comprehensive approach ensures thorough accountability."
+      "body": "A useful pesticide record includes the product name and EPA registration number, the amount applied, the date, the field or location and its size, the crop or site, and the name and certification number of the applicator. Many farmers also note the application method, weather and wind at the time, and any problems they saw afterwards. Recording the same details every time keeps your records consistent and easy to check."
     },
     {
       "heading": "Best Practices for Maintaining Records",
@@ -29,15 +28,15 @@
     },
     {
       "heading": "FarmVoice Records and Pesticide Tracking",
-      "body": "FarmVoice Records simplifies pesticide record-keeping by providing an intuitive, user-friendly platform specifically designed for farmers. With features such as automated reminders for record updates, easy logging of application details, and compliance tracking, FarmVoice ensures that users stay organized and up-to-date with regulatory requirements. This helps small and hobby farmers focus on their operations while maintaining compliance."
+      "body": "FarmVoice Records lets you log a spray application by voice or typing right after it happens, with GPS location captured automatically. It checks each record for the standard fields above and flags anything missing before you save, and you can export your records when an inspector, buyer or insurer asks. FarmVoice does not decide which rules apply to your farm; it helps you keep the records those rules call for."
     },
     {
       "heading": "Training and Education",
-      "body": "Ongoing education about pesticide safety and record-keeping is essential for small and hobby farmers. Participating in workshops, webinars, and training sessions can enhance knowledge of best practices and regulatory changes. Many agricultural extension services and local universities offer resources and programs tailored to the needs of small-scale farmers."
+      "body": "Pesticide rules change, as the 2025 federal update shows. Extension services, state departments of agriculture and pesticide applicator recertification courses are the best way to stay current, and many offer free training for small-scale farmers."
     },
     {
       "heading": "Conclusion: Staying Compliant and Safe",
-      "body": "Effective pesticide record-keeping is an integral part of responsible farm management. By adhering to regulatory requirements and implementing best practices, small and hobby farmers can protect themselves, their crops, and the environment. Utilizing tools like FarmVoice Records can further streamline this process, ensuring that record-keeping is efficient and compliant."
+      "body": "Keeping good pesticide records is part of running a responsible farm, whatever its size. Know your state's rules, follow the label, keep consistent records after every application, and use tools that make it quick enough to do in the field."
     }
   ]
 }

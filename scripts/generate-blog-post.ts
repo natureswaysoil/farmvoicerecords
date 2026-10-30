@@ -52,6 +52,9 @@ Requirements:
 - Include one section that explains how FarmVoice Records addresses the topic
 - Focus on US farmers, H-2A employers, private pesticide applicators, and farm operators
 - Accurate regulatory details where applicable
+- Current pesticide rules (do not contradict): USDA removed the federal restricted-use pesticide recordkeeping regulation (7 CFR Part 110) effective July 11, 2025. Do NOT say federal law, USDA or EPA requires private applicators to keep pesticide records for two years. Say instead that state pesticide laws, the product label and, for farms with agricultural employees, the EPA Worker Protection Standard still apply, and tell readers to confirm their state's rules with their state department of agriculture or extension service.
+- Do not invent specific penalty amounts, statute section numbers or state-by-state rules; describe them generally and point readers to their state agency
+- Do not claim FarmVoice guarantees compliance; it helps farmers keep the records their rules call for
 - Tags should be 2-4 short keywords relevant to the topic`
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
