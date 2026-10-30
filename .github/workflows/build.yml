@@ -10,7 +10,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to Ubuntu 26 on 2026-10-19 and Playwright
+    # 1.56 cannot install its browser dependencies there.
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54399
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-public-key
