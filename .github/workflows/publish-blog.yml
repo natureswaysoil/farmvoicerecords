@@ -67,6 +67,7 @@ jobs:
       - name: Load API keys from Secret Manager
         env:
           OPENAI_API_KEY_FB: ${{ secrets.OPENAI_API_KEY }}
+          FARM_VOICE_RECORDS_KEY_FB: ${{ secrets.FARM_VOICE_RECORDS_KEY }}
           FACEBOOK_ACCESS_TOKEN_FB: ${{ secrets.FACEBOOK_ACCESS_TOKEN }}
           FACEBOOK_PAGE_ID_FB: ${{ secrets.FACEBOOK_PAGE_ID }}
           INSTAGRAM_ACCESS_TOKEN_FB: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
@@ -101,6 +102,8 @@ jobs:
             if [ -n "$VAL" ]; then
               echo "::add-mask::$VAL"
               echo "${VARNAME}=${VAL}" >> "$GITHUB_ENV"
+              # Also set it in this step, so later fallbacks and the check below see it.
+              printf -v "$VARNAME" '%s' "$VAL"; export "$VARNAME"
               echo "Loaded ${VARNAME} from GCP Secret Manager."
             fi
           }
@@ -112,12 +115,15 @@ jobs:
             if [ -z "${!VARNAME:-}" ] && [ -n "$FALLBACK" ]; then
               echo "::add-mask::$FALLBACK"
               echo "${VARNAME}=${FALLBACK}" >> "$GITHUB_ENV"
+              printf -v "$VARNAME" '%s' "$FALLBACK"; export "$VARNAME"
               echo "Using ${VARNAME} from Actions secret."
             fi
           }
 
-          gcp_secret OPENAI_API_KEY          OPENAI_API_KEY openai-api-key openai_api_key
+          # The OpenAI key may also be stored as Farm_Voice_Records_Key.
+          gcp_secret OPENAI_API_KEY          OPENAI_API_KEY openai-api-key openai_api_key Farm_Voice_Records_Key FARM_VOICE_RECORDS_KEY
           set_or_fallback OPENAI_API_KEY     "$OPENAI_API_KEY_FB"
+          set_or_fallback OPENAI_API_KEY     "$FARM_VOICE_RECORDS_KEY_FB"
 
           gcp_secret FACEBOOK_ACCESS_TOKEN   FACEBOOK_ACCESS_TOKEN facebook-access-token facebook_access_token
           set_or_fallback FACEBOOK_ACCESS_TOKEN "$FACEBOOK_ACCESS_TOKEN_FB"
@@ -144,7 +150,7 @@ jobs:
           set_or_fallback TWITTER_ACCESS_TOKEN_SECRET "$TWITTER_ACCESS_TOKEN_SECRET_FB"
 
           # OpenAI is required — fail fast
-          [ -n "${OPENAI_API_KEY:-}" ] || { echo "::error::No OPENAI_API_KEY available. Add GOOGLE_CREDENTIALS or OPENAI_API_KEY to Actions secrets."; exit 1; }
+          [ -n "${OPENAI_API_KEY:-}" ] || { echo "::error::No OpenAI key available. Add GOOGLE_CREDENTIALS, OPENAI_API_KEY or Farm_Voice_Records_Key to Actions secrets."; exit 1; }
 
       - name: Generate blog post
         env:
