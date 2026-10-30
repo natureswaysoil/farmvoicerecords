@@ -1,0 +1,38 @@
+{
+  "slug": "h2a-housing-inspection-checklist",
+  "title": "H-2A Housing Inspection Checklist: What DOL Inspectors Look For",
+  "date": "2026-09-29",
+  "excerpt": "Before H-2A workers arrive, housing must pass a pre-occupancy inspection. Here is a practical checklist of what federal inspectors examine and what you need documented.",
+  "author": "FarmVoice Records",
+  "tags": ["H-2A", "housing", "compliance", "inspection"],
+  "sections": [
+    {
+      "heading": "Why housing documentation matters",
+      "body": "H-2A employers must provide free housing that meets federal standards set by the Wage and Hour Division and the Employment and Training Administration. Housing must pass a pre-occupancy inspection before workers arrive. Failing to document the inspection — or failing the inspection itself — can delay worker arrivals, result in debarment, or lead to civil money penalties."
+    },
+    {
+      "heading": "Structural and safety requirements",
+      "body": "Inspectors check that the housing structure is sound: roofs without active leaks, floors without dangerous soft spots or gaps, windows and doors that open and lock, and screens on all openings. Each sleeping area must have adequate ventilation. Stairways and elevated areas must have guardrails. Electrical systems must meet applicable codes with no exposed wiring."
+    },
+    {
+      "heading": "Sleeping space and occupancy standards",
+      "body": "Federal standards require a minimum of 50 square feet per person in sleeping areas with natural ventilation, and 40 square feet with mechanical ventilation. Beds, cots, or bunks must be provided. Mattresses must be provided. Workers must not be required to share a bed. Each occupant must have storage space for personal belongings."
+    },
+    {
+      "heading": "Bathroom and sanitation",
+      "body": "One toilet for every ten occupants is the federal minimum. One shower or bathing facility per ten occupants. Hot and cold running water must be available in all bathrooms and cooking areas. Bathrooms must be maintained in a sanitary condition. Separate bathroom facilities must be provided by sex unless individual rooms with locking doors are used."
+    },
+    {
+      "heading": "Cooking and food storage",
+      "body": "When workers prepare their own food, the employer must provide a stove with at least two burners per six workers, a refrigerator with capacity sufficient for the number of workers, and adequate counter, storage, and eating space. Cooking areas must have adequate lighting and ventilation."
+    },
+    {
+      "heading": "Documentation you must keep",
+      "body": "Keep the written inspection report from the pre-occupancy inspection, the date housing became available, evidence of any repairs made before occupancy, the names and arrival dates of workers assigned to the housing, and records of any post-occupancy inspections or complaints. If using a third-party inspector, retain their credentials and signature."
+    },
+    {
+      "heading": "How FarmVoice Records helps",
+      "body": "FarmVoice Records includes an H-2A housing module that walks through the federal inspection checklist, captures photo evidence for each area, records the inspection date and inspector name, and stores all documentation in a farm-scoped record that can be exported for DOL audits. Housing assignments, worker arrival dates, and inspection status are tracked together so nothing is missing when an auditor asks."
+    }
+  ]
+}

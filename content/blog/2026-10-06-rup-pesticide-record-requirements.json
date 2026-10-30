@@ -1,0 +1,34 @@
+{
+  "slug": "rup-pesticide-record-requirements",
+  "title": "RUP Pesticide Record Requirements: What Every Private Applicator Must Know",
+  "date": "2026-10-06",
+  "excerpt": "Federal law requires private applicators to keep restricted-use pesticide records for two years after each application. Here is exactly what must be in every record and how to keep them inspection-ready.",
+  "author": "FarmVoice Records",
+  "tags": ["pesticide", "compliance", "RUP", "recordkeeping"],
+  "sections": [
+    {
+      "heading": "Who must keep RUP records?",
+      "body": "Any certified private applicator who purchases or applies a restricted-use pesticide (RUP) in the United States must keep records of every application. This includes farmers, ranchers, and any person applying pesticides on their own agricultural property. The federal requirement under FIFRA Section 11 applies regardless of farm size."
+    },
+    {
+      "heading": "What must every RUP record include?",
+      "body": "Federal regulations require six pieces of information in every RUP application record: (1) the brand name and EPA registration number of the pesticide, (2) the total amount applied, (3) the location of the application, (4) the crop, commodity, stored product, or site to which the pesticide was applied, (5) the date of application, and (6) the name of the certified applicator responsible for the application. Missing any one of these elements leaves the record incomplete."
+    },
+    {
+      "heading": "How long must you keep the records?",
+      "body": "Federal law requires RUP records to be kept for two years from the date of application. Many state agencies require longer retention — three to five years in some states. Storing digital records in a system that exports inspection packages on demand is the most reliable way to meet retention requirements without managing physical binders."
+    },
+    {
+      "heading": "What happens if records are incomplete?",
+      "body": "An inspector who finds an incomplete RUP record can issue a Notice of Warning or a civil penalty. Federal penalties for recordkeeping violations can reach $500 per offense for first violations. State penalties vary. Incomplete records also complicate insurance claims, neighbor disputes, and worker protection situations where application details are contested."
+    },
+    {
+      "heading": "State rule extensions",
+      "body": "Several states add requirements beyond the federal baseline. California, for example, requires pesticide use reports filed with the County Agricultural Commissioner. New York requires additional application detail for certain product categories. Florida requires records to include the application method. Always verify the specific requirements for your state with your extension service or state department of agriculture."
+    },
+    {
+      "heading": "How FarmVoice Records helps",
+      "body": "FarmVoice Records checks federal RUP record completeness on every saved application and flags missing fields before you close the record. GPS coordinates, application rates, and applicator information are captured at entry time. Inspection packages can be exported as a PDF in under a minute. Voice capture in English and Spanish makes it practical to record applications immediately after they happen — before details are forgotten."
+    }
+  ]
+}
