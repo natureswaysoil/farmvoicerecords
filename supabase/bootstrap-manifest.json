@@ -33,6 +33,8 @@
   "supabase/migrations/20261002203500_equipment_records.sql",
   "supabase/migrations/20261003004500_john_deere_connections.sql",
   "supabase/migrations/20261003213844_production_readiness_guards.sql",
+  "supabase/migrations/20261006173000_facebook_outreach_admin.sql",
+  "supabase/migrations/20261006212500_outreach_workflow_hardening.sql",
   "supabase/migrations/20261006225000_detailed_h2a_housing_checklists.sql",
   "supabase/migrations/20261006231000_h2a_housing_legal_corrections.sql",
   "supabase/bootstrap-grants.sql"
