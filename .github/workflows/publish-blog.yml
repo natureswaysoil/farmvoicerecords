@@ -48,10 +48,20 @@ jobs:
           CREDS_PATH="$RUNNER_TEMP/gcp-sa.json"
           printf '%s' "$CREDS_JSON" > "$CREDS_PATH"
           chmod 600 "$CREDS_PATH"
+          # A secret that is not a service-account key (bad paste, wrong secret)
+          # used to stop the whole job here. Say so plainly and fall back to the
+          # direct Actions secrets, as when no GCP secret is set at all.
+          if ! python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get("type")=="service_account" and d.get("client_email") and d.get("private_key") else 1)' "$CREDS_PATH" 2>/dev/null; then
+            echo "::warning::GOOGLE_CREDENTIALS is not a valid Google service-account JSON key — ignoring it and using direct Actions secrets. Replace it with the full JSON key file to load keys from Secret Manager."
+            rm -f "$CREDS_PATH"
+            exit 0
+          fi
           echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDS_PATH" >> "$GITHUB_ENV"
           echo "GOOGLE_CLOUD_PROJECT=$DEFAULT_GOOGLE_CLOUD_PROJECT" >> "$GITHUB_ENV"
           GCLOUD_PROJECT=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("project_id",""))' "$CREDS_PATH" || true)
-          [ -n "$GCLOUD_PROJECT" ] && echo "GCLOUD_PROJECT=$GCLOUD_PROJECT" >> "$GITHUB_ENV"
+          if [ -n "$GCLOUD_PROJECT" ]; then
+            echo "GCLOUD_PROJECT=$GCLOUD_PROJECT" >> "$GITHUB_ENV"
+          fi
 
       # ── Load all API keys from GCP Secret Manager (or direct Actions secrets) ─
       - name: Load API keys from Secret Manager
